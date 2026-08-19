@@ -8,6 +8,8 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminWorkspacesPage from "./pages/AdminWorkspacesPage";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
+import CafeLayout from "./layouts/CafeLayout";
+import CafeDashboardPage from "./pages/CafeDashboardPage";
 
 const router = createBrowserRouter([
   {
@@ -19,6 +21,15 @@ const router = createBrowserRouter([
       { path: "workspaces", element: <AdminWorkspacesPage /> },
       { path: "analytics", element: <AdminAnalyticsPage /> },
       { path: "settings", element: <AdminSettingsPage /> },
+    ],
+  },
+  {
+    path: "/cafe",
+    element: <CafeLayout onLogout={() => console.log("logout")} />,
+    children: [
+      { index: true, element: <CafeDashboardPage /> },
+      // POS, Orders, Tables, Kitchen, Menu, Inventory, Customers, Reports,
+      // Settings pages get added here as each module is built.
     ],
   },
 ]);

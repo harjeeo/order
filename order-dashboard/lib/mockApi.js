@@ -51,3 +51,46 @@ export async function listAdminWorkspaces({ search = "" } = {}) {
   );
   return { workspaces, total: workspaces.length, page: 1, limit: 25 };
 }
+
+// --- Cafe / Restaurant POS dashboard ---------------------------------
+
+const SAMPLE_BEST_SELLERS = [
+  { name: "Cheese Burger", qty: 42, revenue: 7518 },
+  { name: "Cappuccino", qty: 38, revenue: 4180 },
+  { name: "Margherita Pizza", qty: 27, revenue: 8100 },
+  { name: "Cold Coffee", qty: 25, revenue: 3000 },
+  { name: "Veg Sandwich", qty: 19, revenue: 2470 },
+];
+
+const SAMPLE_LOW_STOCK = [
+  { ingredient: "Cheese", stock: "5 kg", minimum: "2 kg" },
+  { ingredient: "Chicken", stock: "3 kg", minimum: "5 kg" },
+  { ingredient: "Coffee Beans", stock: "1 kg", minimum: "1 kg" },
+];
+
+function hoursAgoLabel(n) {
+  const d = new Date();
+  d.setHours(d.getHours() - n);
+  return d.toISOString().slice(11, 16);
+}
+
+export async function getCafeDashboardStats() {
+  return {
+    todaySales: 18420,
+    todayOrders: 96,
+    pendingOrders: 7,
+    completedOrders: 84,
+    totalRevenue: 18420,
+    orderTypeSummary: {
+      dineIn: 52,
+      takeaway: 30,
+      delivery: 14,
+    },
+    bestSellingItems: SAMPLE_BEST_SELLERS,
+    lowStockItems: SAMPLE_LOW_STOCK.filter((i) => parseFloat(i.stock) <= parseFloat(i.minimum)),
+    salesByHour: [6, 5, 4, 3, 2, 1, 0].map((n) => ({
+      time: hoursAgoLabel(n),
+      amount: Math.round(800 + Math.random() * 2200),
+    })),
+  };
+}
