@@ -615,3 +615,57 @@ export async function refundInvoice(invoiceId) {
   if (order) order.paymentStatus = "refunded";
   return { ...invoice };
 }
+
+// --- Inventory ----------------------------------------------------------
+
+const SAMPLE_INGREDIENTS = [
+  { _id: "i1", name: "Cheese", unit: "kg", stock: 5, minimum: 2 },
+  { _id: "i2", name: "Chicken", unit: "kg", stock: 3, minimum: 5 },
+  { _id: "i3", name: "Coffee Beans", unit: "kg", stock: 1, minimum: 1 },
+  { _id: "i4", name: "Burger Buns", unit: "pcs", stock: 40, minimum: 20 },
+  { _id: "i5", name: "Tomato", unit: "kg", stock: 0, minimum: 3 },
+  { _id: "i6", name: "Milk", unit: "ltr", stock: 12, minimum: 5 },
+];
+
+let stockLogCounter = 0;
+const SAMPLE_STOCK_LOG = [];
+
+function ingredientStatus(ing) {
+  if (ing.stock <= 0) return "out";
+  if (ing.stock <= ing.minimum) return "low";
+  return "ok";
+}
+
+export async function getIngredients() {
+  return SAMPLE_INGREDIENTS.map((i) => ({ ...i, status: ingredientStatus(i) }));
+}
+
+export async function recordStockMovement(ingredientId, { type, qty, note = "" }) {
+  const ingredient = SAMPLE_INGREDIENTS.find((i) => i._id === ingredientId);
+  if (!ingredient) throw new Error("Ingredient not found");
+  const amount = Number(qty) || 0;
+  if (type === "in") ingredient.stock += amount;
+  else if (type === "out" || type === "wastage") ingredient.stock = Math.max(0, ingredient.stock - amount);
+  else if (type === "adjustment") ingredient.stock = amount;
+
+  SAMPLE_STOCK_LOG.unshift({
+    _id: `sl${++stockLogCounter}`,
+    ingredientId,
+    ingredientName: ingredient.name,
+    type,
+    qty: amount,
+    note,
+    createdAt: new Date().toISOString(),
+  });
+  return { ...ingredient, status: ingredientStatus(ingredient) };
+}
+
+export async function getStockLog() {
+  return [...SAMPLE_STOCK_LOG];
+}
+
+export async function createIngredient(data) {
+  const ingredient = { _id: `i${Date.now()}`, stock: 0, minimum: 0, unit: "kg", ...data };
+  SAMPLE_INGREDIENTS.push(ingredient);
+  return ingredient;
+}

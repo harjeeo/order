@@ -19,6 +19,7 @@ import CafeMenuPage from "./pages/CafeMenuPage";
 import CafeRecipesPage from "./pages/CafeRecipesPage";
 import CafeBillingPage from "./pages/CafeBillingPage";
 import CafeCustomersPage from "./pages/CafeCustomersPage";
+import CafeInventoryPage from "./pages/CafeInventoryPage";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/cafe" replace /> },
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
       { path: "recipes", element: <CafeRecipesPage /> },
       { path: "billing", element: <CafeBillingPage /> },
       { path: "customers", element: <CafeCustomersPage /> },
+      { path: "inventory", element: <CafeInventoryPage /> },
     ],
   },
 ]);
