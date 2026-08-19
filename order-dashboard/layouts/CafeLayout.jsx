@@ -8,6 +8,7 @@ import {
   KitchenUtensilsIcon,
   MenuRestaurantIcon,
   PackageIcon,
+  ChefHatIcon,
   UserMultiple02Icon,
   Analytics01Icon,
   Settings02Icon,
@@ -22,6 +23,7 @@ const navLinks = [
   { to: "/cafe/kitchen", label: "Kitchen", icon: KitchenUtensilsIcon },
   { to: "/cafe/menu", label: "Menu", icon: MenuRestaurantIcon },
   { to: "/cafe/inventory", label: "Inventory", icon: PackageIcon },
+  { to: "/cafe/recipes", label: "Recipes", icon: ChefHatIcon },
   { to: "/cafe/customers", label: "Customers", icon: UserMultiple02Icon },
   { to: "/cafe/reports", label: "Reports", icon: Analytics01Icon },
 ];
