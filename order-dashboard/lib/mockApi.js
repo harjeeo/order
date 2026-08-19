@@ -504,3 +504,68 @@ export async function printInvoice(orderId) {
   await new Promise((r) => setTimeout(r, 200));
   return { ok: true, orderId };
 }
+
+// --- Billing & Payments -----------------------------------------------
+
+let invoiceCounter = 5000;
+
+const SAMPLE_INVOICES = [
+  {
+    _id: "inv1",
+    invoiceNumber: "INV-4999",
+    orderNumber: "ORD-3000",
+    customer: "Neha Gupta",
+    subtotal: 418,
+    discountAmount: 0,
+    serviceChargeAmount: 21,
+    taxAmount: 22,
+    roundOff: 1,
+    total: 462,
+    method: "upi",
+    createdAt: minsAgo(40),
+  },
+];
+
+export async function getBillableOrders() {
+  return SAMPLE_ORDERS.filter((o) => o.paymentStatus === "unpaid" && o.status !== "cancelled");
+}
+
+export async function completePayment(orderId, payload) {
+  const order = SAMPLE_ORDERS.find((o) => o._id === orderId);
+  if (!order) throw new Error("Order not found");
+  order.paymentStatus = "paid";
+  order.status = order.status === "pending" ? "completed" : order.status;
+
+  const invoice = {
+    _id: `inv${Date.now()}`,
+    invoiceNumber: `INV-${++invoiceCounter}`,
+    orderNumber: order.orderNumber,
+    customer: order.customer,
+    ...payload,
+    createdAt: new Date().toISOString(),
+  };
+  SAMPLE_INVOICES.unshift(invoice);
+  return invoice;
+}
+
+export async function getInvoices() {
+  return [...SAMPLE_INVOICES];
+}
+
+export async function reprintInvoice(invoiceId) {
+  await new Promise((r) => setTimeout(r, 200));
+  return { ok: true, invoiceId };
+}
+
+export async function downloadInvoice(invoiceId) {
+  await new Promise((r) => setTimeout(r, 200));
+  return { ok: true, invoiceId };
+}
+
+export async function refundInvoice(invoiceId) {
+  const invoice = SAMPLE_INVOICES.find((i) => i._id === invoiceId);
+  if (invoice) invoice.refunded = true;
+  const order = SAMPLE_ORDERS.find((o) => o.orderNumber === invoice?.orderNumber);
+  if (order) order.paymentStatus = "refunded";
+  return { ...invoice };
+}
