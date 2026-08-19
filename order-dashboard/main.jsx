@@ -11,6 +11,7 @@ import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import CafeLayout from "./layouts/CafeLayout";
 import CafeDashboardPage from "./pages/CafeDashboardPage";
+import CafePosPage from "./pages/CafePosPage";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/cafe" replace /> },
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
     element: <CafeLayout onLogout={() => console.log("logout")} />,
     children: [
       { index: true, element: <CafeDashboardPage /> },
+      { path: "pos", element: <CafePosPage /> },
     ],
   },
 ]);

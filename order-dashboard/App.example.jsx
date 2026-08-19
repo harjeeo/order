@@ -10,6 +10,7 @@ import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import CafeLayout from "./layouts/CafeLayout";
 import CafeDashboardPage from "./pages/CafeDashboardPage";
+import CafePosPage from "./pages/CafePosPage";
 
 const router = createBrowserRouter([
   {
@@ -28,7 +29,8 @@ const router = createBrowserRouter([
     element: <CafeLayout onLogout={() => console.log("logout")} />,
     children: [
       { index: true, element: <CafeDashboardPage /> },
-      // POS, Orders, Tables, Kitchen, Menu, Inventory, Customers, Reports,
+      { path: "pos", element: <CafePosPage /> },
+      // Orders, Tables, Kitchen, Menu, Inventory, Customers, Reports,
       // Settings pages get added here as each module is built.
     ],
   },

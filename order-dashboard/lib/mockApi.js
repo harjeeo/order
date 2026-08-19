@@ -94,3 +94,146 @@ export async function getCafeDashboardStats() {
     })),
   };
 }
+
+// --- POS / New Order ---------------------------------------------------
+
+const SAMPLE_CATEGORIES = ["All", "Burgers", "Pizza", "Beverages", "Sandwiches", "Desserts"];
+
+const SAMPLE_MENU_ITEMS = [
+  {
+    _id: "m1",
+    name: "Cheese Burger",
+    category: "Burgers",
+    price: 179,
+    tax: 5,
+    available: true,
+    variants: [
+      { name: "Regular", price: 149 },
+      { name: "Cheese", price: 179 },
+      { name: "Double", price: 219 },
+    ],
+    addons: [
+      { name: "Extra Cheese", price: 30 },
+      { name: "Extra Patty", price: 60 },
+    ],
+  },
+  {
+    _id: "m2",
+    name: "Veg Burger",
+    category: "Burgers",
+    price: 129,
+    tax: 5,
+    available: true,
+    variants: [],
+    addons: [{ name: "Extra Cheese", price: 30 }],
+  },
+  {
+    _id: "m3",
+    name: "Margherita Pizza",
+    category: "Pizza",
+    price: 299,
+    tax: 5,
+    available: true,
+    variants: [
+      { name: "Regular (8\")", price: 299 },
+      { name: "Medium (10\")", price: 449 },
+      { name: "Large (12\")", price: 599 },
+    ],
+    addons: [{ name: "Extra Cheese", price: 50 }],
+  },
+  {
+    _id: "m4",
+    name: "Pepperoni Pizza",
+    category: "Pizza",
+    price: 349,
+    tax: 5,
+    available: false,
+    variants: [],
+    addons: [],
+  },
+  {
+    _id: "m5",
+    name: "Cappuccino",
+    category: "Beverages",
+    price: 110,
+    tax: 5,
+    available: true,
+    variants: [
+      { name: "Small", price: 90 },
+      { name: "Regular", price: 110 },
+      { name: "Large", price: 130 },
+    ],
+    addons: [],
+  },
+  {
+    _id: "m6",
+    name: "Cold Coffee",
+    category: "Beverages",
+    price: 120,
+    tax: 5,
+    available: true,
+    variants: [],
+    addons: [{ name: "Extra Shot", price: 25 }],
+  },
+  {
+    _id: "m7",
+    name: "Veg Sandwich",
+    category: "Sandwiches",
+    price: 99,
+    tax: 5,
+    available: true,
+    variants: [],
+    addons: [{ name: "Extra Cheese", price: 20 }],
+  },
+  {
+    _id: "m8",
+    name: "Chocolate Brownie",
+    category: "Desserts",
+    price: 89,
+    tax: 5,
+    available: true,
+    variants: [],
+    addons: [],
+  },
+];
+
+const SAMPLE_TABLES = [
+  { _id: "t1", number: "T1", capacity: 2, status: "available" },
+  { _id: "t2", number: "T2", capacity: 4, status: "occupied" },
+  { _id: "t3", number: "T3", capacity: 4, status: "available" },
+  { _id: "t4", number: "T4", capacity: 6, status: "reserved" },
+  { _id: "t5", number: "T5", capacity: 2, status: "available" },
+  { _id: "t6", number: "T6", capacity: 4, status: "occupied" },
+];
+
+export async function getMenuCategories() {
+  return SAMPLE_CATEGORIES;
+}
+
+export async function getMenuItems({ category = "All", search = "" } = {}) {
+  return SAMPLE_MENU_ITEMS.filter(
+    (item) =>
+      (category === "All" || item.category === category) &&
+      item.name.toLowerCase().includes(search.toLowerCase())
+  );
+}
+
+export async function getTables() {
+  return SAMPLE_TABLES;
+}
+
+export async function getCustomersList({ search = "" } = {}) {
+  const SAMPLE_CUSTOMERS = [
+    { _id: "c1", name: "Walk-in Customer", phone: "" },
+    { _id: "c2", name: "Amit Kumar", phone: "9876543210" },
+    { _id: "c3", name: "Neha Gupta", phone: "9123456780" },
+  ];
+  return SAMPLE_CUSTOMERS.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+}
+
+// Simulates submitting an order to the backend (KOT/bill/hold/save/payment).
+// Swap this for a real API call — it just resolves with an order id.
+export async function submitOrder(order) {
+  await new Promise((r) => setTimeout(r, 300));
+  return { _id: `o${Date.now()}`, ...order, createdAt: new Date().toISOString() };
+}
