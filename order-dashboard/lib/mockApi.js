@@ -265,5 +265,77 @@ export async function getCustomersList({ search = "" } = {}) {
 // Swap this for a real API call — it just resolves with an order id.
 export async function submitOrder(order) {
   await new Promise((r) => setTimeout(r, 300));
-  return { _id: `o${Date.now()}`, ...order, createdAt: new Date().toISOString() };
+  const saved = { _id: `o${Date.now()}`, ...order, createdAt: new Date().toISOString() };
+  if (order.action === "kitchen" || order.action === "kot") {
+    pushKotOrder(saved);
+  }
+  return saved;
+}
+
+// --- Kitchen / KOT -------------------------------------------------------
+
+let kotCounter = 1003;
+
+function pushKotOrder(order) {
+  const table = SAMPLE_TABLES.find((t) => t._id === order.tableId);
+  KOT_QUEUE.unshift({
+    _id: `kot${Date.now()}`,
+    orderNumber: `KOT-${kotCounter++}`,
+    tableNumber: table ? table.number : null,
+    orderType: order.orderType,
+    items: order.items.map((i) => ({ name: i.name, qty: i.qty, notes: i.notes })),
+    notes: order.notes,
+    status: "new",
+    priority: false,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+const KOT_QUEUE = [
+  {
+    _id: "kot1",
+    orderNumber: "KOT-1001",
+    tableNumber: "T2",
+    orderType: "dine-in",
+    items: [
+      { name: "Cheese Burger (Cheese)", qty: 2, notes: "" },
+      { name: "Cold Coffee", qty: 1, notes: "less sugar" },
+    ],
+    notes: "",
+    status: "preparing",
+    priority: true,
+    createdAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+  },
+  {
+    _id: "kot2",
+    orderNumber: "KOT-1002",
+    tableNumber: null,
+    orderType: "takeaway",
+    items: [{ name: "Margherita Pizza (Medium)", qty: 1, notes: "" }],
+    notes: "",
+    status: "new",
+    priority: false,
+    createdAt: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
+  },
+];
+
+export async function getKitchenOrders() {
+  return [...KOT_QUEUE];
+}
+
+export async function updateKitchenOrderStatus(kotId, status) {
+  const order = KOT_QUEUE.find((o) => o._id === kotId);
+  if (order) order.status = status;
+  return { ...order };
+}
+
+export async function toggleKitchenOrderPriority(kotId) {
+  const order = KOT_QUEUE.find((o) => o._id === kotId);
+  if (order) order.priority = !order.priority;
+  return { ...order };
+}
+
+export async function reprintKot(kotId) {
+  await new Promise((r) => setTimeout(r, 200));
+  return { ok: true, kotId };
 }
