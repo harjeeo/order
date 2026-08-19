@@ -97,13 +97,14 @@ export async function getCafeDashboardStats() {
 
 // --- POS / New Order ---------------------------------------------------
 
-const SAMPLE_CATEGORIES = ["All", "Burgers", "Pizza", "Beverages", "Sandwiches", "Desserts"];
+const MENU_CATEGORIES = ["All", "Burgers", "Pizza", "Beverages", "Sandwiches", "Desserts"];
 
 const SAMPLE_MENU_ITEMS = [
   {
     _id: "m1",
     name: "Cheese Burger",
     category: "Burgers",
+    image: "🍔",
     price: 179,
     tax: 5,
     available: true,
@@ -121,6 +122,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m2",
     name: "Veg Burger",
     category: "Burgers",
+    image: "🍔",
     price: 129,
     tax: 5,
     available: true,
@@ -131,6 +133,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m3",
     name: "Margherita Pizza",
     category: "Pizza",
+    image: "🍕",
     price: 299,
     tax: 5,
     available: true,
@@ -145,6 +148,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m4",
     name: "Pepperoni Pizza",
     category: "Pizza",
+    image: "🍕",
     price: 349,
     tax: 5,
     available: false,
@@ -155,6 +159,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m5",
     name: "Cappuccino",
     category: "Beverages",
+    image: "☕",
     price: 110,
     tax: 5,
     available: true,
@@ -169,6 +174,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m6",
     name: "Cold Coffee",
     category: "Beverages",
+    image: "🥤",
     price: 120,
     tax: 5,
     available: true,
@@ -179,6 +185,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m7",
     name: "Veg Sandwich",
     category: "Sandwiches",
+    image: "🥪",
     price: 99,
     tax: 5,
     available: true,
@@ -189,6 +196,7 @@ const SAMPLE_MENU_ITEMS = [
     _id: "m8",
     name: "Chocolate Brownie",
     category: "Desserts",
+    image: "🍫",
     price: 89,
     tax: 5,
     available: true,
@@ -208,8 +216,21 @@ const SAMPLE_TABLES = [
   { _id: "t8", number: "T8", capacity: 8, status: "available" },
 ];
 
+let menuItemCounter = SAMPLE_MENU_ITEMS.length;
+
 export async function getMenuCategories() {
-  return SAMPLE_CATEGORIES;
+  return [...MENU_CATEGORIES];
+}
+
+export async function addMenuCategory(name) {
+  if (!MENU_CATEGORIES.includes(name)) MENU_CATEGORIES.push(name);
+  return [...MENU_CATEGORIES];
+}
+
+export async function removeMenuCategory(name) {
+  const idx = MENU_CATEGORIES.indexOf(name);
+  if (idx > -1 && name !== "All") MENU_CATEGORIES.splice(idx, 1);
+  return [...MENU_CATEGORIES];
 }
 
 export async function getMenuItems({ category = "All", search = "" } = {}) {
@@ -218,6 +239,37 @@ export async function getMenuItems({ category = "All", search = "" } = {}) {
       (category === "All" || item.category === category) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
+}
+
+export async function createMenuItem(data) {
+  const item = {
+    _id: `m${++menuItemCounter}`,
+    variants: [],
+    addons: [],
+    available: true,
+    image: "🍽️",
+    ...data,
+  };
+  SAMPLE_MENU_ITEMS.push(item);
+  return item;
+}
+
+export async function updateMenuItem(itemId, data) {
+  const item = SAMPLE_MENU_ITEMS.find((i) => i._id === itemId);
+  if (item) Object.assign(item, data);
+  return { ...item };
+}
+
+export async function deleteMenuItem(itemId) {
+  const idx = SAMPLE_MENU_ITEMS.findIndex((i) => i._id === itemId);
+  if (idx > -1) SAMPLE_MENU_ITEMS.splice(idx, 1);
+  return { ok: true };
+}
+
+export async function toggleMenuItemAvailability(itemId) {
+  const item = SAMPLE_MENU_ITEMS.find((i) => i._id === itemId);
+  if (item) item.available = !item.available;
+  return { ...item };
 }
 
 export async function getTables() {
@@ -338,4 +390,117 @@ export async function toggleKitchenOrderPriority(kotId) {
 export async function reprintKot(kotId) {
   await new Promise((r) => setTimeout(r, 200));
   return { ok: true, kotId };
+}
+
+// --- Orders ---------------------------------------------------------------
+
+function minsAgo(n) {
+  return new Date(Date.now() - n * 60 * 1000).toISOString();
+}
+
+const SAMPLE_ORDERS = [
+  {
+    _id: "ord1",
+    orderNumber: "ORD-3001",
+    orderType: "dine-in",
+    table: "T2",
+    customer: "Walk-in Customer",
+    waiter: "Rahul",
+    items: [
+      { name: "Cheese Burger (Cheese)", qty: 2 },
+      { name: "Cold Coffee", qty: 1 },
+    ],
+    amount: 478,
+    paymentStatus: "unpaid",
+    status: "preparing",
+    createdAt: minsAgo(8),
+  },
+  {
+    _id: "ord2",
+    orderNumber: "ORD-3002",
+    orderType: "takeaway",
+    table: null,
+    customer: "Amit Kumar",
+    waiter: "Priya",
+    items: [{ name: "Margherita Pizza (Medium)", qty: 1 }],
+    amount: 449,
+    paymentStatus: "paid",
+    status: "pending",
+    createdAt: minsAgo(3),
+  },
+  {
+    _id: "ord3",
+    orderNumber: "ORD-3000",
+    orderType: "dine-in",
+    table: "T5",
+    customer: "Neha Gupta",
+    waiter: "Rahul",
+    items: [
+      { name: "Veg Sandwich", qty: 2 },
+      { name: "Cappuccino", qty: 2 },
+    ],
+    amount: 418,
+    paymentStatus: "paid",
+    status: "completed",
+    createdAt: minsAgo(42),
+  },
+  {
+    _id: "ord4",
+    orderNumber: "ORD-2999",
+    orderType: "delivery",
+    table: null,
+    customer: "Amit Kumar",
+    waiter: "-",
+    items: [{ name: "Chocolate Brownie", qty: 3 }],
+    amount: 267,
+    paymentStatus: "paid",
+    status: "cancelled",
+    createdAt: minsAgo(90),
+  },
+  {
+    _id: "ord5",
+    orderNumber: "ORD-3003",
+    orderType: "dine-in",
+    table: "T6",
+    customer: "Walk-in Customer",
+    waiter: "Priya",
+    items: [{ name: "Veg Burger", qty: 1 }],
+    amount: 129,
+    paymentStatus: "unpaid",
+    status: "ready",
+    createdAt: minsAgo(1),
+  },
+];
+
+export async function getOrders({ search = "", status = "all", orderType = "all" } = {}) {
+  return SAMPLE_ORDERS.filter(
+    (o) =>
+      (status === "all" || o.status === status) &&
+      (orderType === "all" || o.orderType === orderType) &&
+      (o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
+        o.customer.toLowerCase().includes(search.toLowerCase()))
+  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export async function updateOrderStatus(orderId, status) {
+  const order = SAMPLE_ORDERS.find((o) => o._id === orderId);
+  if (order) order.status = status;
+  return { ...order };
+}
+
+export async function cancelOrder(orderId) {
+  const order = SAMPLE_ORDERS.find((o) => o._id === orderId);
+  if (order) order.status = "cancelled";
+  return { ...order };
+}
+
+export async function refundOrder(orderId) {
+  const order = SAMPLE_ORDERS.find((o) => o._id === orderId);
+  if (order) order.paymentStatus = "refunded";
+  return { ...order };
+}
+
+export async function printInvoice(orderId) {
+  await new Promise((r) => setTimeout(r, 200));
+  return { ok: true, orderId };
 }

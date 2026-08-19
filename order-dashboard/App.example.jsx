@@ -13,6 +13,8 @@ import CafeDashboardPage from "./pages/CafeDashboardPage";
 import CafePosPage from "./pages/CafePosPage";
 import CafeTablesPage from "./pages/CafeTablesPage";
 import CafeKitchenPage from "./pages/CafeKitchenPage";
+import CafeOrdersPage from "./pages/CafeOrdersPage";
+import CafeMenuPage from "./pages/CafeMenuPage";
 
 const router = createBrowserRouter([
   {
@@ -32,10 +34,12 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <CafeDashboardPage /> },
       { path: "pos", element: <CafePosPage /> },
+      { path: "orders", element: <CafeOrdersPage /> },
       { path: "tables", element: <CafeTablesPage /> },
       { path: "kitchen", element: <CafeKitchenPage /> },
-      // Orders, Menu, Inventory, Customers, Reports, Settings pages get
-      // added here as each module is built.
+      { path: "menu", element: <CafeMenuPage /> },
+      // Inventory, Customers, Reports, Settings pages get added here as
+      // each module is built.
     ],
   },
 ]);
