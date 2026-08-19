@@ -11,6 +11,7 @@ import AdminSettingsPage from "./pages/AdminSettingsPage";
 import CafeLayout from "./layouts/CafeLayout";
 import CafeDashboardPage from "./pages/CafeDashboardPage";
 import CafePosPage from "./pages/CafePosPage";
+import CafeTablesPage from "./pages/CafeTablesPage";
 
 const router = createBrowserRouter([
   {
@@ -30,8 +31,9 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <CafeDashboardPage /> },
       { path: "pos", element: <CafePosPage /> },
-      // Orders, Tables, Kitchen, Menu, Inventory, Customers, Reports,
-      // Settings pages get added here as each module is built.
+      { path: "tables", element: <CafeTablesPage /> },
+      // Orders, Kitchen, Menu, Inventory, Customers, Reports, Settings
+      // pages get added here as each module is built.
     ],
   },
 ]);

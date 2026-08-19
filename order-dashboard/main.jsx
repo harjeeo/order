@@ -12,6 +12,7 @@ import AdminSettingsPage from "./pages/AdminSettingsPage";
 import CafeLayout from "./layouts/CafeLayout";
 import CafeDashboardPage from "./pages/CafeDashboardPage";
 import CafePosPage from "./pages/CafePosPage";
+import CafeTablesPage from "./pages/CafeTablesPage";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/cafe" replace /> },
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <CafeDashboardPage /> },
       { path: "pos", element: <CafePosPage /> },
+      { path: "tables", element: <CafeTablesPage /> },
     ],
   },
 ]);

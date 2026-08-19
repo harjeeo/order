@@ -204,6 +204,8 @@ const SAMPLE_TABLES = [
   { _id: "t4", number: "T4", capacity: 6, status: "reserved" },
   { _id: "t5", number: "T5", capacity: 2, status: "available" },
   { _id: "t6", number: "T6", capacity: 4, status: "occupied" },
+  { _id: "t7", number: "T7", capacity: 2, status: "billing" },
+  { _id: "t8", number: "T8", capacity: 8, status: "available" },
 ];
 
 export async function getMenuCategories() {
@@ -219,6 +221,34 @@ export async function getMenuItems({ category = "All", search = "" } = {}) {
 }
 
 export async function getTables() {
+  return SAMPLE_TABLES;
+}
+
+export async function setTableStatus(tableId, status) {
+  const table = SAMPLE_TABLES.find((t) => t._id === tableId);
+  if (table) table.status = status;
+  return { ...table };
+}
+
+export async function transferTable(fromTableId, toTableId) {
+  const from = SAMPLE_TABLES.find((t) => t._id === fromTableId);
+  const to = SAMPLE_TABLES.find((t) => t._id === toTableId);
+  if (from && to) {
+    to.status = from.status;
+    from.status = "available";
+  }
+  return SAMPLE_TABLES;
+}
+
+export async function mergeTables(sourceTableIds, targetTableId) {
+  const target = SAMPLE_TABLES.find((t) => t._id === targetTableId);
+  if (target) target.status = "occupied";
+  sourceTableIds
+    .filter((id) => id !== targetTableId)
+    .forEach((id) => {
+      const source = SAMPLE_TABLES.find((t) => t._id === id);
+      if (source) source.status = "available";
+    });
   return SAMPLE_TABLES;
 }
 
