@@ -22,6 +22,7 @@ import CafeInventoryPage from "./pages/CafeInventoryPage";
 import CafeStaffPage from "./pages/CafeStaffPage";
 import CafeExpensesPage from "./pages/CafeExpensesPage";
 import CafeReportsPage from "./pages/CafeReportsPage";
+import CafeSettingsPage from "./pages/CafeSettingsPage";
 
 const router = createBrowserRouter([
   {
@@ -52,7 +53,8 @@ const router = createBrowserRouter([
       { path: "staff", element: <CafeStaffPage /> },
       { path: "expenses", element: <CafeExpensesPage /> },
       { path: "reports", element: <CafeReportsPage /> },
-      // Settings pages get added here as each module is built.
+      { path: "settings", element: <CafeSettingsPage /> },
+      // All scoped modules are now built.
     ],
   },
 ]);

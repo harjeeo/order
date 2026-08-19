@@ -832,3 +832,46 @@ export async function getReportsSummary({ range = "daily" } = {}) {
     })) },
   };
 }
+
+// --- Settings (Restaurant Profile, GST/Tax, Invoice, KOT, Printer, Payments) --
+
+const SAMPLE_SETTINGS = {
+  restaurant: {
+    name: "Tanvir's Cafe",
+    logo: "🍽️",
+    phone: "9876500000",
+    email: "hello@tanvirscafe.example",
+    address: "12 MG Road, Pune, Maharashtra 411001",
+  },
+  tax: {
+    gstin: "27ABCDE1234F1Z5",
+    applyGst: true,
+    cgstPercent: 2.5,
+    sgstPercent: 2.5,
+    igstPercent: 5,
+  },
+  invoice: {
+    prefix: "INV-",
+    footerNote: "Thank you for visiting! GST is included as applicable.",
+    showLogo: true,
+  },
+  kot: {
+    autoPrint: true,
+    showPrices: false,
+  },
+  printer: {
+    kotPrinterName: "Kitchen Printer (58mm)",
+    billPrinterName: "Counter Printer (80mm)",
+    paperWidth: "80mm",
+  },
+  paymentMethods: { cash: true, upi: true, card: true, split: true },
+};
+
+export async function getSettings() {
+  return JSON.parse(JSON.stringify(SAMPLE_SETTINGS));
+}
+
+export async function updateSettings(section, data) {
+  SAMPLE_SETTINGS[section] = { ...SAMPLE_SETTINGS[section], ...data };
+  return JSON.parse(JSON.stringify(SAMPLE_SETTINGS[section]));
+}
