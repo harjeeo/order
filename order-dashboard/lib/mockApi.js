@@ -669,3 +669,64 @@ export async function createIngredient(data) {
   SAMPLE_INGREDIENTS.push(ingredient);
   return ingredient;
 }
+
+// --- Staff & Roles --------------------------------------------------------
+
+export const PERMISSION_MODULES = ["POS", "Orders", "Menu", "Inventory", "Reports", "Settings"];
+
+export const ROLES = ["Admin", "Manager", "Cashier", "Waiter", "Kitchen Staff"];
+
+const ROLE_DEFAULT_PERMISSIONS = {
+  Admin: { POS: true, Orders: true, Menu: true, Inventory: true, Reports: true, Settings: true },
+  Manager: { POS: true, Orders: true, Menu: true, Inventory: true, Reports: true, Settings: false },
+  Cashier: { POS: true, Orders: true, Menu: false, Inventory: false, Reports: false, Settings: false },
+  Waiter: { POS: true, Orders: true, Menu: false, Inventory: false, Reports: false, Settings: false },
+  "Kitchen Staff": { POS: false, Orders: true, Menu: false, Inventory: false, Reports: false, Settings: false },
+};
+
+const SAMPLE_STAFF = [
+  { _id: "s1", name: "Tanvir Singh", role: "Admin", phone: "9876500001", email: "tanvir@cafe.example", active: true, permissions: { ...ROLE_DEFAULT_PERMISSIONS.Admin } },
+  { _id: "s2", name: "Priya Sharma", role: "Manager", phone: "9876500002", email: "priya@cafe.example", active: true, permissions: { ...ROLE_DEFAULT_PERMISSIONS.Manager } },
+  { _id: "s3", name: "Rahul Verma", role: "Waiter", phone: "9876500003", email: "rahul@cafe.example", active: true, permissions: { ...ROLE_DEFAULT_PERMISSIONS.Waiter } },
+  { _id: "s4", name: "Suresh Kumar", role: "Kitchen Staff", phone: "9876500004", email: "suresh@cafe.example", active: true, permissions: { ...ROLE_DEFAULT_PERMISSIONS["Kitchen Staff"] } },
+  { _id: "s5", name: "Anjali Rao", role: "Cashier", phone: "9876500005", email: "anjali@cafe.example", active: false, permissions: { ...ROLE_DEFAULT_PERMISSIONS.Cashier } },
+];
+
+export async function getStaff() {
+  return [...SAMPLE_STAFF];
+}
+
+export function defaultPermissionsForRole(role) {
+  return { ...(ROLE_DEFAULT_PERMISSIONS[role] ?? {}) };
+}
+
+let staffCounter = SAMPLE_STAFF.length;
+
+export async function createStaff(data) {
+  const member = {
+    _id: `s${++staffCounter}`,
+    active: true,
+    permissions: defaultPermissionsForRole(data.role),
+    ...data,
+  };
+  SAMPLE_STAFF.push(member);
+  return member;
+}
+
+export async function updateStaff(staffId, data) {
+  const member = SAMPLE_STAFF.find((s) => s._id === staffId);
+  if (member) Object.assign(member, data);
+  return { ...member };
+}
+
+export async function deleteStaff(staffId) {
+  const idx = SAMPLE_STAFF.findIndex((s) => s._id === staffId);
+  if (idx > -1) SAMPLE_STAFF.splice(idx, 1);
+  return { ok: true };
+}
+
+export async function toggleStaffActive(staffId) {
+  const member = SAMPLE_STAFF.find((s) => s._id === staffId);
+  if (member) member.active = !member.active;
+  return { ...member };
+}
