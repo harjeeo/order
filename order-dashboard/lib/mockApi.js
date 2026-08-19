@@ -730,3 +730,44 @@ export async function toggleStaffActive(staffId) {
   if (member) member.active = !member.active;
   return { ...member };
 }
+
+// --- Expenses ---------------------------------------------------------
+
+export const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Salary", "Purchase", "Maintenance", "Other"];
+export const PAYMENT_METHODS = ["Cash", "UPI", "Card", "Bank Transfer"];
+
+function daysAgoDate(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+const SAMPLE_EXPENSES = [
+  { _id: "e1", category: "Rent", amount: 45000, date: daysAgoDate(15), method: "Bank Transfer", notes: "Monthly shop rent" },
+  { _id: "e2", category: "Salary", amount: 68000, date: daysAgoDate(10), method: "Bank Transfer", notes: "Staff salaries" },
+  { _id: "e3", category: "Purchase", amount: 12400, date: daysAgoDate(3), method: "UPI", notes: "Vegetables & dairy restock" },
+  { _id: "e4", category: "Electricity", amount: 5200, date: daysAgoDate(6), method: "Card", notes: "" },
+  { _id: "e5", category: "Maintenance", amount: 1800, date: daysAgoDate(1), method: "Cash", notes: "Coffee machine service" },
+];
+
+let expenseCounter = SAMPLE_EXPENSES.length;
+
+export async function getExpenses({ category = "All", search = "" } = {}) {
+  return SAMPLE_EXPENSES.filter(
+    (e) =>
+      (category === "All" || e.category === category) &&
+      (e.notes.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase()))
+  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+export async function createExpense(data) {
+  const expense = { _id: `e${++expenseCounter}`, notes: "", ...data };
+  SAMPLE_EXPENSES.unshift(expense);
+  return expense;
+}
+
+export async function deleteExpense(expenseId) {
+  const idx = SAMPLE_EXPENSES.findIndex((e) => e._id === expenseId);
+  if (idx > -1) SAMPLE_EXPENSES.splice(idx, 1);
+  return { ok: true };
+}

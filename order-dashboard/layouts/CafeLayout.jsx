@@ -12,6 +12,7 @@ import {
   ChefHatIcon,
   UserMultiple02Icon,
   ShieldUserIcon as StaffIcon,
+  Wallet01Icon,
   Analytics01Icon,
   Settings02Icon,
   Logout01Icon,
@@ -29,6 +30,7 @@ const navLinks = [
   { to: "/cafe/recipes", label: "Recipes", icon: ChefHatIcon },
   { to: "/cafe/customers", label: "Customers", icon: UserMultiple02Icon },
   { to: "/cafe/staff", label: "Staff & Roles", icon: StaffIcon },
+  { to: "/cafe/expenses", label: "Expenses", icon: Wallet01Icon },
   { to: "/cafe/reports", label: "Reports", icon: Analytics01Icon },
 ];
 

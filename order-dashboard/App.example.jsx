@@ -20,6 +20,7 @@ import CafeBillingPage from "./pages/CafeBillingPage";
 import CafeCustomersPage from "./pages/CafeCustomersPage";
 import CafeInventoryPage from "./pages/CafeInventoryPage";
 import CafeStaffPage from "./pages/CafeStaffPage";
+import CafeExpensesPage from "./pages/CafeExpensesPage";
 
 const router = createBrowserRouter([
   {
@@ -48,8 +49,8 @@ const router = createBrowserRouter([
       { path: "customers", element: <CafeCustomersPage /> },
       { path: "inventory", element: <CafeInventoryPage /> },
       { path: "staff", element: <CafeStaffPage /> },
-      // Reports, Settings, Expenses pages get added here as each module
-      // is built.
+      { path: "expenses", element: <CafeExpensesPage /> },
+      // Reports, Settings pages get added here as each module is built.
     ],
   },
 ]);
