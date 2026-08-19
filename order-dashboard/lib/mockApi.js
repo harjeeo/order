@@ -771,3 +771,64 @@ export async function deleteExpense(expenseId) {
   if (idx > -1) SAMPLE_EXPENSES.splice(idx, 1);
   return { ok: true };
 }
+
+// --- Reports ------------------------------------------------------------
+
+export const REPORT_RANGES = ["daily", "weekly", "monthly", "custom"];
+
+export async function getReportsSummary({ range = "daily" } = {}) {
+  const nonCancelled = SAMPLE_ORDERS.filter((o) => o.status !== "cancelled");
+  const completed = SAMPLE_ORDERS.filter((o) => o.status === "completed");
+  const cancelled = SAMPLE_ORDERS.filter((o) => o.status === "cancelled");
+  const totalSales = nonCancelled.reduce((s, o) => s + o.amount, 0);
+  const avgOrderValue = nonCancelled.length ? Math.round(totalSales / nonCancelled.length) : 0;
+
+  const categorySales = {};
+  for (const item of SAMPLE_BEST_SELLERS) {
+    const menuItem = SAMPLE_MENU_ITEMS.find((m) => item.name.includes(m.name));
+    const category = menuItem?.category ?? "Other";
+    categorySales[category] = (categorySales[category] ?? 0) + item.revenue;
+  }
+
+  const paymentTotals = { cash: 0, upi: 0, card: 0, split: 0 };
+  for (const inv of SAMPLE_INVOICES) {
+    if (paymentTotals[inv.method] !== undefined) paymentTotals[inv.method] += inv.total;
+  }
+
+  const ingredients = SAMPLE_INGREDIENTS.map((i) => ({ ...i, status: ingredientStatus(i) }));
+  const wastageTotal = SAMPLE_STOCK_LOG.filter((l) => l.type === "wastage").reduce((s, l) => s + l.qty, 0);
+
+  const totalExpenses = SAMPLE_EXPENSES.reduce((s, e) => s + e.amount, 0);
+
+  return {
+    range,
+    sales: {
+      total: totalSales,
+      trend: [6, 5, 4, 3, 2, 1, 0].map((n) => ({
+        label: range === "monthly" ? `Wk ${7 - n}` : range === "weekly" ? daysAgoDate(n).slice(5) : hoursAgoLabel(n),
+        amount: Math.round(totalSales / 7 + (Math.random() - 0.5) * (totalSales / 10)),
+      })),
+    },
+    orders: {
+      total: SAMPLE_ORDERS.length,
+      completed: completed.length,
+      cancelled: cancelled.length,
+      avgOrderValue,
+    },
+    products: {
+      bestSellers: SAMPLE_BEST_SELLERS,
+      categorySales,
+    },
+    payments: paymentTotals,
+    inventory: {
+      totalIngredients: ingredients.length,
+      lowStock: ingredients.filter((i) => i.status === "low").length,
+      outOfStock: ingredients.filter((i) => i.status === "out").length,
+      wastageTotal,
+    },
+    expenses: { total: totalExpenses, byCategory: EXPENSE_CATEGORIES.map((c) => ({
+      category: c,
+      amount: SAMPLE_EXPENSES.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0),
+    })) },
+  };
+}
