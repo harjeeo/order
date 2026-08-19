@@ -304,13 +304,59 @@ export async function mergeTables(sourceTableIds, targetTableId) {
   return SAMPLE_TABLES;
 }
 
+const SAMPLE_CUSTOMERS = [
+  { _id: "c1", name: "Walk-in Customer", phone: "", email: "", address: "" },
+  { _id: "c2", name: "Amit Kumar", phone: "9876543210", email: "amit.kumar@example.com", address: "12 MG Road, Pune" },
+  { _id: "c3", name: "Neha Gupta", phone: "9123456780", email: "neha.gupta@example.com", address: "45 Park Street, Kolkata" },
+];
+
 export async function getCustomersList({ search = "" } = {}) {
-  const SAMPLE_CUSTOMERS = [
-    { _id: "c1", name: "Walk-in Customer", phone: "" },
-    { _id: "c2", name: "Amit Kumar", phone: "9876543210" },
-    { _id: "c3", name: "Neha Gupta", phone: "9123456780" },
-  ];
   return SAMPLE_CUSTOMERS.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+}
+
+export async function getCustomers({ search = "" } = {}) {
+  return SAMPLE_CUSTOMERS.filter(
+    (c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search)
+  ).map((c) => {
+    const orders = SAMPLE_ORDERS.filter((o) => o.customer === c.name);
+    const totalSpent = orders.reduce((s, o) => s + o.amount, 0);
+    const lastOrder = orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    return {
+      ...c,
+      totalOrders: orders.length,
+      totalSpent,
+      lastOrderAt: lastOrder?.createdAt ?? null,
+    };
+  });
+}
+
+export async function getCustomerOrderHistory(customerId) {
+  const customer = SAMPLE_CUSTOMERS.find((c) => c._id === customerId);
+  if (!customer) return [];
+  return SAMPLE_ORDERS.filter((o) => o.customer === customer.name).sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+}
+
+let customerCounter = SAMPLE_CUSTOMERS.length;
+
+export async function createCustomer(data) {
+  const customer = { _id: `c${++customerCounter}`, phone: "", email: "", address: "", ...data };
+  SAMPLE_CUSTOMERS.push(customer);
+  return customer;
+}
+
+export async function updateCustomer(customerId, data) {
+  const customer = SAMPLE_CUSTOMERS.find((c) => c._id === customerId);
+  if (customer) Object.assign(customer, data);
+  return { ...customer };
+}
+
+export async function deleteCustomer(customerId) {
+  const idx = SAMPLE_CUSTOMERS.findIndex((c) => c._id === customerId);
+  if (idx > -1) SAMPLE_CUSTOMERS.splice(idx, 1);
+  return { ok: true };
 }
 
 // Simulates submitting an order to the backend (KOT/bill/hold/save/payment).
