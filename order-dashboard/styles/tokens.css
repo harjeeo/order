@@ -1,0 +1,23 @@
+/* Design tokens the admin UI is built on. Put this in your global CSS
+   (after `@import "tailwindcss";`) or merge these variables into your
+   own theme file. Uses Tailwind v4's `bg-(--color-x)` / `text-(--color-x)`
+   arbitrary-property syntax throughout the components. */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --color-sidebar: #fbfbfa;
+  --color-canvas: #ffffff;
+  --color-border: #e9e9e7;
+  --color-text: #37352f;
+  --color-text-muted: #787774;
+  --color-accent: #2383e2;
+}
+
+:root[data-theme="dark"] {
+  --color-sidebar: #202020;
+  --color-canvas: #191919;
+  --color-border: #2f2f2f;
+  --color-text: #e6e6e5;
+  --color-text-muted: #9b9b9b;
+}
