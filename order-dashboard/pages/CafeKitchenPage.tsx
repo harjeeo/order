@@ -8,6 +8,7 @@ import {
   StickyNote01Icon,
 } from "hugeicons-react";
 import { getKitchenOrders, updateKitchenOrderStatus, toggleKitchenOrderPriority, reprintKot } from "../lib/mockApi";
+import { buildKotHtml, printHtml } from "../lib/print";
 
 const COLUMNS = [
   { key: "new", label: "New", next: "preparing" },
@@ -52,6 +53,16 @@ export default function CafeKitchenPage() {
 
   async function handleReprint(order) {
     await reprintKot(order._id);
+    printHtml(
+      buildKotHtml({
+        title: "REPRINT - KITCHEN ORDER TICKET",
+        orderNumber: order.orderNumber,
+        table: order.tableNumber,
+        orderType: order.orderType,
+        items: order.items,
+        notes: order.notes,
+      })
+    );
   }
 
   return (

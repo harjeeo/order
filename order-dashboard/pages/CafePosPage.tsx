@@ -23,6 +23,7 @@ import {
   getCustomersList,
   submitOrder,
 } from "../lib/mockApi";
+import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 
 const ORDER_TYPES = [
   { key: "dine-in", label: "Dine-In", icon: Store01Icon },
@@ -158,6 +159,32 @@ export default function CafePosPage() {
       return;
     }
     await submitOrder(buildOrderPayload({ action }));
+
+    if (action === "kitchen" || action === "kot") {
+      const table = tables.find((t) => t._id === tableId);
+      printHtml(
+        buildKotHtml({
+          orderNumber: `Order-${Date.now().toString().slice(-6)}`,
+          table: table?.number,
+          orderType,
+          items: cart.map((line) => ({ name: line.name, qty: line.qty, notes: line.notes })),
+          notes: orderNotes,
+        })
+      );
+    }
+    if (action === "bill") {
+      printHtml(
+        buildInvoiceHtml({
+          invoiceNumber: `Bill-${Date.now().toString().slice(-6)}`,
+          items: cart.map((line) => ({ name: line.name, qty: line.qty })),
+          subtotal,
+          discountAmount,
+          taxAmount,
+          total,
+        })
+      );
+    }
+
     const messages = {
       save: "Order saved.",
       hold: "Order put on hold.",

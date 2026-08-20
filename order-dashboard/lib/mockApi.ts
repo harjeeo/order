@@ -483,6 +483,12 @@ export async function updateOrderStatus(orderId, status) {
   return { ...order };
 }
 
+export async function updateOrder(orderId, data) {
+  const order = SAMPLE_ORDERS.find((o) => o._id === orderId);
+  if (order) Object.assign(order, data);
+  return { ...order };
+}
+
 export async function cancelOrder(orderId) {
   const order = SAMPLE_ORDERS.find((o) => o._id === orderId);
   if (order) order.status = "cancelled";

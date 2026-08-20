@@ -6,8 +6,12 @@ import {
   PrinterIcon,
   CashbackIcon,
   Cancel01Icon,
+  Add01Icon,
+  MinusSignIcon,
+  Delete02Icon,
 } from "hugeicons-react";
-import { getOrders, updateOrderStatus, cancelOrder, refundOrder, printInvoice, reprintKot } from "../lib/mockApi";
+import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/mockApi";
+import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 
 const STATUSES = ["all", "pending", "preparing", "ready", "completed", "cancelled"];
 const ORDER_TYPES = ["all", "dine-in", "takeaway", "delivery"];
@@ -34,6 +38,8 @@ export default function CafeOrdersPage() {
   const [status, setStatus] = useState("all");
   const [orderType, setOrderType] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState(null);
   const [toast, setToast] = useState("");
 
   async function refresh() {
@@ -72,12 +78,65 @@ export default function CafeOrdersPage() {
 
   async function handlePrintInvoice(order) {
     await printInvoice(order._id);
+    printHtml(
+      buildInvoiceHtml({
+        invoiceNumber: order.orderNumber,
+        customer: order.customer,
+        items: order.items,
+        total: order.amount,
+      })
+    );
     setToast(`Printing invoice for ${order.orderNumber}…`);
   }
 
   async function handlePrintKot(order) {
     await reprintKot(order._id);
+    printHtml(
+      buildKotHtml({
+        orderNumber: order.orderNumber,
+        table: order.table,
+        orderType: order.orderType,
+        items: order.items,
+      })
+    );
     setToast(`Printing KOT for ${order.orderNumber}…`);
+  }
+
+  function openEdit(order) {
+    setEditing(order);
+    setEditForm({
+      table: order.table ?? "",
+      customer: order.customer,
+      waiter: order.waiter,
+      amount: String(order.amount),
+      items: order.items.map((i) => ({ ...i })),
+    });
+  }
+
+  function updateEditQty(idx, delta) {
+    setEditForm((f) => ({
+      ...f,
+      items: f.items.map((item, i) => (i === idx ? { ...item, qty: Math.max(1, item.qty + delta) } : item)),
+    }));
+  }
+
+  function removeEditItem(idx) {
+    setEditForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
+  }
+
+  async function handleSaveEdit() {
+    if (!editing || !editForm) return;
+    await updateOrder(editing._id, {
+      table: editForm.table || null,
+      customer: editForm.customer,
+      waiter: editForm.waiter,
+      amount: Number(editForm.amount) || 0,
+      items: editForm.items,
+    });
+    setEditing(null);
+    setEditForm(null);
+    refresh();
+    setToast(`${editing.orderNumber} updated.`);
   }
 
   return (
@@ -178,8 +237,10 @@ export default function CafeOrdersPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => openEdit(o)}
                       title="Edit Order"
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                      disabled={o.status === "completed" || o.status === "cancelled"}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) disabled:pointer-events-none disabled:opacity-30 dark:hover:bg-white/10"
                     >
                       <Edit02Icon size={15} strokeWidth={1.8} />
                     </button>
@@ -266,6 +327,113 @@ export default function CafeOrdersPage() {
             >
               <PrinterIcon size={15} strokeWidth={1.8} />
               Print Invoice
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editing && editForm && (
+        <div
+          className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setEditing(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Edit {editing.orderNumber}</h2>
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
+                <Cancel01Icon size={16} strokeWidth={1.8} />
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-(--color-text-muted)">Table</span>
+                <input
+                  value={editForm.table}
+                  onChange={(e) => setEditForm((f) => ({ ...f, table: e.target.value }))}
+                  placeholder="e.g. T3"
+                  className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-(--color-text-muted)">Waiter</span>
+                <input
+                  value={editForm.waiter}
+                  onChange={(e) => setEditForm((f) => ({ ...f, waiter: e.target.value }))}
+                  className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                />
+              </label>
+              <label className="col-span-2 flex flex-col gap-1">
+                <span className="text-xs text-(--color-text-muted)">Customer</span>
+                <input
+                  value={editForm.customer}
+                  onChange={(e) => setEditForm((f) => ({ ...f, customer: e.target.value }))}
+                  className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                />
+              </label>
+            </div>
+
+            <div className="mt-4">
+              <div className="text-xs font-medium text-(--color-text-muted)">Items</div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {editForm.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between rounded-md border border-(--color-border) px-2.5 py-1.5 text-sm">
+                    <span>{item.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => updateEditQty(idx, -1)}
+                        className="flex h-6 w-6 items-center justify-center rounded border border-(--color-border)"
+                      >
+                        <MinusSignIcon size={12} strokeWidth={1.8} />
+                      </button>
+                      <span className="w-4 text-center tabular-nums">{item.qty}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateEditQty(idx, 1)}
+                        className="flex h-6 w-6 items-center justify-center rounded border border-(--color-border)"
+                      >
+                        <Add01Icon size={12} strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeEditItem(idx)}
+                        className="flex h-6 w-6 items-center justify-center rounded text-(--color-text-muted) hover:bg-red-500/10 hover:text-red-500"
+                      >
+                        <Delete02Icon size={12} strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {editForm.items.length === 0 && (
+                  <div className="text-xs text-(--color-text-muted)">No items left in this order.</div>
+                )}
+              </div>
+            </div>
+
+            <label className="mt-4 flex flex-col gap-1">
+              <span className="text-xs text-(--color-text-muted)">Amount (₹)</span>
+              <input
+                type="number"
+                value={editForm.amount}
+                onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+                className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={handleSaveEdit}
+              className="mt-5 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
+            >
+              Save Changes
             </button>
           </div>
         </div>
