@@ -1,14 +1,14 @@
-import { Settings02Icon } from "hugeicons-react";
+import { Analytics01Icon } from "hugeicons-react";
 
-export default function AdminSettingsPage() {
+export default function SuperAdminReportsPage() {
   return (
     <div className="flex h-full flex-col items-center justify-center px-10 py-8 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-(--color-accent)/10 text-(--color-accent)">
-        <Settings02Icon size={30} strokeWidth={1.8} />
+        <Analytics01Icon size={30} strokeWidth={1.8} />
       </div>
-      <h1 className="mb-2 text-2xl font-semibold">Settings</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Platform Reports</h1>
       <p className="max-w-sm text-sm text-(--color-text-muted)">
-        Platform-wide settings (API keys, feature flags, email provider) are coming soon.
+        Cross-tenant analytics (signups, revenue by plan, churn, feature adoption) are coming soon.
       </p>
     </div>
   );
