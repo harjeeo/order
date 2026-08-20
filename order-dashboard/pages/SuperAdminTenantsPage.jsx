@@ -154,7 +154,7 @@ export default function SuperAdminTenantsPage() {
                         e.stopPropagation();
                         handleDelete(t);
                       }}
-                      className="text-(--color-text-muted)"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
                     >
                       <Delete02Icon size={14} strokeWidth={1.8} />
                     </button>
@@ -177,7 +177,11 @@ export default function SuperAdminTenantsPage() {
         <div className="w-96 shrink-0 overflow-y-auto border-l border-(--color-border) p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{selected.name}</h2>
-            <button type="button" onClick={() => setSelected(null)} className="text-(--color-text-muted)">
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+            >
               <Cancel01Icon size={16} strokeWidth={1.8} />
             </button>
           </div>
@@ -254,7 +258,11 @@ export default function SuperAdminTenantsPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Add Client</h2>
-              <button type="button" onClick={() => setShowForm(false)} className="text-(--color-text-muted)">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>

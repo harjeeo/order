@@ -116,7 +116,11 @@ export default function CafeExpensesPage() {
                 <td className="px-3 py-2 text-(--color-text-muted)">{e.method}</td>
                 <td className="px-3 py-2 text-(--color-text-muted)">{e.notes || "-"}</td>
                 <td className="px-3 py-2">
-                  <button type="button" onClick={() => handleDelete(e)} className="text-(--color-text-muted)">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(e)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                  >
                     <Delete02Icon size={14} strokeWidth={1.8} />
                   </button>
                 </td>
@@ -141,7 +145,11 @@ export default function CafeExpensesPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Add Expense</h2>
-              <button type="button" onClick={() => setShowForm(false)} className="text-(--color-text-muted)">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>

@@ -118,7 +118,7 @@ export default function CafeCustomersPage() {
                         e.stopPropagation();
                         handleDelete(c);
                       }}
-                      className="text-(--color-text-muted)"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
                     >
                       <Delete02Icon size={14} strokeWidth={1.8} />
                     </button>
@@ -147,7 +147,11 @@ export default function CafeCustomersPage() {
                 <div className="text-xs text-(--color-text-muted)">{selected.totalOrders} orders</div>
               </div>
             </div>
-            <button type="button" onClick={() => setSelected(null)} className="text-(--color-text-muted)">
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+            >
               <Cancel01Icon size={16} strokeWidth={1.8} />
             </button>
           </div>
@@ -197,7 +201,11 @@ export default function CafeCustomersPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Add Customer</h2>
-              <button type="button" onClick={() => setShowForm(false)} className="text-(--color-text-muted)">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>

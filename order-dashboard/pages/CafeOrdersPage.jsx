@@ -167,14 +167,28 @@ export default function CafeOrdersPage() {
                 </td>
                 <td className="px-3 py-2 text-(--color-text-muted)">{formatTime(o.createdAt)}</td>
                 <td className="px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <button type="button" onClick={() => setSelected(o)} title="View Order" className="text-(--color-text-muted)">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelected(o)}
+                      title="View Order"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    >
                       <ViewIcon size={15} strokeWidth={1.8} />
                     </button>
-                    <button type="button" title="Edit Order" className="text-(--color-text-muted)">
+                    <button
+                      type="button"
+                      title="Edit Order"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    >
                       <Edit02Icon size={15} strokeWidth={1.8} />
                     </button>
-                    <button type="button" onClick={() => handlePrintKot(o)} title="Print KOT" className="text-(--color-text-muted)">
+                    <button
+                      type="button"
+                      onClick={() => handlePrintKot(o)}
+                      title="Print KOT"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    >
                       <PrinterIcon size={15} strokeWidth={1.8} />
                     </button>
                     <button
@@ -182,7 +196,7 @@ export default function CafeOrdersPage() {
                       onClick={() => handleRefund(o)}
                       title="Refund"
                       disabled={o.paymentStatus !== "paid"}
-                      className="text-(--color-text-muted) disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) disabled:pointer-events-none disabled:opacity-30 dark:hover:bg-white/10"
                     >
                       <CashbackIcon size={15} strokeWidth={1.8} />
                     </button>
@@ -191,7 +205,7 @@ export default function CafeOrdersPage() {
                       onClick={() => handleCancel(o)}
                       title="Cancel"
                       disabled={o.status === "completed" || o.status === "cancelled"}
-                      className="text-red-500 disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-red-500 transition-colors hover:bg-red-500/10 disabled:pointer-events-none disabled:opacity-30"
                     >
                       <Cancel01Icon size={15} strokeWidth={1.8} />
                     </button>
@@ -221,7 +235,11 @@ export default function CafeOrdersPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">{selected.orderNumber}</h2>
-              <button type="button" onClick={() => setSelected(null)} className="text-(--color-text-muted)">
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>

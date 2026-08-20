@@ -173,11 +173,21 @@ export default function CafeBillingPage() {
                   <td className="px-3 py-2 tabular-nums">{formatCurrency(inv.total)}</td>
                   <td className="px-3 py-2 text-(--color-text-muted)">{formatTime(inv.createdAt)}</td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <button type="button" onClick={() => handleReprint(inv)} title="Reprint Invoice" className="text-(--color-text-muted)">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleReprint(inv)}
+                        title="Reprint Invoice"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                      >
                         <PrinterIcon size={15} strokeWidth={1.8} />
                       </button>
-                      <button type="button" onClick={() => handleDownload(inv)} title="Download Invoice" className="text-(--color-text-muted)">
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(inv)}
+                        title="Download Invoice"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                      >
                         <Download04Icon size={15} strokeWidth={1.8} />
                       </button>
                       <button
@@ -185,7 +195,7 @@ export default function CafeBillingPage() {
                         onClick={() => handleRefund(inv)}
                         title="Refund"
                         disabled={inv.refunded}
-                        className="text-(--color-text-muted) disabled:opacity-30"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) disabled:pointer-events-none disabled:opacity-30 dark:hover:bg-white/10"
                       >
                         <CashbackIcon size={15} strokeWidth={1.8} />
                       </button>

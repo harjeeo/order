@@ -136,10 +136,10 @@ export default function CafeKitchenPage() {
                           type="button"
                           onClick={() => togglePriority(order)}
                           title="Priority order"
-                          className={`flex h-7 w-7 items-center justify-center rounded-md border ${
+                          className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                             order.priority
-                              ? "border-amber-500 text-amber-500"
-                              : "border-(--color-border) text-(--color-text-muted)"
+                              ? "border-amber-500 text-amber-500 hover:bg-amber-500/10"
+                              : "border-(--color-border) text-(--color-text-muted) hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
                           }`}
                         >
                           <FireIcon size={13} strokeWidth={1.8} />
@@ -148,7 +148,7 @@ export default function CafeKitchenPage() {
                           type="button"
                           onClick={() => handleReprint(order)}
                           title="Reprint KOT"
-                          className="flex h-7 w-7 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted)"
+                          className="flex h-7 w-7 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
                         >
                           <PrinterIcon size={13} strokeWidth={1.8} />
                         </button>

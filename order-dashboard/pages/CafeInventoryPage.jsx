@@ -145,7 +145,7 @@ export default function CafeInventoryPage() {
                           type="button"
                           onClick={() => openMovement(ing, key)}
                           title={label}
-                          className="flex h-7 w-7 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted)"
+                          className="flex h-7 w-7 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
                         >
                           <Icon size={13} strokeWidth={1.8} />
                         </button>
@@ -196,7 +196,11 @@ export default function CafeInventoryPage() {
               <h2 className="text-sm font-semibold">
                 {MOVEMENT_TYPES.find((m) => m.key === moving.type).label} — {moving.ingredient.name}
               </h2>
-              <button type="button" onClick={() => setMoving(null)} className="text-(--color-text-muted)">
+              <button
+                type="button"
+                onClick={() => setMoving(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>
@@ -234,7 +238,11 @@ export default function CafeInventoryPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Add Ingredient</h2>
-              <button type="button" onClick={() => setShowAdd(false)} className="text-(--color-text-muted)">
+              <button
+                type="button"
+                onClick={() => setShowAdd(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>

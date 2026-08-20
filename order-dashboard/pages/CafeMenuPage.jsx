@@ -203,10 +203,18 @@ export default function CafeMenuPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => startEdit(item)} className="text-(--color-text-muted)">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(item)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                  >
                     <Edit02Icon size={14} strokeWidth={1.8} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item)} className="text-(--color-text-muted)">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(item)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                  >
                     <Delete02Icon size={14} strokeWidth={1.8} />
                   </button>
                 </div>
@@ -255,7 +263,11 @@ export default function CafeMenuPage() {
         <div className="w-96 shrink-0 overflow-y-auto border-l border-(--color-border) p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">{editingId === "new" ? "Add Item" : "Edit Item"}</h2>
-            <button type="button" onClick={cancelEdit} className="text-(--color-text-muted)">
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+            >
               <Cancel01Icon size={16} strokeWidth={1.8} />
             </button>
           </div>
@@ -342,7 +354,11 @@ export default function CafeMenuPage() {
                     placeholder="Price"
                     className="w-20 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-xs outline-none"
                   />
-                  <button type="button" onClick={() => removeVariantRow(idx)} className="text-(--color-text-muted)">
+                  <button
+                    type="button"
+                    onClick={() => removeVariantRow(idx)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                  >
                     <Delete02Icon size={13} strokeWidth={1.8} />
                   </button>
                 </div>
@@ -373,7 +389,11 @@ export default function CafeMenuPage() {
                     placeholder="Price"
                     className="w-20 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-xs outline-none"
                   />
-                  <button type="button" onClick={() => removeAddonRow(idx)} className="text-(--color-text-muted)">
+                  <button
+                    type="button"
+                    onClick={() => removeAddonRow(idx)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                  >
                     <Delete02Icon size={13} strokeWidth={1.8} />
                   </button>
                 </div>
