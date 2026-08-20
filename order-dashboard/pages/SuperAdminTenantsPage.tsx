@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search01Icon, PlusSignIcon, Cancel01Icon, Delete02Icon, PauseIcon, CheckmarkCircle02Icon } from "hugeicons-react";
+import { Search01Icon, PlusSignIcon, Cancel01Icon, Delete02Icon, PauseIcon, CheckmarkCircle02Icon, Copy01Icon, SquareLock02Icon } from "hugeicons-react";
 import { getTenants, createTenant, updateTenant, toggleTenantStatus, deleteTenant, TENANT_PLANS } from "../lib/api";
 
 function emptyForm() {
@@ -21,6 +21,9 @@ export default function SuperAdminTenantsPage() {
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  const [formError, setFormError] = useState("");
+  const [newCredentials, setNewCredentials] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   async function refresh() {
     setTenants(await getTenants({ search, status }));
@@ -31,11 +34,27 @@ export default function SuperAdminTenantsPage() {
   }, [search, status]);
 
   async function handleCreate() {
-    if (!form.name.trim() || !form.ownerName.trim()) return;
-    await createTenant(form);
-    setForm(emptyForm());
-    setShowForm(false);
-    refresh();
+    if (!form.name.trim() || !form.ownerName.trim() || !form.email.trim()) {
+      setFormError("Name, owner and a valid email (used as their login) are required.");
+      return;
+    }
+    setFormError("");
+    try {
+      const tenant = await createTenant(form);
+      setForm(emptyForm());
+      setShowForm(false);
+      setNewCredentials(tenant.staffLogin);
+      refresh();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not create client");
+    }
+  }
+
+  function copyCredentials() {
+    if (!newCredentials) return;
+    navigator.clipboard.writeText(`Email: ${newCredentials.email}\nPassword: ${newCredentials.tempPassword}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleToggleStatus(tenant) {
@@ -286,9 +305,10 @@ export default function SuperAdminTenantsPage() {
                 className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
               <input
+                type="email"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="Email"
+                placeholder="Email (becomes their login)"
                 className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
               <input
@@ -309,12 +329,61 @@ export default function SuperAdminTenantsPage() {
                 ))}
               </select>
             </div>
+            {formError && <div className="mt-2 text-xs text-red-500">{formError}</div>}
             <button
               type="button"
               onClick={handleCreate}
               className="mt-4 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
             >
               Add Client
+            </button>
+          </div>
+        </div>
+      )}
+
+      {newCredentials && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4" onClick={() => setNewCredentials(null)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-accent)/10 text-(--color-accent)">
+                <SquareLock02Icon size={16} strokeWidth={1.8} />
+              </span>
+              <h2 className="text-sm font-semibold">Client Login Created</h2>
+            </div>
+            <p className="mt-3 text-xs text-(--color-text-muted)">
+              Share these with the client — this password is shown only once and can't be retrieved later.
+            </p>
+            <div className="mt-3 space-y-2 rounded-md border border-(--color-border) p-3 text-sm">
+              <div>
+                <div className="text-xs text-(--color-text-muted)">Login URL</div>
+                <div className="font-mono">/login/cafe</div>
+              </div>
+              <div>
+                <div className="text-xs text-(--color-text-muted)">Email</div>
+                <div className="font-mono">{newCredentials.email}</div>
+              </div>
+              <div>
+                <div className="text-xs text-(--color-text-muted)">Temporary Password</div>
+                <div className="font-mono">{newCredentials.tempPassword}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={copyCredentials}
+              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-(--color-border) py-2 text-sm font-medium"
+            >
+              <Copy01Icon size={15} strokeWidth={1.8} />
+              {copied ? "Copied!" : "Copy Email & Password"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewCredentials(null)}
+              className="mt-2 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
+            >
+              Done
             </button>
           </div>
         </div>

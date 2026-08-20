@@ -541,7 +541,7 @@ export async function getTenants({ search = "", status = "all" }: { search?: str
 
 export async function createTenant(data: any) {
   const tenant = await post("/tenants", data);
-  return mapTenant(tenant);
+  return { ...mapTenant(tenant), staffLogin: tenant.staffLogin };
 }
 
 export async function updateTenant(tenantId: string, data: any) {

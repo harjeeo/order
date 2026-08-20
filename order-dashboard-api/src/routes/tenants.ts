@@ -1,7 +1,14 @@
 import { Router } from "express";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+
+function generateTempPassword() {
+  // 10 random chars, easy to read/type out loud to a client over the phone.
+  return crypto.randomBytes(8).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10);
+}
 
 export const tenantsRouter = Router();
 tenantsRouter.use(requireAuth, requireRole("SUPER_ADMIN"));
@@ -39,7 +46,7 @@ const createTenantSchema = z.object({
   name: z.string().min(1),
   ownerName: z.string().min(1),
   phone: z.string().optional(),
-  email: z.string().optional(),
+  email: z.string().email("A valid owner email is required so they can log in"),
   address: z.string().optional(),
   plan: z.enum(["Free", "Basic", "Pro"]).default("Free"),
 });
@@ -48,16 +55,35 @@ tenantsRouter.post("/", async (req, res) => {
   const parsed = createTenantSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
 
+  const existingUser = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (existingUser) return res.status(409).json({ error: "That email already has a login on this platform" });
+
   const tenant = await prisma.tenant.create({
     data: {
       ...parsed.data,
       planExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     },
   });
-  // Give every new tenant an empty settings row and a starter table so the
-  // Cafe dashboard isn't blank on first login.
+  // Give every new tenant an empty settings row so the Cafe dashboard
+  // isn't blank on first login.
   await prisma.settings.create({ data: { tenantId: tenant.id } });
-  res.status(201).json(tenant);
+
+  // Every tenant needs at least one login to actually get into the Cafe
+  // dashboard — create a starter Admin account with a one-time temp
+  // password, returned once here for the Super Admin to hand to the client.
+  const tempPassword = generateTempPassword();
+  await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      name: parsed.data.ownerName,
+      email: parsed.data.email,
+      passwordHash: await bcrypt.hash(tempPassword, 10),
+      role: "ADMIN",
+      permissions: { POS: true, Orders: true, Menu: true, Inventory: true, Reports: true, Settings: true },
+    },
+  });
+
+  res.status(201).json({ ...tenant, staffLogin: { email: parsed.data.email, tempPassword } });
 });
 
 tenantsRouter.patch("/:id", async (req, res) => {
