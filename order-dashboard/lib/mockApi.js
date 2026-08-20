@@ -875,3 +875,126 @@ export async function updateSettings(section, data) {
   SAMPLE_SETTINGS[section] = { ...SAMPLE_SETTINGS[section], ...data };
   return JSON.parse(JSON.stringify(SAMPLE_SETTINGS[section]));
 }
+
+// --- Super Admin: Tenant (cafe/restaurant client) management -----------
+
+export const TENANT_PLANS = ["Free", "Basic", "Pro"];
+
+function daysAgoIso(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString();
+}
+
+function daysFromNowDate(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+const SAMPLE_TENANTS = [
+  {
+    _id: "t1",
+    name: "Tanvir's Cafe",
+    ownerName: "Tanvir Singh",
+    phone: "9876500000",
+    email: "hello@tanvirscafe.example",
+    address: "12 MG Road, Pune",
+    status: "active",
+    plan: "Pro",
+    planExpiry: daysFromNowDate(45),
+    totalOrders: 1284,
+    totalRevenue: 312450,
+    staffCount: 8,
+    createdAt: daysAgoIso(120),
+  },
+  {
+    _id: "t2",
+    name: "Punjabi Dhaba",
+    ownerName: "Harjeet Kaur",
+    phone: "9876500011",
+    email: "owner@punjabidhaba.example",
+    address: "Sector 17, Chandigarh",
+    status: "active",
+    plan: "Basic",
+    planExpiry: daysFromNowDate(12),
+    totalOrders: 640,
+    totalRevenue: 148200,
+    staffCount: 5,
+    createdAt: daysAgoIso(70),
+  },
+  {
+    _id: "t3",
+    name: "Cafe Mocha",
+    ownerName: "Neha Gupta",
+    phone: "9876500022",
+    email: "neha@cafemocha.example",
+    address: "Park Street, Kolkata",
+    status: "suspended",
+    plan: "Free",
+    planExpiry: daysFromNowDate(-5),
+    totalOrders: 92,
+    totalRevenue: 18600,
+    staffCount: 2,
+    createdAt: daysAgoIso(20),
+  },
+];
+
+let tenantCounter = SAMPLE_TENANTS.length;
+
+export async function getSuperAdminStats() {
+  const active = SAMPLE_TENANTS.filter((t) => t.status === "active");
+  const suspended = SAMPLE_TENANTS.filter((t) => t.status === "suspended");
+  return {
+    totalTenants: SAMPLE_TENANTS.length,
+    activeTenants: active.length,
+    suspendedTenants: suspended.length,
+    platformRevenue: SAMPLE_TENANTS.reduce((s, t) => s + t.totalRevenue, 0),
+    recentSignups: [4, 3, 2, 1, 0].map((n) => ({
+      date: daysAgoIso(n).slice(0, 10),
+      count: SAMPLE_TENANTS.filter((t) => t.createdAt.slice(0, 10) === daysAgoIso(n).slice(0, 10)).length,
+    })),
+  };
+}
+
+export async function getTenants({ search = "", status = "all" } = {}) {
+  return SAMPLE_TENANTS.filter(
+    (t) =>
+      (status === "all" || t.status === status) &&
+      (t.name.toLowerCase().includes(search.toLowerCase()) || t.ownerName.toLowerCase().includes(search.toLowerCase()))
+  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export async function createTenant(data) {
+  const tenant = {
+    _id: `t${++tenantCounter}`,
+    status: "active",
+    plan: "Free",
+    planExpiry: daysFromNowDate(14),
+    totalOrders: 0,
+    totalRevenue: 0,
+    staffCount: 0,
+    createdAt: new Date().toISOString(),
+    ...data,
+  };
+  SAMPLE_TENANTS.unshift(tenant);
+  return tenant;
+}
+
+export async function updateTenant(tenantId, data) {
+  const tenant = SAMPLE_TENANTS.find((t) => t._id === tenantId);
+  if (tenant) Object.assign(tenant, data);
+  return { ...tenant };
+}
+
+export async function toggleTenantStatus(tenantId) {
+  const tenant = SAMPLE_TENANTS.find((t) => t._id === tenantId);
+  if (tenant) tenant.status = tenant.status === "active" ? "suspended" : "active";
+  return { ...tenant };
+}
+
+export async function deleteTenant(tenantId) {
+  const idx = SAMPLE_TENANTS.findIndex((t) => t._id === tenantId);
+  if (idx > -1) SAMPLE_TENANTS.splice(idx, 1);
+  return { ok: true };
+}
