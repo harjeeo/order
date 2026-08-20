@@ -1,9 +1,47 @@
 import { useEffect, useState } from "react";
-import { Search01Icon, PlusSignIcon, Cancel01Icon, Delete02Icon, PauseIcon, CheckmarkCircle02Icon, Copy01Icon, SquareLock02Icon } from "hugeicons-react";
-import { getTenants, createTenant, updateTenant, toggleTenantStatus, deleteTenant, resetTenantPassword, TENANT_PLANS } from "../lib/api";
+import { useNavigate } from "react-router-dom";
+import {
+  Search01Icon,
+  PlusSignIcon,
+  Cancel01Icon,
+  Delete02Icon,
+  PauseIcon,
+  CheckmarkCircle02Icon,
+  Copy01Icon,
+  SquareLock02Icon,
+  Download04Icon,
+  UserSwitchIcon,
+} from "hugeicons-react";
+import {
+  getTenants,
+  createTenant,
+  updateTenant,
+  toggleTenantStatus,
+  deleteTenant,
+  resetTenantPassword,
+  bulkTenantAction,
+  impersonateTenant,
+  exportTenantsCsv,
+  TENANT_PLANS,
+} from "../lib/api";
+import { startImpersonation } from "../lib/useAuth";
+import Pagination from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 
 function emptyForm() {
   return { name: "", ownerName: "", phone: "", email: "", address: "", plan: TENANT_PLANS[0] };
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function formatCurrency(n) {
@@ -15,10 +53,16 @@ function formatDate(d) {
 }
 
 export default function SuperAdminTenantsPage() {
+  const navigate = useNavigate();
   const [tenants, setTenants] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set<string>());
+  const [bulkPlan, setBulkPlan] = useState(TENANT_PLANS[0]);
+  const [exporting, setExporting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState("");
@@ -26,12 +70,56 @@ export default function SuperAdminTenantsPage() {
   const [copied, setCopied] = useState(false);
 
   async function refresh() {
-    setTenants(await getTenants({ search, status }));
+    const result = await getTenants({ search, status, page, pageSize: PAGE_SIZE });
+    setTenants(result.items);
+    setTotal(result.total);
+    setSelectedIds(new Set());
   }
 
   useEffect(() => {
     refresh();
+  }, [search, status, page]);
+
+  useEffect(() => {
+    setPage(1);
   }, [search, status]);
+
+  function toggleSelected(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => (prev.size === tenants.length ? new Set() : new Set(tenants.map((t) => t._id))));
+  }
+
+  async function runBulkAction(action, plan = undefined) {
+    if (selectedIds.size === 0) return;
+    if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} client(s)? This cannot be undone.`)) return;
+    await bulkTenantAction(Array.from(selectedIds), action, plan);
+    setSelectedIds(new Set());
+    refresh();
+  }
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const blob = await exportTenantsCsv({ search, status });
+      downloadBlob(blob, `tenants-${new Date().toISOString().slice(0, 10)}.csv`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleImpersonate(tenant) {
+    const result = await impersonateTenant(tenant._id);
+    startImpersonation(result, tenant.name);
+    navigate("/cafe");
+  }
 
   async function handleCreate() {
     if (!form.name.trim() || !form.ownerName.trim() || !form.email.trim()) {
@@ -88,14 +176,25 @@ export default function SuperAdminTenantsPage() {
             <h1 className="text-2xl font-semibold">Cafes / Restaurants</h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Every client (tenant) running on this platform.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
-          >
-            <PlusSignIcon size={14} strokeWidth={1.8} />
-            Add Client
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={exporting}
+              className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+            >
+              <Download04Icon size={14} strokeWidth={1.8} />
+              {exporting ? "Exporting…" : "Export CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
+            >
+              <PlusSignIcon size={14} strokeWidth={1.8} />
+              Add Client
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 flex items-center gap-2">
@@ -123,10 +222,71 @@ export default function SuperAdminTenantsPage() {
           </select>
         </div>
 
+        {selectedIds.size > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-(--color-accent)/30 bg-(--color-accent)/5 px-3 py-2 text-sm">
+            <span className="font-medium text-(--color-text)">{selectedIds.size} selected</span>
+            <button
+              type="button"
+              onClick={() => runBulkAction("activate")}
+              className="rounded-md border border-(--color-border) px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              Activate
+            </button>
+            <button
+              type="button"
+              onClick={() => runBulkAction("suspend")}
+              className="rounded-md border border-(--color-border) px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              Suspend
+            </button>
+            <div className="flex items-center gap-1">
+              <select
+                value={bulkPlan}
+                onChange={(e) => setBulkPlan(e.target.value)}
+                className="rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-xs outline-none"
+              >
+                {TENANT_PLANS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => runBulkAction("plan", bulkPlan)}
+                className="rounded-md border border-(--color-border) px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                Set Plan
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => runBulkAction("delete")}
+              className="rounded-md border border-red-500/30 px-2.5 py-1 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/10"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto text-xs text-(--color-text-muted) hover:text-(--color-text)"
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
+
         <div className="mt-4 overflow-x-auto rounded-xl border border-(--color-border)">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
+                <th className="w-8 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={tenants.length > 0 && selectedIds.size === tenants.length}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
                 <th className="px-3 py-2 font-medium">Cafe / Restaurant</th>
                 <th className="px-3 py-2 font-medium">Owner</th>
                 <th className="px-3 py-2 font-medium">Plan</th>
@@ -143,6 +303,9 @@ export default function SuperAdminTenantsPage() {
                   onClick={() => setSelected(t)}
                   className="cursor-pointer border-b border-(--color-border) last:border-0 hover:bg-black/5 dark:hover:bg-white/5"
                 >
+                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedIds.has(t._id)} onChange={() => toggleSelected(t._id)} />
+                  </td>
                   <td className="px-3 py-2 font-medium">{t.name}</td>
                   <td className="px-3 py-2 text-(--color-text-muted)">{t.ownerName}</td>
                   <td className="px-3 py-2">
@@ -187,7 +350,7 @@ export default function SuperAdminTenantsPage() {
               ))}
               {tenants.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                  <td colSpan={8} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
                     No clients found.
                   </td>
                 </tr>
@@ -195,6 +358,8 @@ export default function SuperAdminTenantsPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
       </div>
 
       {selected && (
@@ -254,8 +419,17 @@ export default function SuperAdminTenantsPage() {
 
           <button
             type="button"
+            onClick={() => handleImpersonate(selected)}
+            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md bg-(--color-accent)/10 py-2 text-sm font-medium text-(--color-accent)"
+          >
+            <UserSwitchIcon size={15} strokeWidth={1.8} />
+            Login as this Cafe
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleResetPassword(selected)}
-            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-(--color-border) py-2 text-sm font-medium"
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-(--color-border) py-2 text-sm font-medium"
           >
             <SquareLock02Icon size={15} strokeWidth={1.8} />
             Reset Login Password

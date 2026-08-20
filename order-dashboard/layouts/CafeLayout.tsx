@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
-import { logout } from "../lib/useAuth";
+import ImpersonationBanner from "../components/ImpersonationBanner";
+import { logout, getImpersonation, exitImpersonation } from "../lib/useAuth";
 import {
   RestaurantIcon,
   Home01Icon,
@@ -59,6 +60,13 @@ export default function CafeLayout() {
   const navigate = useNavigate();
 
   function handleLogout() {
+    // While impersonating, "Logout" exits back to the Super Admin's own
+    // session instead of destroying it.
+    if (getImpersonation()) {
+      exitImpersonation();
+      navigate("/super-admin/tenants", { replace: true });
+      return;
+    }
     logout();
     navigate("/login", { replace: true });
   }
@@ -93,8 +101,11 @@ export default function CafeLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <ImpersonationBanner />
+        <div className="flex-1 overflow-y-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

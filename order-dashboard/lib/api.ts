@@ -567,9 +567,32 @@ export async function getSuperAdminStats() {
   return get("/tenants/stats/summary");
 }
 
-export async function getTenants({ search = "", status = "all" }: { search?: string; status?: string } = {}) {
-  const tenants = await get(`/tenants${qs({ search, status: status !== "all" ? status : undefined })}`);
-  return tenants.map(mapTenant);
+export async function getTenants({
+  search = "",
+  status = "all",
+  page = 1,
+  pageSize = 20,
+}: { search?: string; status?: string; page?: number; pageSize?: number } = {}) {
+  const result = await get(
+    `/tenants${qs({ search, status: status !== "all" ? status : undefined, page: String(page), pageSize: String(pageSize) })}`
+  );
+  return { items: result.items.map(mapTenant), total: result.total, page: result.page, pageSize: result.pageSize };
+}
+
+export async function bulkTenantAction(ids: string[], action: "suspend" | "activate" | "delete" | "plan", plan?: string) {
+  return post("/tenants/bulk", { ids, action, plan });
+}
+
+export async function impersonateTenant(tenantId: string) {
+  return post(`/tenants/${tenantId}/impersonate`);
+}
+
+export async function exportTenantsCsv({ search = "", status = "all" }: { search?: string; status?: string } = {}) {
+  const res = await fetch(`${BASE_URL}/api/tenants/export${qs({ search, status: status !== "all" ? status : undefined })}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error("Could not export tenants");
+  return res.blob();
 }
 
 export async function createTenant(data: any) {

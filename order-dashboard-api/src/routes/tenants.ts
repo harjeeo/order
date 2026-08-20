@@ -3,7 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../prisma";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, signToken } from "../middleware/auth";
 
 function generateTempPassword() {
   // 10 random chars, easy to read/type out loud to a client over the phone.
@@ -13,33 +13,106 @@ function generateTempPassword() {
 export const tenantsRouter = Router();
 tenantsRouter.use(requireAuth, requireRole("SUPER_ADMIN"));
 
+function tenantWhere(search: string, status?: string) {
+  return {
+    AND: [
+      status && status !== "all" ? { status: status as any } : {},
+      search
+        ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { ownerName: { contains: search, mode: "insensitive" as const } }] }
+        : {},
+    ],
+  };
+}
+
+function withComputedFields(t: any) {
+  return {
+    ...t,
+    totalOrders: t.orders.length,
+    totalRevenue: t.orders.reduce((s: number, o: { amount: number }) => s + o.amount, 0),
+    staffCount: t.users.length,
+    orders: undefined,
+    users: undefined,
+  };
+}
+
 tenantsRouter.get("/", async (req, res) => {
   const { search = "", status } = req.query as { search?: string; status?: string };
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+  const where = tenantWhere(search, status);
+
+  const [tenants, total] = await Promise.all([
+    prisma.tenant.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        orders: { where: { status: { not: "cancelled" } }, select: { amount: true } },
+        users: { select: { id: true } },
+      },
+    }),
+    prisma.tenant.count({ where }),
+  ]);
+
+  res.json({ items: tenants.map(withComputedFields), total, page, pageSize });
+});
+
+// Exports every tenant matching the current filters (not just the current
+// page) as CSV — used by the "Export CSV" button on the Tenants list.
+tenantsRouter.get("/export", async (req, res) => {
+  const { search = "", status } = req.query as { search?: string; status?: string };
   const tenants = await prisma.tenant.findMany({
-    where: {
-      AND: [
-        status ? { status: status as any } : {},
-        search
-          ? { OR: [{ name: { contains: search, mode: "insensitive" } }, { ownerName: { contains: search, mode: "insensitive" } }] }
-          : {},
-      ],
-    },
+    where: tenantWhere(search, status),
     orderBy: { createdAt: "desc" },
     include: {
       orders: { where: { status: { not: "cancelled" } }, select: { amount: true } },
       users: { select: { id: true } },
     },
   });
-  res.json(
-    tenants.map((t) => ({
-      ...t,
-      totalOrders: t.orders.length,
-      totalRevenue: t.orders.reduce((s, o) => s + o.amount, 0),
-      staffCount: t.users.length,
-      orders: undefined,
-      users: undefined,
-    }))
-  );
+
+  const rows = tenants.map(withComputedFields);
+  const header = ["Name", "Owner", "Email", "Phone", "Plan", "Status", "Total Orders", "Total Revenue", "Staff", "Created At"];
+  const csvEscape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [
+    header.join(","),
+    ...rows.map((t) =>
+      [t.name, t.ownerName, t.email, t.phone, t.plan, t.status, t.totalOrders, t.totalRevenue, t.staffCount, t.createdAt.toISOString()]
+        .map(csvEscape)
+        .join(",")
+    ),
+  ];
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="tenants-${Date.now()}.csv"`);
+  res.send(lines.join("\n"));
+});
+
+const bulkActionSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+  action: z.enum(["suspend", "activate", "delete", "plan"]),
+  plan: z.enum(["Free", "Basic", "Pro"]).optional(),
+});
+
+// Applies one action to many tenants at once (row-selection bulk actions
+// on the Tenants list: suspend / activate / delete / change plan).
+tenantsRouter.post("/bulk", async (req, res) => {
+  const parsed = bulkActionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  const { ids, action, plan } = parsed.data;
+
+  if (action === "delete") {
+    await prisma.tenant.deleteMany({ where: { id: { in: ids } } });
+  } else if (action === "suspend") {
+    await prisma.tenant.updateMany({ where: { id: { in: ids } }, data: { status: "suspended" } });
+  } else if (action === "activate") {
+    await prisma.tenant.updateMany({ where: { id: { in: ids } }, data: { status: "active" } });
+  } else if (action === "plan") {
+    if (!plan) return res.status(400).json({ error: "A plan is required for the plan action" });
+    await prisma.tenant.updateMany({ where: { id: { in: ids } }, data: { plan } });
+  }
+
+  res.json({ ok: true, count: ids.length });
 });
 
 const createTenantSchema = z.object({
@@ -102,6 +175,27 @@ tenantsRouter.post("/:id/reset-password", async (req, res) => {
   });
 
   res.json({ email: admin.email, tempPassword });
+});
+
+// Issues a token for the tenant's ADMIN login so the Super Admin can view
+// the Cafe dashboard exactly as that client sees it, for support. The
+// frontend keeps the Super Admin's own session aside so it can restore it
+// when the Super Admin exits impersonation.
+tenantsRouter.post("/:id/impersonate", async (req, res) => {
+  const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
+  if (!tenant) return res.status(404).json({ error: "Tenant not found" });
+
+  const admin = await prisma.user.findFirst({
+    where: { tenantId: req.params.id, role: "ADMIN" },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!admin) return res.status(404).json({ error: "No admin login found for this tenant" });
+
+  const token = signToken({ id: admin.id, role: admin.role, tenantId: admin.tenantId, email: admin.email });
+  res.json({
+    token,
+    user: { id: admin.id, name: admin.name, email: admin.email, role: admin.role, tenantId: admin.tenantId },
+  });
 });
 
 tenantsRouter.patch("/:id", async (req, res) => {

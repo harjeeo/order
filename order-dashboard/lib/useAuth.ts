@@ -9,6 +9,12 @@ export interface Session {
 }
 
 const STORAGE_KEY = "order-dashboard-session";
+const IMPERSONATION_KEY = "order-dashboard-impersonation";
+
+interface ImpersonationState {
+  originalSession: Session;
+  tenantName: string;
+}
 
 export function getSession(): Session | null {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -30,6 +36,7 @@ export function setSession(session: Session) {
 
 export function logout() {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(IMPERSONATION_KEY);
 }
 
 export function homePathForRole(role: Role) {
@@ -38,6 +45,43 @@ export function homePathForRole(role: Role) {
 
 export function loginPathForRole(role: Role) {
   return role === "super-admin" ? "/login/super-admin" : "/login/cafe";
+}
+
+// Super Admin "login as tenant" support. The Super Admin's own session is
+// stashed under a separate key so it can be restored on exit; the current
+// session is swapped for the impersonated tenant admin's.
+export function startImpersonation(impersonated: { token: string; user: { name: string; email: string; role: string; tenantId: string | null } }, tenantName: string) {
+  const original = getSession();
+  if (!original) throw new Error("No active session to impersonate from");
+
+  const state: ImpersonationState = { originalSession: original, tenantName };
+  localStorage.setItem(IMPERSONATION_KEY, JSON.stringify(state));
+
+  setSession({
+    name: impersonated.user.name,
+    email: impersonated.user.email,
+    role: backendRoleToAppRole(impersonated.user.role),
+    token: impersonated.token,
+    tenantId: impersonated.user.tenantId,
+  });
+}
+
+export function getImpersonation(): ImpersonationState | null {
+  const raw = localStorage.getItem(IMPERSONATION_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as ImpersonationState;
+  } catch {
+    return null;
+  }
+}
+
+export function exitImpersonation(): Session | null {
+  const state = getImpersonation();
+  if (!state) return null;
+  setSession(state.originalSession);
+  localStorage.removeItem(IMPERSONATION_KEY);
+  return state.originalSession;
 }
 
 function backendRoleToAppRole(role: string): Role {
