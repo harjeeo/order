@@ -133,3 +133,69 @@ export function downloadHtml(html: string, filename: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// Real PDF generation via jsPDF for "Download Invoice" — produces an
+// actual .pdf file rather than relying on the browser's print-to-PDF
+// dialog. Loaded lazily so it doesn't add to the initial bundle.
+export async function downloadInvoicePdf(r: InvoiceReceipt, filename: string) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "pt", format: [227, 600] }); // ~80mm wide receipt
+  const marginX = 14;
+  let y = 24;
+
+  doc.setFont("courier", "bold");
+  doc.setFontSize(13);
+  doc.text(r.restaurantName ?? "Order Dashboard", 113.5, y, { align: "center" });
+  y += 16;
+
+  doc.setFont("courier", "normal");
+  doc.setFontSize(9);
+  const meta = `Invoice ${r.invoiceNumber}${r.orderNumber ? ` · ${r.orderNumber}` : ""}`;
+  doc.text(meta, 113.5, y, { align: "center" });
+  y += 12;
+  if (r.customer) {
+    doc.text(r.customer, 113.5, y, { align: "center" });
+    y += 12;
+  }
+  doc.text(new Date().toLocaleString(), 113.5, y, { align: "center" });
+  y += 10;
+
+  doc.setLineDashPattern([2, 2], 0);
+  doc.line(marginX, y, 227 - marginX, y);
+  y += 14;
+
+  if (r.items?.length) {
+    doc.setFontSize(9);
+    for (const item of r.items) {
+      doc.text(`${item.qty}x`, marginX, y);
+      doc.text(item.name, marginX + 24, y);
+      y += 13;
+    }
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(marginX, y, 227 - marginX, y);
+    y += 14;
+  }
+
+  const line = (label: string, value: string, bold = false) => {
+    doc.setFont("courier", bold ? "bold" : "normal");
+    doc.setFontSize(bold ? 11 : 9);
+    doc.text(label, marginX, y);
+    doc.text(value, 227 - marginX, y, { align: "right" });
+    y += bold ? 15 : 13;
+  };
+
+  if (r.subtotal != null) line("Subtotal", formatCurrency(r.subtotal));
+  if (r.discountAmount) line("Discount", `-${formatCurrency(r.discountAmount)}`);
+  if (r.serviceChargeAmount) line("Service Charge", formatCurrency(r.serviceChargeAmount));
+  if (r.taxAmount != null) line("Tax", formatCurrency(r.taxAmount));
+  y += 3;
+  line("Total", formatCurrency(r.total), true);
+  if (r.method) line("Paid via", r.method.toUpperCase());
+
+  y += 10;
+  doc.setFont("courier", "normal");
+  doc.setFontSize(9);
+  doc.text("Thank you for visiting!", 113.5, y, { align: "center" });
+
+  doc.save(filename);
+}

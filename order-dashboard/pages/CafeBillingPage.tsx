@@ -10,7 +10,7 @@ import {
   ReceiptDollarIcon,
 } from "hugeicons-react";
 import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice } from "../lib/api";
-import { buildInvoiceHtml, printHtml, downloadHtml } from "../lib/print";
+import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
 
 const METHODS = [
   { key: "cash", label: "Cash", icon: Coins01Icon },
@@ -93,8 +93,8 @@ export default function CafeBillingPage() {
     refresh();
   }
 
-  function invoiceHtml(invoice) {
-    return buildInvoiceHtml({
+  function invoiceReceipt(invoice) {
+    return {
       invoiceNumber: invoice.invoiceNumber,
       orderNumber: invoice.orderNumber,
       customer: invoice.customer,
@@ -104,7 +104,11 @@ export default function CafeBillingPage() {
       taxAmount: invoice.taxAmount,
       total: invoice.total,
       method: invoice.method,
-    });
+    };
+  }
+
+  function invoiceHtml(invoice) {
+    return buildInvoiceHtml(invoiceReceipt(invoice));
   }
 
   async function handleReprint(invoice) {
@@ -115,7 +119,7 @@ export default function CafeBillingPage() {
 
   async function handleDownload(invoice) {
     await downloadInvoice(invoice._id);
-    downloadHtml(invoiceHtml(invoice), `${invoice.invoiceNumber}.html`);
+    await downloadInvoicePdf(invoiceReceipt(invoice), `${invoice.invoiceNumber}.pdf`);
     setToast(`Downloading ${invoice.invoiceNumber}…`);
   }
 
