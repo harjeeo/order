@@ -7,7 +7,7 @@ import {
   FireIcon,
   StickyNote01Icon,
 } from "hugeicons-react";
-import { getKitchenOrders, updateKitchenOrderStatus, toggleKitchenOrderPriority, reprintKot } from "../lib/mockApi";
+import { getKitchenOrders, updateKitchenOrderStatus, toggleKitchenOrderPriority, reprintKot } from "../lib/api";
 import { buildKotHtml, printHtml } from "../lib/print";
 
 const COLUMNS = [

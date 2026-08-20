@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search01Icon, PlusSignIcon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon } from "hugeicons-react";
-import { getCustomers, getCustomerOrderHistory, createCustomer, deleteCustomer } from "../lib/mockApi";
+import { getCustomers, getCustomerOrderHistory, createCustomer, deleteCustomer } from "../lib/api";
 import Avatar from "../components/Avatar";
 
 function emptyForm() {

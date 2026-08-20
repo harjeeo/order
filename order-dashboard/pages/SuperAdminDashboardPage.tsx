@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Building06Icon, CheckmarkCircle02Icon, PauseIcon, MoneyBag02Icon } from "hugeicons-react";
-import { getSuperAdminStats } from "../lib/mockApi";
+import { getSuperAdminStats } from "../lib/api";
 
 const CARDS = [
   { key: "totalTenants", label: "Total Cafes / Restaurants", icon: Building06Icon },

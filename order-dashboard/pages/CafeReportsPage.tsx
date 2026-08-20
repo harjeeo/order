@@ -6,7 +6,7 @@ import {
   PackageIcon,
   Wallet01Icon,
 } from "hugeicons-react";
-import { getReportsSummary, REPORT_RANGES } from "../lib/mockApi";
+import { getReportsSummary, REPORT_RANGES } from "../lib/api";
 
 function formatCurrency(n) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;

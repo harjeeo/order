@@ -22,7 +22,7 @@ import {
   getTables,
   getCustomersList,
   submitOrder,
-} from "../lib/mockApi";
+} from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 
 const ORDER_TYPES = [

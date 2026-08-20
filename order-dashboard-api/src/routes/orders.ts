@@ -35,7 +35,24 @@ const createOrderSchema = z.object({
   action: z.enum(["save", "hold", "kitchen", "kot", "bill", "payment"]).default("save"),
 });
 
-let orderCounter = 3000;
+// Order numbers are derived from the DB (not an in-memory counter, which
+// would collide with existing rows after every server restart). A short
+// retry loop handles the rare race between two orders in the same tenant.
+async function createOrderWithNumber(tenantId: string, data: any, items: any[]) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const count = await prisma.order.count({ where: { tenantId } });
+    const orderNumber = `ORD-${3001 + count + attempt}`;
+    try {
+      return await prisma.order.create({
+        data: { ...data, tenantId, orderNumber, items: { create: items } },
+        include: { items: true },
+      });
+    } catch (err: any) {
+      if (err.code !== "P2002") throw err;
+    }
+  }
+  throw new Error("Could not allocate an order number");
+}
 
 ordersRouter.post("/", async (req, res) => {
   const parsed = createOrderSchema.safeParse(req.body);
@@ -43,15 +60,7 @@ ordersRouter.post("/", async (req, res) => {
   const { items, action, ...data } = parsed.data;
   const tenantId = req.user!.tenantId!;
 
-  const order = await prisma.order.create({
-    data: {
-      ...data,
-      tenantId,
-      orderNumber: `ORD-${++orderCounter}`,
-      items: { create: items },
-    },
-    include: { items: true },
-  });
+  const order = await createOrderWithNumber(tenantId, data, items);
 
   if (action === "kitchen" || action === "kot") {
     await prisma.kitchenTicket.create({

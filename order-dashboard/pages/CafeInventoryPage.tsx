@@ -8,7 +8,7 @@ import {
   PlusSignIcon,
   Cancel01Icon,
 } from "hugeicons-react";
-import { getIngredients, recordStockMovement, getStockLog, createIngredient } from "../lib/mockApi";
+import { getIngredients, recordStockMovement, getStockLog, createIngredient } from "../lib/api";
 
 const MOVEMENT_TYPES = [
   { key: "in", label: "Stock In", icon: PackageAdd01Icon },

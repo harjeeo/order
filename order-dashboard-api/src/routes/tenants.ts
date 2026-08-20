@@ -18,9 +18,21 @@ tenantsRouter.get("/", async (req, res) => {
       ],
     },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { orders: true } } },
+    include: {
+      orders: { where: { status: { not: "cancelled" } }, select: { amount: true } },
+      users: { select: { id: true } },
+    },
   });
-  res.json(tenants);
+  res.json(
+    tenants.map((t) => ({
+      ...t,
+      totalOrders: t.orders.length,
+      totalRevenue: t.orders.reduce((s, o) => s + o.amount, 0),
+      staffCount: t.users.length,
+      orders: undefined,
+      users: undefined,
+    }))
+  );
 });
 
 const createTenantSchema = z.object({
@@ -69,12 +81,28 @@ tenantsRouter.delete("/:id", async (req, res) => {
 });
 
 tenantsRouter.get("/stats/summary", async (_req, res) => {
-  const tenants = await prisma.tenant.findMany({ include: { orders: true } });
+  const tenants = await prisma.tenant.findMany({
+    include: { orders: { where: { status: { not: "cancelled" } }, select: { amount: true } } },
+  });
   const active = tenants.filter((t) => t.status === "active").length;
   const suspended = tenants.filter((t) => t.status === "suspended").length;
+  const platformRevenue = tenants.reduce((s, t) => s + t.orders.reduce((s2, o) => s2 + o.amount, 0), 0);
+
+  const recentSignups = [4, 3, 2, 1, 0].map((n) => {
+    const day = new Date();
+    day.setDate(day.getDate() - n);
+    const dateStr = day.toISOString().slice(0, 10);
+    return {
+      date: dateStr,
+      count: tenants.filter((t) => t.createdAt.toISOString().slice(0, 10) === dateStr).length,
+    };
+  });
+
   res.json({
     totalTenants: tenants.length,
     activeTenants: active,
     suspendedTenants: suspended,
+    platformRevenue,
+    recentSignups,
   });
 });

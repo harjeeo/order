@@ -13,21 +13,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError("Enter your email and password.");
       return;
     }
-    // No backend yet — any non-empty email/password signs in as a demo
-    // account for the selected role.
-    login({
-      name: role === "super-admin" ? "Platform Owner" : "Cafe Staff",
-      email: email.trim(),
-      role,
-    });
-    navigate(from ?? homePathForRole(role), { replace: true });
+    setError("");
+    setLoading(true);
+    try {
+      const session = await login(email.trim(), password);
+      navigate(from ?? homePathForRole(session.role), { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -106,14 +109,16 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="mt-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
+            disabled={loading}
+            className="mt-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            Sign in as {role === "super-admin" ? "Super Admin" : "Cafe Staff"}
+            {loading ? "Signing in…" : `Sign in as ${role === "super-admin" ? "Super Admin" : "Cafe Staff"}`}
           </button>
         </form>
 
         <p className="mt-4 text-center text-xs text-(--color-text-muted)">
-          No backend yet — any email/password signs you in for this demo.
+          Demo logins — Super Admin: owner@orderdashboard.example, Cafe Staff: staff@tanvirscafe.example (password:
+          password123).
         </p>
       </div>
     </div>

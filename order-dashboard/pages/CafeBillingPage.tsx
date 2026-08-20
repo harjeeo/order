@@ -9,7 +9,7 @@ import {
   CashbackIcon,
   ReceiptDollarIcon,
 } from "hugeicons-react";
-import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice } from "../lib/mockApi";
+import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadHtml } from "../lib/print";
 
 const METHODS = [

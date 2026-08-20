@@ -8,7 +8,7 @@ import {
   updateMenuItem,
   deleteMenuItem,
   toggleMenuItemAvailability,
-} from "../lib/mockApi";
+} from "../lib/api";
 
 function emptyForm() {
   return {

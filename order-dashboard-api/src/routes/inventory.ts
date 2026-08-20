@@ -23,7 +23,8 @@ inventoryRouter.post("/ingredients", async (req, res) => {
 });
 
 inventoryRouter.post("/ingredients/:id/movements", async (req, res) => {
-  const { type, qty, note = "" } = req.body as { type: "in" | "out" | "adjustment" | "wastage"; qty: number; note?: string };
+  const { type, note = "" } = req.body as { type: "in" | "out" | "adjustment" | "wastage"; note?: string };
+  const qty = Number(req.body.qty) || 0;
   const ingredient = await prisma.ingredient.findUnique({ where: { id: req.params.id } });
   if (!ingredient) return res.status(404).json({ error: "Not found" });
 

@@ -8,7 +8,7 @@ import {
   CreditCardIcon,
   CheckmarkCircle02Icon,
 } from "hugeicons-react";
-import { getSettings, updateSettings } from "../lib/mockApi";
+import { getSettings, updateSettings } from "../lib/api";
 
 const TABS = [
   { key: "restaurant", label: "Restaurant Profile", icon: Store01Icon },

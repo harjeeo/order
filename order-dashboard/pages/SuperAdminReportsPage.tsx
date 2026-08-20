@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChartLineData02Icon, Building06Icon, Alert02Icon } from "hugeicons-react";
-import { getSuperAdminReports } from "../lib/mockApi";
+import { getSuperAdminReports } from "../lib/api";
 
 function formatCurrency(n) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;

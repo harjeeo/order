@@ -10,7 +10,7 @@ import {
   TruckDeliveryIcon,
   Alert02Icon,
 } from "hugeicons-react";
-import { getCafeDashboardStats } from "../lib/mockApi";
+import { getCafeDashboardStats } from "../lib/api";
 
 const CARDS = [
   { key: "todaySales", label: "Today's Sales", icon: MoneyBag02Icon, format: "currency" },

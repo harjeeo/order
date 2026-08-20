@@ -10,7 +10,7 @@ import {
   MinusSignIcon,
   Delete02Icon,
 } from "hugeicons-react";
-import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/mockApi";
+import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 
 const STATUSES = ["all", "pending", "preparing", "ready", "completed", "cancelled"];

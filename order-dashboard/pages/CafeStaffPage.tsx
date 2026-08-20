@@ -9,7 +9,7 @@ import {
   defaultPermissionsForRole,
   PERMISSION_MODULES,
   ROLES,
-} from "../lib/mockApi";
+} from "../lib/api";
 import Avatar from "../components/Avatar";
 
 function emptyForm() {

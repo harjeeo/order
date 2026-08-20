@@ -10,7 +10,7 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
 } from "hugeicons-react";
-import { getTables, setTableStatus, transferTable, mergeTables } from "../lib/mockApi";
+import { getTables, setTableStatus, transferTable, mergeTables } from "../lib/api";
 
 const STATUS_META = {
   available: { label: "Available", dot: "bg-emerald-500", card: "border-(--color-border)" },

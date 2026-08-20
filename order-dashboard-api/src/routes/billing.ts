@@ -22,7 +22,19 @@ billingRouter.get("/invoices", async (req, res) => {
   res.json(invoices);
 });
 
-let invoiceCounter = 5000;
+// See orders.ts's createOrderWithNumber for why this isn't an in-memory counter.
+async function createInvoiceWithNumber(tenantId: string, data: any) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const count = await prisma.invoice.count({ where: { tenantId } });
+    const invoiceNumber = `INV-${5001 + count + attempt}`;
+    try {
+      return await prisma.invoice.create({ data: { ...data, tenantId, invoiceNumber } });
+    } catch (err: any) {
+      if (err.code !== "P2002") throw err;
+    }
+  }
+  throw new Error("Could not allocate an invoice number");
+}
 
 billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   const tenantId = req.user!.tenantId!;
@@ -31,20 +43,16 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
 
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      tenantId,
-      orderId: order.id,
-      invoiceNumber: `INV-${++invoiceCounter}`,
-      customerName: order.customerName,
-      subtotal,
-      discountAmount,
-      serviceChargeAmount,
-      taxAmount,
-      roundOff,
-      total,
-      method,
-    },
+  const invoice = await createInvoiceWithNumber(tenantId, {
+    orderId: order.id,
+    customerName: order.customerName,
+    subtotal,
+    discountAmount,
+    serviceChargeAmount,
+    taxAmount,
+    roundOff,
+    total,
+    method,
   });
 
   await prisma.order.update({

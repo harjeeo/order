@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckmarkCircle02Icon } from "hugeicons-react";
-import { getPlatformSettings, updatePlatformSettings, TENANT_PLANS } from "../lib/mockApi";
+import { getPlatformSettings, updatePlatformSettings, TENANT_PLANS } from "../lib/api";
 
 const inputClass =
   "rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search01Icon, PlusSignIcon, Cancel01Icon, Delete02Icon, PauseIcon, CheckmarkCircle02Icon } from "hugeicons-react";
-import { getTenants, createTenant, updateTenant, toggleTenantStatus, deleteTenant, TENANT_PLANS } from "../lib/mockApi";
+import { getTenants, createTenant, updateTenant, toggleTenantStatus, deleteTenant, TENANT_PLANS } from "../lib/api";
 
 function emptyForm() {
   return { name: "", ownerName: "", phone: "", email: "", address: "", plan: TENANT_PLANS[0] };

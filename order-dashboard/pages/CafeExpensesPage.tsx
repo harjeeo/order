@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PlusSignIcon, Delete02Icon, Cancel01Icon, Wallet01Icon, Calendar01Icon } from "hugeicons-react";
-import { getExpenses, createExpense, deleteExpense, EXPENSE_CATEGORIES, PAYMENT_METHODS } from "../lib/mockApi";
+import { getExpenses, createExpense, deleteExpense, EXPENSE_CATEGORIES, PAYMENT_METHODS } from "../lib/api";
 
 function emptyForm() {
   return {
