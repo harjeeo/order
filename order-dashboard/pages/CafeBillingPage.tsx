@@ -303,7 +303,7 @@ export default function CafeBillingPage() {
                 <input
                   type="number"
                   value={splitCash}
-                  onChange={(e) => setSplitCash(e.target.value)}
+                  onChange={(e) => setSplitCash(Number(e.target.value))}
                   className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none"
                 />
               </div>
@@ -312,7 +312,7 @@ export default function CafeBillingPage() {
                 <input
                   type="number"
                   value={splitUpi}
-                  onChange={(e) => setSplitUpi(e.target.value)}
+                  onChange={(e) => setSplitUpi(Number(e.target.value))}
                   className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none"
                 />
               </div>

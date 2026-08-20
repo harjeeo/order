@@ -321,7 +321,7 @@ export async function getCustomers({ search = "" } = {}) {
   ).map((c) => {
     const orders = SAMPLE_ORDERS.filter((o) => o.customer === c.name);
     const totalSpent = orders.reduce((s, o) => s + o.amount, 0);
-    const lastOrder = orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    const lastOrder = orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
     return {
       ...c,
       totalOrders: orders.length,
@@ -335,7 +335,7 @@ export async function getCustomerOrderHistory(customerId) {
   const customer = SAMPLE_CUSTOMERS.find((c) => c._id === customerId);
   if (!customer) return [];
   return SAMPLE_ORDERS.filter((o) => o.customer === customer.name).sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
 
@@ -525,7 +525,7 @@ export async function getOrders({ search = "", status = "all", orderType = "all"
       (orderType === "all" || o.orderType === orderType) &&
       (o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
         o.customer.toLowerCase().includes(search.toLowerCase()))
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function updateOrderStatus(orderId, status) {
@@ -569,8 +569,9 @@ const SAMPLE_INVOICES = [
     total: 462,
     method: "upi",
     createdAt: minsAgo(40),
+    refunded: false,
   },
-];
+] as Array<Record<string, any>>;
 
 export async function getBillableOrders() {
   return SAMPLE_ORDERS.filter((o) => o.paymentStatus === "unpaid" && o.status !== "cancelled");
@@ -757,7 +758,7 @@ export async function getExpenses({ category = "All", search = "" } = {}) {
     (e) =>
       (category === "All" || e.category === category) &&
       (e.notes.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase()))
-  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function createExpense(data) {
@@ -962,7 +963,7 @@ export async function getTenants({ search = "", status = "all" } = {}) {
     (t) =>
       (status === "all" || t.status === status) &&
       (t.name.toLowerCase().includes(search.toLowerCase()) || t.ownerName.toLowerCase().includes(search.toLowerCase()))
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function createTenant(data) {

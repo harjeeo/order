@@ -14,7 +14,7 @@ function formatCurrency(n) {
 
 export default function CafeReportsPage() {
   const [range, setRange] = useState("daily");
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState<any>(null);
 
   useEffect(() => {
     getReportsSummary({ range }).then(setReport);
@@ -23,8 +23,8 @@ export default function CafeReportsPage() {
   if (!report) return null;
 
   const maxTrend = Math.max(...report.sales.trend.map((t) => t.amount), 1);
-  const maxCategory = Math.max(...Object.values(report.products.categorySales), 1);
-  const maxPayment = Math.max(...Object.values(report.payments), 1);
+  const maxCategory = Math.max(...(Object.values(report.products.categorySales) as number[]), 1);
+  const maxPayment = Math.max(...(Object.values(report.payments) as number[]), 1);
   const maxExpenseCategory = Math.max(...report.expenses.byCategory.map((e) => e.amount), 1);
 
   return (
@@ -107,7 +107,7 @@ export default function CafeReportsPage() {
             Payments
           </h2>
           <div className="mt-2 rounded-xl border border-(--color-border) p-4">
-            {Object.entries(report.payments).map(([method, amount]) => (
+            {Object.entries(report.payments).map(([method, amount]: [string, number]) => (
               <div key={method} className="mb-2 last:mb-0">
                 <div className="flex justify-between text-xs">
                   <span className="uppercase text-(--color-text-muted)">{method}</span>
@@ -143,7 +143,7 @@ export default function CafeReportsPage() {
         <section>
           <h2 className="text-sm font-medium text-(--color-text-muted)">Category Sales</h2>
           <div className="mt-2 rounded-xl border border-(--color-border) p-4">
-            {Object.entries(report.products.categorySales).map(([category, amount]) => (
+            {Object.entries(report.products.categorySales).map(([category, amount]: [string, number]) => (
               <div key={category} className="mb-2 last:mb-0">
                 <div className="flex justify-between text-xs">
                   <span className="text-(--color-text-muted)">{category}</span>
