@@ -12,6 +12,9 @@ import {
 } from "hugeicons-react";
 import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
+import Pagination from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 
 const STATUSES = ["all", "pending", "preparing", "ready", "completed", "cancelled"];
 const ORDER_TYPES = ["all", "dine-in", "takeaway", "delivery"];
@@ -34,6 +37,8 @@ function formatTime(iso) {
 
 export default function CafeOrdersPage() {
   const [orders, setOrders] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [orderType, setOrderType] = useState("all");
@@ -43,11 +48,17 @@ export default function CafeOrdersPage() {
   const [toast, setToast] = useState("");
 
   async function refresh() {
-    setOrders(await getOrders({ search, status, orderType }));
+    const result = await getOrders({ search, status, orderType, page, pageSize: PAGE_SIZE });
+    setOrders(result.items);
+    setTotal(result.total);
   }
 
   useEffect(() => {
     refresh();
+  }, [search, status, orderType, page]);
+
+  useEffect(() => {
+    setPage(1);
   }, [search, status, orderType]);
 
   useEffect(() => {
@@ -284,6 +295,8 @@ export default function CafeOrdersPage() {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
 
       {selected && (
         <div

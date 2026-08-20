@@ -8,17 +8,27 @@ ordersRouter.use(requireAuth, requireTenant);
 
 ordersRouter.get("/", async (req, res) => {
   const { search = "", status, orderType } = req.query as { search?: string; status?: string; orderType?: string };
-  const orders = await prisma.order.findMany({
-    where: {
-      tenantId: req.user!.tenantId!,
-      ...(status && status !== "all" ? { status: status as any } : {}),
-      ...(orderType && orderType !== "all" ? { orderType: orderType as any } : {}),
-      OR: [{ orderNumber: { contains: search, mode: "insensitive" } }, { customerName: { contains: search, mode: "insensitive" } }],
-    },
-    include: { items: true, table: true },
-    orderBy: { createdAt: "desc" },
-  });
-  res.json(orders);
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+  const where = {
+    tenantId: req.user!.tenantId!,
+    ...(status && status !== "all" ? { status: status as any } : {}),
+    ...(orderType && orderType !== "all" ? { orderType: orderType as any } : {}),
+    OR: [{ orderNumber: { contains: search, mode: "insensitive" as const } }, { customerName: { contains: search, mode: "insensitive" as const } }],
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: { items: true, table: true },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  res.json({ items, total, page, pageSize });
 });
 
 const orderItemSchema = z.object({

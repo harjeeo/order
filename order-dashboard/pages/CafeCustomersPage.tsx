@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Search01Icon, PlusSignIcon, Edit02Icon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon } from "hugeicons-react";
 import { getCustomers, getCustomerOrderHistory, createCustomer, updateCustomer, deleteCustomer } from "../lib/api";
 import Avatar from "../components/Avatar";
+import Pagination from "../components/Pagination";
+
+const PAGE_SIZE = 20;
 
 function emptyForm() {
   return { name: "", phone: "", email: "", address: "" };
@@ -17,6 +20,8 @@ function formatDate(iso) {
 
 export default function CafeCustomersPage() {
   const [customers, setCustomers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [history, setHistory] = useState([]);
@@ -25,11 +30,17 @@ export default function CafeCustomersPage() {
   const [formError, setFormError] = useState("");
 
   async function refresh() {
-    setCustomers(await getCustomers({ search }));
+    const result = await getCustomers({ search, page, pageSize: PAGE_SIZE });
+    setCustomers(result.items);
+    setTotal(result.total);
   }
 
   useEffect(() => {
     refresh();
+  }, [search, page]);
+
+  useEffect(() => {
+    setPage(1);
   }, [search]);
 
   async function openCustomer(customer) {
@@ -177,6 +188,8 @@ export default function CafeCustomersPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
       </div>
 
       {selected && (

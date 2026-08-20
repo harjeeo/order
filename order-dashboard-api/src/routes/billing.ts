@@ -14,12 +14,22 @@ billingRouter.get("/billable-orders", async (req, res) => {
 });
 
 billingRouter.get("/invoices", async (req, res) => {
-  const invoices = await prisma.invoice.findMany({
-    where: { tenantId: req.user!.tenantId! },
-    orderBy: { createdAt: "desc" },
-    include: { order: true },
-  });
-  res.json(invoices);
+  const tenantId = req.user!.tenantId!;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+
+  const [items, total] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      include: { order: true },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.invoice.count({ where: { tenantId } }),
+  ]);
+
+  res.json({ items, total, page, pageSize });
 });
 
 // See orders.ts's createOrderWithNumber for why this isn't an in-memory counter.

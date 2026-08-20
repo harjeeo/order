@@ -11,6 +11,9 @@ import {
 } from "hugeicons-react";
 import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
+import Pagination from "../components/Pagination";
+
+const INVOICE_PAGE_SIZE = 10;
 
 const METHODS = [
   { key: "cash", label: "Cash", icon: Coins01Icon },
@@ -30,6 +33,8 @@ function formatTime(iso) {
 export default function CafeBillingPage() {
   const [orders, setOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [invoicePage, setInvoicePage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
 
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -41,12 +46,14 @@ export default function CafeBillingPage() {
 
   async function refresh() {
     setOrders(await getBillableOrders());
-    setInvoices(await getInvoices());
+    const result = await getInvoices({ page: invoicePage, pageSize: INVOICE_PAGE_SIZE });
+    setInvoices(result.items);
+    setInvoiceTotal(result.total);
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [invoicePage]);
 
   useEffect(() => {
     if (!toast) return;
@@ -234,6 +241,8 @@ export default function CafeBillingPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={invoicePage} pageSize={INVOICE_PAGE_SIZE} total={invoiceTotal} onPageChange={setInvoicePage} />
       </div>
 
       {selected && breakdown && (

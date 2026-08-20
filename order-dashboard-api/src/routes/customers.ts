@@ -7,22 +7,37 @@ customersRouter.use(requireAuth, requireTenant);
 
 customersRouter.get("/", async (req, res) => {
   const { search = "" } = req.query as { search?: string };
-  const customers = await prisma.customer.findMany({
-    where: {
-      tenantId: req.user!.tenantId!,
-      OR: [{ name: { contains: search, mode: "insensitive" } }, { phone: { contains: search } }],
-    },
-    include: { orders: true },
-  });
-  res.json(
-    customers.map((c) => ({
+  const tenantId = req.user!.tenantId!;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+  const where = {
+    tenantId,
+    OR: [{ name: { contains: search, mode: "insensitive" as const } }, { phone: { contains: search } }],
+  };
+
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      include: { orders: true },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.customer.count({ where }),
+  ]);
+
+  res.json({
+    items: customers.map((c) => ({
       ...c,
       totalOrders: c.orders.length,
       totalSpent: c.orders.reduce((s, o) => s + o.amount, 0),
       lastOrderAt: c.orders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.createdAt ?? null,
       orders: undefined,
-    }))
-  );
+    })),
+    total,
+    page,
+    pageSize,
+  });
 });
 
 customersRouter.get("/:id/orders", async (req, res) => {

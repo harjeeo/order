@@ -177,8 +177,8 @@ export async function mergeTables(sourceTableIds: string[], targetTableId: strin
 }
 
 export async function getCustomersList({ search = "" }: { search?: string } = {}) {
-  const customers = await get(`/customers${qs({ search })}`);
-  return customers.map((c: any) => ({ _id: c.id, name: c.name, phone: c.phone }));
+  const result = await get(`/customers${qs({ search, pageSize: "100" })}`);
+  return result.items.map((c: any) => ({ _id: c.id, name: c.name, phone: c.phone }));
 }
 
 // Simulates submitting an order to the backend (KOT/bill/hold/save/payment).
@@ -240,11 +240,23 @@ export async function reprintKot(_kotId: string) {
 
 // --- Orders ---------------------------------------------------------------
 
-export async function getOrders({ search = "", status = "all", orderType = "all" }: { search?: string; status?: string; orderType?: string } = {}) {
-  const orders = await get(
-    `/orders${qs({ search, status: status !== "all" ? status : undefined, orderType: orderType !== "all" ? toBackendOrderType(orderType) : undefined })}`
+export async function getOrders({
+  search = "",
+  status = "all",
+  orderType = "all",
+  page = 1,
+  pageSize = 20,
+}: { search?: string; status?: string; orderType?: string; page?: number; pageSize?: number } = {}) {
+  const result = await get(
+    `/orders${qs({
+      search,
+      status: status !== "all" ? status : undefined,
+      orderType: orderType !== "all" ? toBackendOrderType(orderType) : undefined,
+      page: String(page),
+      pageSize: String(pageSize),
+    })}`
   );
-  return orders.map(mapOrder);
+  return { items: result.items.map(mapOrder), total: result.total, page: result.page, pageSize: result.pageSize };
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
@@ -306,9 +318,9 @@ export async function completePayment(orderId: string, payload: any) {
   return mapInvoice(invoice);
 }
 
-export async function getInvoices() {
-  const invoices = await get("/billing/invoices");
-  return invoices.map(mapInvoice);
+export async function getInvoices({ page = 1, pageSize = 20 }: { page?: number; pageSize?: number } = {}) {
+  const result = await get(`/billing/invoices${qs({ page: String(page), pageSize: String(pageSize) })}`);
+  return { items: result.items.map(mapInvoice), total: result.total, page: result.page, pageSize: result.pageSize };
 }
 
 export async function reprintInvoice(_invoiceId: string) {
@@ -339,9 +351,13 @@ function mapCustomer(c: any) {
   };
 }
 
-export async function getCustomers({ search = "" }: { search?: string } = {}) {
-  const customers = await get(`/customers${qs({ search })}`);
-  return customers.map(mapCustomer);
+export async function getCustomers({
+  search = "",
+  page = 1,
+  pageSize = 20,
+}: { search?: string; page?: number; pageSize?: number } = {}) {
+  const result = await get(`/customers${qs({ search, page: String(page), pageSize: String(pageSize) })}`);
+  return { items: result.items.map(mapCustomer), total: result.total, page: result.page, pageSize: result.pageSize };
 }
 
 export async function getCustomerOrderHistory(customerId: string) {
