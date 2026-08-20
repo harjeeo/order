@@ -23,12 +23,19 @@ import SuperAdminDashboardPage from "./pages/SuperAdminDashboardPage";
 import SuperAdminTenantsPage from "./pages/SuperAdminTenantsPage";
 import SuperAdminReportsPage from "./pages/SuperAdminReportsPage";
 import SuperAdminSettingsPage from "./pages/SuperAdminSettingsPage";
+import LoginPage from "./pages/LoginPage";
+import RequireAuth from "./components/RequireAuth";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/super-admin" replace /> },
+  { path: "/login", element: <LoginPage /> },
   {
     path: "/super-admin",
-    element: <SuperAdminLayout onLogout={() => console.log("logout")} />,
+    element: (
+      <RequireAuth role="super-admin">
+        <SuperAdminLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <SuperAdminDashboardPage /> },
       { path: "tenants", element: <SuperAdminTenantsPage /> },
@@ -38,7 +45,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/cafe",
-    element: <CafeLayout onLogout={() => console.log("logout")} />,
+    element: (
+      <RequireAuth role="cafe">
+        <CafeLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <CafeDashboardPage /> },
       { path: "pos", element: <CafePosPage /> },

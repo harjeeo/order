@@ -1,4 +1,6 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import ThemeToggle from "../components/ThemeToggle";
+import { logout } from "../lib/useAuth";
 import {
   RestaurantIcon,
   Home01Icon,
@@ -53,9 +55,14 @@ function CafeLink({ to, label, icon: Icon, end = false }) {
   );
 }
 
-// Pass your own logout handler (clear session, redirect, etc.) — this
-// component has no auth/session code of its own.
-export default function CafeLayout({ onLogout }) {
+export default function CafeLayout() {
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-(--color-canvas) text-(--color-text)">
       <aside className="flex h-full w-60 shrink-0 flex-col border-r border-(--color-border) bg-(--color-sidebar) px-3 py-3">
@@ -73,14 +80,17 @@ export default function CafeLayout({ onLogout }) {
           <CafeLink to="/cafe/settings" label="Settings" icon={Settings02Icon} />
         </nav>
 
-        <button
-          type="button"
-          onClick={onLogout}
-          className="mt-auto flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
-        >
-          <Logout01Icon size={16} strokeWidth={1.8} />
-          <span>Logout</span>
-        </button>
+        <div className="mt-auto flex flex-col gap-0.5">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
+          >
+            <Logout01Icon size={16} strokeWidth={1.8} />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto">

@@ -22,11 +22,18 @@ import CafeStaffPage from "./pages/CafeStaffPage";
 import CafeExpensesPage from "./pages/CafeExpensesPage";
 import CafeReportsPage from "./pages/CafeReportsPage";
 import CafeSettingsPage from "./pages/CafeSettingsPage";
+import LoginPage from "./pages/LoginPage";
+import RequireAuth from "./components/RequireAuth";
 
 const router = createBrowserRouter([
+  { path: "/login", element: <LoginPage /> },
   {
     path: "/super-admin",
-    element: <SuperAdminLayout onLogout={() => console.log("logout")} />,
+    element: (
+      <RequireAuth role="super-admin">
+        <SuperAdminLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <SuperAdminDashboardPage /> },
       { path: "tenants", element: <SuperAdminTenantsPage /> },
@@ -36,7 +43,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/cafe",
-    element: <CafeLayout onLogout={() => console.log("logout")} />,
+    element: (
+      <RequireAuth role="cafe">
+        <CafeLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <CafeDashboardPage /> },
       { path: "pos", element: <CafePosPage /> },
