@@ -3,6 +3,7 @@ import { PlusSignIcon, Edit02Icon, Delete02Icon, Cancel01Icon } from "hugeicons-
 import {
   getMenuCategories,
   addMenuCategory,
+  removeMenuCategory,
   getMenuItems,
   createMenuItem,
   updateMenuItem,
@@ -39,6 +40,7 @@ export default function CafeMenuPage() {
 
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(null);
+  const [formError, setFormError] = useState("");
 
   async function refreshCategories() {
     setCategories(await getMenuCategories());
@@ -63,19 +65,29 @@ export default function CafeMenuPage() {
     refreshCategories();
   }
 
+  async function handleDeleteCategory(name) {
+    await removeMenuCategory(name);
+    if (activeCategory === name) setActiveCategory("All");
+    refreshCategories();
+    refreshItems();
+  }
+
   function startCreate() {
     setEditingId("new");
+    setFormError("");
     setForm({ ...emptyForm(), category: categories.find((c) => c !== "All") ?? "" });
   }
 
   function startEdit(item) {
     setEditingId(item._id);
+    setFormError("");
     setForm({ ...item, price: String(item.price) });
   }
 
   function cancelEdit() {
     setEditingId(null);
     setForm(null);
+    setFormError("");
   }
 
   function handleImageUpload(e) {
@@ -117,7 +129,15 @@ export default function CafeMenuPage() {
   }
 
   async function handleSave() {
-    if (!form.name.trim() || !form.category) return;
+    if (!form.name.trim()) {
+      setFormError("Item name is required.");
+      return;
+    }
+    if (!form.category) {
+      setFormError("Add a category first, then pick it here.");
+      return;
+    }
+    setFormError("");
     const payload = {
       name: form.name.trim(),
       category: form.category,
@@ -132,13 +152,17 @@ export default function CafeMenuPage() {
         .filter((a) => a.name.trim())
         .map((a) => ({ name: a.name.trim(), price: Number(a.price) || 0 })),
     };
-    if (editingId === "new") {
-      await createMenuItem(payload);
-    } else {
-      await updateMenuItem(editingId, payload);
+    try {
+      if (editingId === "new") {
+        await createMenuItem(payload);
+      } else {
+        await updateMenuItem(editingId, payload);
+      }
+      cancelEdit();
+      refreshItems();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not save item");
     }
-    cancelEdit();
-    refreshItems();
   }
 
   async function handleDelete(item) {
@@ -172,18 +196,30 @@ export default function CafeMenuPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {categories.map((c) => (
-            <button
+            <span
               key={c}
-              type="button"
-              onClick={() => setActiveCategory(c)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1 rounded-full pl-3 pr-1.5 py-1 text-xs font-medium transition-colors ${
                 activeCategory === c
                   ? "bg-(--color-accent) text-white"
                   : "bg-black/5 text-(--color-text-muted) hover:bg-black/10 dark:bg-white/10"
               }`}
             >
-              {c}
-            </button>
+              <button type="button" onClick={() => setActiveCategory(c)}>
+                {c}
+              </button>
+              {c !== "All" && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(c)}
+                  title={`Delete ${c}`}
+                  className={`flex h-4 w-4 items-center justify-center rounded-full ${
+                    activeCategory === c ? "hover:bg-white/20" : "hover:bg-black/10 dark:hover:bg-white/20"
+                  }`}
+                >
+                  <Cancel01Icon size={10} strokeWidth={2} />
+                </button>
+              )}
+            </span>
           ))}
           <div className="flex items-center gap-1">
             <input
@@ -428,6 +464,8 @@ export default function CafeMenuPage() {
               ))}
             </div>
           </div>
+
+          {formError && <div className="mt-3 text-xs text-red-500">{formError}</div>}
 
           <button
             type="button"

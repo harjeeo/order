@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Search01Icon, PlusSignIcon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon } from "hugeicons-react";
-import { getCustomers, getCustomerOrderHistory, createCustomer, deleteCustomer } from "../lib/api";
+import { Search01Icon, PlusSignIcon, Edit02Icon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon } from "hugeicons-react";
+import { getCustomers, getCustomerOrderHistory, createCustomer, updateCustomer, deleteCustomer } from "../lib/api";
 import Avatar from "../components/Avatar";
 
 function emptyForm() {
@@ -20,8 +20,9 @@ export default function CafeCustomersPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [history, setHistory] = useState([]);
-  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null); // "new" | customerId | null
   const [form, setForm] = useState(emptyForm());
+  const [formError, setFormError] = useState("");
 
   async function refresh() {
     setCustomers(await getCustomers({ search }));
@@ -36,12 +37,41 @@ export default function CafeCustomersPage() {
     setHistory(await getCustomerOrderHistory(customer._id));
   }
 
-  async function handleCreate() {
-    if (!form.name.trim()) return;
-    await createCustomer(form);
+  function startCreate() {
+    setEditingId("new");
+    setFormError("");
     setForm(emptyForm());
-    setShowForm(false);
-    refresh();
+  }
+
+  function startEdit(customer) {
+    setEditingId(customer._id);
+    setFormError("");
+    setForm({ name: customer.name, phone: customer.phone ?? "", email: customer.email ?? "", address: customer.address ?? "" });
+  }
+
+  function closeForm() {
+    setEditingId(null);
+    setFormError("");
+  }
+
+  async function handleSaveCustomer() {
+    if (!form.name.trim()) {
+      setFormError("Name is required.");
+      return;
+    }
+    setFormError("");
+    try {
+      if (editingId === "new") {
+        await createCustomer(form);
+      } else {
+        const updated = await updateCustomer(editingId, form);
+        if (selected?._id === editingId) setSelected((s) => ({ ...s, ...updated }));
+      }
+      closeForm();
+      refresh();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not save customer");
+    }
   }
 
   async function handleDelete(customer) {
@@ -60,7 +90,7 @@ export default function CafeCustomersPage() {
           </div>
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={startCreate}
             className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
           >
             <PlusSignIcon size={14} strokeWidth={1.8} />
@@ -112,16 +142,28 @@ export default function CafeCustomersPage() {
                   <td className="px-3 py-2 tabular-nums">{formatCurrency(c.totalSpent)}</td>
                   <td className="px-3 py-2 text-(--color-text-muted)">{formatDate(c.lastOrderAt)}</td>
                   <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(c);
-                      }}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
-                    >
-                      <Delete02Icon size={14} strokeWidth={1.8} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEdit(c);
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                      >
+                        <Edit02Icon size={14} strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(c);
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                      >
+                        <Delete02Icon size={14} strokeWidth={1.8} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -147,13 +189,22 @@ export default function CafeCustomersPage() {
                 <div className="text-xs text-(--color-text-muted)">{selected.totalOrders} orders</div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
-            >
-              <Cancel01Icon size={16} strokeWidth={1.8} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => startEdit(selected)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
+                <Edit02Icon size={16} strokeWidth={1.8} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
+                <Cancel01Icon size={16} strokeWidth={1.8} />
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 space-y-1.5 text-sm text-(--color-text-muted)">
@@ -193,17 +244,17 @@ export default function CafeCustomersPage() {
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4" onClick={() => setShowForm(false)}>
+      {editingId && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4" onClick={closeForm}>
           <div
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Add Customer</h2>
+              <h2 className="text-sm font-semibold">{editingId === "new" ? "Add Customer" : "Edit Customer"}</h2>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={closeForm}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
               >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
@@ -235,12 +286,13 @@ export default function CafeCustomersPage() {
                 className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
             </div>
+            {formError && <div className="mt-2 text-xs text-red-500">{formError}</div>}
             <button
               type="button"
-              onClick={handleCreate}
+              onClick={handleSaveCustomer}
               className="mt-4 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
             >
-              Add Customer
+              {editingId === "new" ? "Add Customer" : "Save Changes"}
             </button>
           </div>
         </div>
