@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { sendEmail } from "../lib/email";
 
 export const platformSettingsRouter = Router();
 platformSettingsRouter.use(requireAuth, requireRole("SUPER_ADMIN"));
@@ -19,6 +21,25 @@ platformSettingsRouter.patch("/", async (req, res) => {
   const current = await getOrCreate();
   const updated = await prisma.platformSettings.update({ where: { id: current.id }, data: req.body });
   res.json(updated);
+});
+
+const testEmailSchema = z.object({ to: z.string().email() });
+
+// Sends a real email through whichever provider is currently configured,
+// so a Super Admin can verify freshly-pasted API keys work before relying
+// on automatic credential emails.
+platformSettingsRouter.post("/email/test", async (req, res) => {
+  const parsed = testEmailSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const result = await sendEmail({
+    to: parsed.data.to,
+    subject: "Order Dashboard — test email",
+    html: "<p>This is a test email from your Order Dashboard platform settings. If you're reading this, your email provider is configured correctly.</p>",
+  });
+
+  if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test email", provider: result.provider });
+  res.json({ ok: true, provider: result.provider });
 });
 
 // Monthly buckets for the last `months` months (oldest first), each with

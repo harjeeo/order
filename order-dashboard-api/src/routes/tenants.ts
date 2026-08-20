@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireRole, signToken } from "../middleware/auth";
+import { sendEmail, credentialsEmailHtml } from "../lib/email";
 
 function generateTempPassword() {
   // 10 random chars, easy to read/type out loud to a client over the phone.
@@ -156,7 +157,25 @@ tenantsRouter.post("/", async (req, res) => {
     },
   });
 
-  res.status(201).json({ ...tenant, staffLogin: { email: parsed.data.email, tempPassword } });
+  // Best-effort: if an email provider is configured, send the credentials
+  // straight to the owner instead of making the Super Admin copy/paste
+  // them manually. Never blocks tenant creation on email failure.
+  const emailResult = await sendEmail({
+    to: parsed.data.email,
+    subject: `Your ${parsed.data.name} login is ready`,
+    html: credentialsEmailHtml({
+      cafeName: parsed.data.name,
+      loginPath: "/login/cafe",
+      email: parsed.data.email,
+      tempPassword,
+    }),
+  });
+
+  res.status(201).json({
+    ...tenant,
+    staffLogin: { email: parsed.data.email, tempPassword },
+    emailSent: emailResult.ok,
+  });
 });
 
 // Resets the tenant's original ADMIN login (the one created alongside the
@@ -174,7 +193,19 @@ tenantsRouter.post("/:id/reset-password", async (req, res) => {
     data: { passwordHash: await bcrypt.hash(tempPassword, 10) },
   });
 
-  res.json({ email: admin.email, tempPassword });
+  const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
+  const emailResult = await sendEmail({
+    to: admin.email,
+    subject: `Your ${tenant?.name ?? "cafe"} login was reset`,
+    html: credentialsEmailHtml({
+      cafeName: tenant?.name ?? "your cafe",
+      loginPath: "/login/cafe",
+      email: admin.email,
+      tempPassword,
+    }),
+  });
+
+  res.json({ email: admin.email, tempPassword, emailSent: emailResult.ok });
 });
 
 // Issues a token for the tenant's ADMIN login so the Super Admin can view

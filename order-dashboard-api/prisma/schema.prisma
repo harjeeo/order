@@ -58,6 +58,12 @@ model PlatformSettings {
   planPricing     Json    @default("{\"Free\":0,\"Basic\":999,\"Pro\":2499}")
   trialDays       Int     @default(14)
   allowSelfSignup Boolean @default(true)
+
+  // Pluggable transactional-email config (client/staff credential emails).
+  // `provider` picks which nested block is active; adding a new provider
+  // later is just a new key here plus a case in src/lib/email.ts — no
+  // migration needed since it's JSON.
+  emailSettings Json @default("{\"provider\":\"none\",\"fromName\":\"Order Dashboard\",\"fromEmail\":\"\",\"mailjet\":{\"apiKey\":\"\",\"apiSecret\":\"\"},\"brevo\":{\"apiKey\":\"\"}}")
 }
 
 // --- Users / staff / roles ------------------------------------------------

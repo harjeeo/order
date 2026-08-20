@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckmarkCircle02Icon, SquareLock02Icon } from "hugeicons-react";
-import { getPlatformSettings, updatePlatformSettings, changePassword, TENANT_PLANS } from "../lib/api";
+import { CheckmarkCircle02Icon, SquareLock02Icon, MailSend02Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
+import { getPlatformSettings, updatePlatformSettings, changePassword, sendTestEmail, TENANT_PLANS, EMAIL_PROVIDERS } from "../lib/api";
 
 const inputClass =
   "rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)";
@@ -75,7 +75,45 @@ export default function SuperAdminSettingsPage() {
     }
   }
 
+  const [showSecret, setShowSecret] = useState({});
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailStatus, setTestEmailStatus] = useState(null); // { ok: boolean, message: string } | null
+  const [testingEmail, setTestingEmail] = useState(false);
+
+  function setEmailField(field, value) {
+    setForm((f) => ({ ...f, emailSettings: { ...f.emailSettings, [field]: value } }));
+  }
+
+  function setEmailProviderField(provider, field, value) {
+    setForm((f) => ({
+      ...f,
+      emailSettings: {
+        ...f.emailSettings,
+        [provider]: { ...f.emailSettings[provider], [field]: value },
+      },
+    }));
+  }
+
+  async function handleSendTestEmail() {
+    setTestEmailStatus(null);
+    if (!testEmailTo.trim()) {
+      setTestEmailStatus({ ok: false, message: "Enter an email address to send the test to." });
+      return;
+    }
+    setTestingEmail(true);
+    try {
+      await sendTestEmail(testEmailTo.trim());
+      setTestEmailStatus({ ok: true, message: `Test email sent to ${testEmailTo.trim()}.` });
+    } catch (err) {
+      setTestEmailStatus({ ok: false, message: err instanceof Error ? err.message : "Could not send test email" });
+    } finally {
+      setTestingEmail(false);
+    }
+  }
+
   if (!form) return null;
+
+  const activeProvider = EMAIL_PROVIDERS.find((p) => p.key === form.emailSettings?.provider) ?? EMAIL_PROVIDERS[0];
 
   return (
     <div className="px-10 py-8">
@@ -135,6 +173,81 @@ export default function SuperAdminSettingsPage() {
           server rejects new sign-ups until this is turned back on.
         </p>
 
+        <div className="border-t border-(--color-border) pt-6">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+            <MailSend02Icon size={15} strokeWidth={1.8} />
+            Email / API
+          </h2>
+          <p className="mt-1 text-xs text-(--color-text-muted)">
+            Automatically email a new client or staff member's login credentials instead of copying and sending them
+            manually. Pick a provider, add its API key, and save.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <Field label="Provider">
+              <select
+                value={form.emailSettings?.provider ?? "none"}
+                onChange={(e) => setEmailField("provider", e.target.value)}
+                className={`${inputClass} w-56`}
+              >
+                {EMAIL_PROVIDERS.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {activeProvider.key !== "none" && (
+              <>
+                <div className="flex gap-3">
+                  <Field label="From Name">
+                    <input
+                      value={form.emailSettings?.fromName ?? ""}
+                      onChange={(e) => setEmailField("fromName", e.target.value)}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="From Email">
+                    <input
+                      type="email"
+                      value={form.emailSettings?.fromEmail ?? ""}
+                      onChange={(e) => setEmailField("fromEmail", e.target.value)}
+                      placeholder="noreply@yourdomain.com"
+                      className={inputClass}
+                    />
+                  </Field>
+                </div>
+
+                {activeProvider.fields.map((f) => {
+                  const secretId = `${activeProvider.key}.${f.key}`;
+                  const revealed = !!showSecret[secretId];
+                  return (
+                    <Field key={f.key} label={`${activeProvider.label} ${f.label}`}>
+                      <div className="relative">
+                        <input
+                          type={revealed ? "text" : "password"}
+                          value={form.emailSettings?.[activeProvider.key]?.[f.key] ?? ""}
+                          onChange={(e) => setEmailProviderField(activeProvider.key, f.key, e.target.value)}
+                          placeholder="Paste API key here"
+                          className={`${inputClass} w-full pr-9`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSecret((s) => ({ ...s, [secretId]: !s[secretId] }))}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
+                        >
+                          {revealed ? <ViewOffIcon size={15} strokeWidth={1.8} /> : <ViewIcon size={15} strokeWidth={1.8} />}
+                        </button>
+                      </div>
+                    </Field>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center gap-3 pt-2">
           <button
             type="button"
@@ -151,7 +264,39 @@ export default function SuperAdminSettingsPage() {
           )}
         </div>
 
-        <div className="mt-8 border-t border-(--color-border) pt-6">
+        {activeProvider.key !== "none" && (
+          <div className="rounded-lg border border-(--color-border) p-3">
+            <div className="text-xs font-medium text-(--color-text-muted)">Send a test email</div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="email"
+                value={testEmailTo}
+                onChange={(e) => setTestEmailTo(e.target.value)}
+                placeholder="you@example.com"
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                type="button"
+                onClick={handleSendTestEmail}
+                disabled={testingEmail}
+                className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+              >
+                <MailSend02Icon size={14} strokeWidth={1.8} />
+                {testingEmail ? "Sending…" : "Send Test"}
+              </button>
+            </div>
+            {testEmailStatus && (
+              <div className={`mt-2 text-xs ${testEmailStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                {testEmailStatus.message}
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-(--color-text-muted)">
+              Save your API key above first — the test uses whatever is currently saved, not the unsaved form.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-2 border-t border-(--color-border) pt-6">
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             <SquareLock02Icon size={15} strokeWidth={1.8} />
             My Account

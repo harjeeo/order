@@ -11,6 +11,7 @@ import {
   SquareLock02Icon,
   Download04Icon,
   UserSwitchIcon,
+  MailSend02Icon,
 } from "hugeicons-react";
 import {
   getTenants,
@@ -131,7 +132,7 @@ export default function SuperAdminTenantsPage() {
       const tenant = await createTenant(form);
       setForm(emptyForm());
       setShowForm(false);
-      setNewCredentials(tenant.staffLogin);
+      setNewCredentials({ ...tenant.staffLogin, emailSent: tenant.emailSent });
       refresh();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not create client");
@@ -542,8 +543,19 @@ export default function SuperAdminTenantsPage() {
               <h2 className="text-sm font-semibold">Client Login Credentials</h2>
             </div>
             <p className="mt-3 text-xs text-(--color-text-muted)">
-              Share these with the client — this password is shown only once and can't be retrieved later.
+              This password is shown only once and can't be retrieved later.
             </p>
+            {newCredentials.emailSent ? (
+              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                <MailSend02Icon size={13} strokeWidth={1.8} />
+                Emailed to {newCredentials.email} automatically.
+              </div>
+            ) : (
+              <div className="mt-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-600 dark:text-amber-400">
+                Not emailed — configure an email provider in Settings &gt; Email / API to send this automatically
+                next time. Copy and share it manually for now.
+              </div>
+            )}
             <div className="mt-3 space-y-2 rounded-md border border-(--color-border) p-3 text-sm">
               <div>
                 <div className="text-xs text-(--color-text-muted)">Login URL</div>

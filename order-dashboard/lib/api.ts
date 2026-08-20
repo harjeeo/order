@@ -597,7 +597,7 @@ export async function exportTenantsCsv({ search = "", status = "all" }: { search
 
 export async function createTenant(data: any) {
   const tenant = await post("/tenants", data);
-  return { ...mapTenant(tenant), staffLogin: tenant.staffLogin };
+  return { ...mapTenant(tenant), staffLogin: tenant.staffLogin, emailSent: tenant.emailSent };
 }
 
 export async function updateTenant(tenantId: string, data: any) {
@@ -648,4 +648,30 @@ export async function getPlatformSettings() {
 
 export async function updatePlatformSettings(data: any) {
   return patch("/platform-settings", data);
+}
+
+// --- Email provider (transactional credential emails) ---------------------
+
+// Adding a new provider: add an entry here (with its field list) and a
+// matching case in order-dashboard-api/src/lib/email.ts — no other
+// frontend change needed, the Settings page renders fields from this list.
+export const EMAIL_PROVIDERS = [
+  { key: "none", label: "None (copy credentials manually)", fields: [] as { key: string; label: string }[] },
+  {
+    key: "mailjet",
+    label: "Mailjet",
+    fields: [
+      { key: "apiKey", label: "API Key" },
+      { key: "apiSecret", label: "Secret Key" },
+    ],
+  },
+  {
+    key: "brevo",
+    label: "Brevo",
+    fields: [{ key: "apiKey", label: "API Key" }],
+  },
+];
+
+export async function sendTestEmail(to: string) {
+  return post("/platform-settings/email/test", { to });
 }
