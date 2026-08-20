@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { RestaurantIcon, ShieldUserIcon, Store01Icon, Mail01Icon, LockPasswordIcon, ViewIcon, ViewOffIcon } from "hugeicons-react";
-import { login, homePathForRole, Role } from "../lib/useAuth";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { RestaurantIcon, Mail01Icon, LockPasswordIcon, ViewIcon, ViewOffIcon } from "hugeicons-react";
+import { login, homePathForRole } from "../lib/useAuth";
 
-export default function LoginPage() {
+export default function CafeLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
 
-  const [role, setRole] = useState<Role>("cafe");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,6 +24,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const session = await login(email.trim(), password);
+      if (session.role !== "cafe") {
+        setError("This account isn't a Cafe Staff account. Use the Super Admin login instead.");
+        return;
+      }
       navigate(from ?? homePathForRole(session.role), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -40,34 +43,11 @@ export default function LoginPage() {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-(--color-accent)/10 text-(--color-accent)">
             <RestaurantIcon size={20} strokeWidth={1.8} />
           </span>
-          <h1 className="mt-3 text-xl font-semibold">Order Dashboard</h1>
-          <p className="mt-1 text-sm text-(--color-text-muted)">Sign in to continue</p>
+          <h1 className="mt-3 text-xl font-semibold">Cafe POS</h1>
+          <p className="mt-1 text-sm text-(--color-text-muted)">Sign in to your cafe/restaurant dashboard</p>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-1 rounded-lg border border-(--color-border) p-1">
-          <button
-            type="button"
-            onClick={() => setRole("cafe")}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors ${
-              role === "cafe" ? "bg-(--color-accent) text-white" : "text-(--color-text-muted)"
-            }`}
-          >
-            <Store01Icon size={15} strokeWidth={1.8} />
-            Cafe Staff
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole("super-admin")}
-            className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors ${
-              role === "super-admin" ? "bg-(--color-accent) text-white" : "text-(--color-text-muted)"
-            }`}
-          >
-            <ShieldUserIcon size={15} strokeWidth={1.8} />
-            Super Admin
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
           <div className="relative">
             <Mail01Icon
               size={16}
@@ -112,13 +92,18 @@ export default function LoginPage() {
             disabled={loading}
             className="mt-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            {loading ? "Signing in…" : `Sign in as ${role === "super-admin" ? "Super Admin" : "Cafe Staff"}`}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
         <p className="mt-4 text-center text-xs text-(--color-text-muted)">
-          Demo logins — Super Admin: owner@orderdashboard.example, Cafe Staff: staff@tanvirscafe.example (password:
-          password123).
+          Demo login: staff@tanvirscafe.example / password123
+        </p>
+        <p className="mt-2 text-center text-xs text-(--color-text-muted)">
+          Platform owner?{" "}
+          <Link to="/login/super-admin" className="text-(--color-accent)">
+            Sign in here
+          </Link>
         </p>
       </div>
     </div>

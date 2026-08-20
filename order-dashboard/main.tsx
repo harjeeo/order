@@ -23,12 +23,14 @@ import SuperAdminDashboardPage from "./pages/SuperAdminDashboardPage";
 import SuperAdminTenantsPage from "./pages/SuperAdminTenantsPage";
 import SuperAdminReportsPage from "./pages/SuperAdminReportsPage";
 import SuperAdminSettingsPage from "./pages/SuperAdminSettingsPage";
-import LoginPage from "./pages/LoginPage";
+import SuperAdminLoginPage from "./pages/SuperAdminLoginPage";
+import CafeLoginPage from "./pages/CafeLoginPage";
 import RequireAuth from "./components/RequireAuth";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/super-admin" replace /> },
-  { path: "/login", element: <LoginPage /> },
+  { path: "/login/super-admin", element: <SuperAdminLoginPage /> },
+  { path: "/login/cafe", element: <CafeLoginPage /> },
   {
     path: "/super-admin",
     element: (

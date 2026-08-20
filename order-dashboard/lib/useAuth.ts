@@ -36,6 +36,10 @@ export function homePathForRole(role: Role) {
   return role === "super-admin" ? "/super-admin" : "/cafe";
 }
 
+export function loginPathForRole(role: Role) {
+  return role === "super-admin" ? "/login/super-admin" : "/login/cafe";
+}
+
 function backendRoleToAppRole(role: string): Role {
   return role === "SUPER_ADMIN" ? "super-admin" : "cafe";
 }

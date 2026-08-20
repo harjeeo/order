@@ -22,11 +22,13 @@ import CafeStaffPage from "./pages/CafeStaffPage";
 import CafeExpensesPage from "./pages/CafeExpensesPage";
 import CafeReportsPage from "./pages/CafeReportsPage";
 import CafeSettingsPage from "./pages/CafeSettingsPage";
-import LoginPage from "./pages/LoginPage";
+import SuperAdminLoginPage from "./pages/SuperAdminLoginPage";
+import CafeLoginPage from "./pages/CafeLoginPage";
 import RequireAuth from "./components/RequireAuth";
 
 const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
+  { path: "/login/super-admin", element: <SuperAdminLoginPage /> },
+  { path: "/login/cafe", element: <CafeLoginPage /> },
   {
     path: "/super-admin",
     element: (
