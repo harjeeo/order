@@ -1,0 +1,341 @@
+// Prisma schema for the Order Dashboard backend.
+// Mirrors the shapes used by the frontend's lib/mockApi.ts so swapping
+// the frontend from mock data to real API calls is a 1:1 mapping.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Platform / multi-tenancy --------------------------------------------
+
+enum TenantStatus {
+  active
+  suspended
+}
+
+enum TenantPlan {
+  Free
+  Basic
+  Pro
+}
+
+model Tenant {
+  id          String       @id @default(cuid())
+  name        String
+  ownerName   String
+  phone       String       @default("")
+  email       String       @default("")
+  address     String       @default("")
+  status      TenantStatus @default(active)
+  plan        TenantPlan   @default(Free)
+  planExpiry  DateTime?
+  createdAt   DateTime     @default(now())
+
+  users       User[]
+  categories  MenuCategory[]
+  menuItems   MenuItem[]
+  tables      Table[]
+  customers   Customer[]
+  orders      Order[]
+  invoices    Invoice[]
+  ingredients Ingredient[]
+  stockMoves  StockMovement[]
+  expenses    Expense[]
+  settings    Settings?
+}
+
+model PlatformSettings {
+  id              String  @id @default(cuid())
+  platformName    String  @default("Order Dashboard")
+  supportEmail    String  @default("")
+  billingEmail    String  @default("")
+  planPricing     Json    @default("{\"Free\":0,\"Basic\":999,\"Pro\":2499}")
+  trialDays       Int     @default(14)
+  allowSelfSignup Boolean @default(true)
+}
+
+// --- Users / staff / roles ------------------------------------------------
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  CASHIER
+  WAITER
+  KITCHEN_STAFF
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  phone        String   @default("")
+  active       Boolean  @default(true)
+  permissions  Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// --- Menu -------------------------------------------------------------
+
+model MenuCategory {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+
+  items MenuItem[]
+
+  @@unique([tenantId, name])
+}
+
+model MenuItem {
+  id         String       @id @default(cuid())
+  tenantId   String
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   MenuCategory @relation(fields: [categoryId], references: [id])
+  name       String
+  image      String       @default("🍽️")
+  price      Int
+  tax        Float        @default(5)
+  available  Boolean      @default(true)
+
+  variants MenuVariant[]
+  addons   MenuAddon[]
+
+  @@index([tenantId])
+}
+
+model MenuVariant {
+  id         String   @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  price      Int
+}
+
+model MenuAddon {
+  id         String   @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  price      Int
+}
+
+// --- Tables -------------------------------------------------------------
+
+enum TableStatus {
+  available
+  occupied
+  reserved
+  billing
+}
+
+model Table {
+  id       String      @id @default(cuid())
+  tenantId String
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  number   String
+  capacity Int
+  status   TableStatus @default(available)
+
+  orders Order[]
+
+  @@index([tenantId])
+}
+
+// --- Customers ------------------------------------------------------------
+
+model Customer {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  phone    String @default("")
+  email    String @default("")
+  address  String @default("")
+
+  orders Order[]
+
+  @@index([tenantId])
+}
+
+// --- Orders / KOT ---------------------------------------------------------
+
+enum OrderType {
+  dine_in
+  takeaway
+  delivery
+}
+
+enum OrderStatus {
+  pending
+  preparing
+  ready
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  refunded
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderNumber   String
+  orderType     OrderType
+  tableId       String?
+  table         Table?        @relation(fields: [tableId], references: [id])
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  customerName  String        @default("Walk-in Customer")
+  waiter        String        @default("")
+  status        OrderStatus   @default(pending)
+  paymentStatus PaymentStatus @default(unpaid)
+  amount        Int           @default(0)
+  notes         String        @default("")
+  createdAt     DateTime      @default(now())
+
+  items    OrderItem[]
+  invoices Invoice[]
+  kot      KitchenTicket?
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name      String
+  qty       Int
+  unitPrice Int     @default(0)
+  notes     String  @default("")
+}
+
+enum KotStatus {
+  new
+  preparing
+  ready
+  completed
+}
+
+model KitchenTicket {
+  id          String    @id @default(cuid())
+  tenantId    String
+  orderId     String    @unique
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderNumber String
+  status      KotStatus @default(new)
+  priority    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+// --- Billing ----------------------------------------------------------
+
+model Invoice {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoiceNumber        String
+  orderId              String
+  order                Order    @relation(fields: [orderId], references: [id])
+  customerName         String   @default("")
+  subtotal             Int
+  discountAmount       Int      @default(0)
+  serviceChargeAmount  Int      @default(0)
+  taxAmount            Int      @default(0)
+  roundOff             Float    @default(0)
+  total                Int
+  method               String
+  refunded             Boolean  @default(false)
+  createdAt            DateTime @default(now())
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+}
+
+// --- Inventory ------------------------------------------------------------
+
+model Ingredient {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  unit     String @default("kg")
+  stock    Float  @default(0)
+  minimum  Float  @default(0)
+
+  movements StockMovement[]
+
+  @@index([tenantId])
+}
+
+enum StockMovementType {
+  in
+  out
+  adjustment
+  wastage
+}
+
+model StockMovement {
+  id           String            @id @default(cuid())
+  tenantId     String
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient        @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  type         StockMovementType
+  qty          Float
+  note         String            @default("")
+  createdAt    DateTime          @default(now())
+
+  @@index([tenantId])
+}
+
+// --- Expenses ---------------------------------------------------------
+
+model Expense {
+  id       String   @id @default(cuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category String
+  amount   Int
+  date     DateTime
+  method   String
+  notes    String   @default("")
+
+  @@index([tenantId])
+}
+
+// --- Per-tenant settings (Restaurant profile, GST/Tax, Invoice, KOT, Printer, Payments) --
+
+model Settings {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  restaurant     Json @default("{}")
+  tax            Json @default("{}")
+  invoice        Json @default("{}")
+  kot            Json @default("{}")
+  printer        Json @default("{}")
+  paymentMethods Json @default("{}")
+}
