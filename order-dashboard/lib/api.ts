@@ -618,13 +618,28 @@ export async function deleteTenant(tenantId: string) {
   return del(`/tenants/${tenantId}`);
 }
 
-export async function getSuperAdminReports() {
-  const report = await get("/platform-settings/reports");
+export async function getSuperAdminReports({
+  expiringDays = 30,
+  months = 6,
+}: { expiringDays?: number; months?: number } = {}) {
+  const report = await get(`/platform-settings/reports${qs({ expiringDays: String(expiringDays), months: String(months) })}`);
   return {
     ...report,
     topTenants: report.topTenants.map(mapTenant),
     expiringPlans: report.expiringPlans.map(mapTenant),
   };
+}
+
+export async function exportSuperAdminReportCsv({
+  expiringDays = 30,
+  months = 6,
+}: { expiringDays?: number; months?: number } = {}) {
+  const res = await fetch(
+    `${BASE_URL}/api/platform-settings/reports/export${qs({ expiringDays: String(expiringDays), months: String(months) })}`,
+    { headers: { Authorization: `Bearer ${getToken()}` } }
+  );
+  if (!res.ok) throw new Error("Could not export report");
+  return res.blob();
 }
 
 export async function getPlatformSettings() {

@@ -74,6 +74,62 @@ authRouter.post("/register", authLimiter, async (req, res) => {
   });
 });
 
+const signupSchema = z.object({
+  cafeName: z.string().min(1),
+  ownerName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+  phone: z.string().optional(),
+});
+
+// Public self sign-up: a cafe owner creates their own tenant + admin
+// login, gated by PlatformSettings.allowSelfSignup (Super Admin > Settings).
+// Mirrors the tenant + starter-admin creation in tenants.ts, except the
+// owner picks their own password instead of getting a temp one.
+authRouter.post("/signup", authLimiter, async (req, res) => {
+  const settings = await prisma.platformSettings.findFirst();
+  if (settings && !settings.allowSelfSignup) {
+    return res.status(403).json({ error: "Self sign-up is currently disabled. Contact us to get started." });
+  }
+
+  const parsed = signupSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  const { cafeName, ownerName, email, password, phone } = parsed.data;
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) return res.status(409).json({ error: "That email already has a login on this platform" });
+
+  const trialDays = settings?.trialDays ?? 14;
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: cafeName,
+      ownerName,
+      email,
+      phone: phone ?? "",
+      planExpiry: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000),
+    },
+  });
+  await prisma.settings.create({ data: { tenantId: tenant.id } });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      name: ownerName,
+      email,
+      passwordHash,
+      role: "ADMIN",
+      permissions: { POS: true, Orders: true, Menu: true, Inventory: true, Reports: true, Settings: true },
+    },
+  });
+
+  const token = signToken({ id: user.id, role: user.role, tenantId: user.tenantId, email: user.email });
+  res.status(201).json({
+    token,
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
+  });
+});
+
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(404).json({ error: "User not found" });

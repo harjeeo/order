@@ -109,3 +109,26 @@ export async function login(email: string, password: string): Promise<Session> {
   setSession(session);
   return session;
 }
+
+// Public self sign-up (creates a new tenant + admin login, gated server-side
+// by PlatformSettings.allowSelfSignup). Logs the new owner straight in.
+export async function signup(data: { cafeName: string; ownerName: string; email: string; password: string; phone?: string }): Promise<Session> {
+  const base = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+  const res = await fetch(`${base}/api/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const responseData = await res.json();
+  if (!res.ok) throw new Error(responseData.error ?? "Sign up failed");
+
+  const session: Session = {
+    name: responseData.user.name,
+    email: responseData.user.email,
+    role: backendRoleToAppRole(responseData.user.role),
+    token: responseData.token,
+    tenantId: responseData.user.tenantId,
+  };
+  setSession(session);
+  return session;
+}

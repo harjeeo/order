@@ -100,6 +100,12 @@ export default function CafeLoginPage() {
           Demo login: staff@tanvirscafe.example / password123
         </p>
         <p className="mt-2 text-center text-xs text-(--color-text-muted)">
+          New cafe?{" "}
+          <Link to="/signup" className="text-(--color-accent)">
+            Create an account
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-xs text-(--color-text-muted)">
           Platform owner?{" "}
           <Link to="/login/super-admin" className="text-(--color-accent)">
             Sign in here
