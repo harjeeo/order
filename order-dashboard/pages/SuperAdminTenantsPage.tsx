@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search01Icon, PlusSignIcon, Cancel01Icon, Delete02Icon, PauseIcon, CheckmarkCircle02Icon, Copy01Icon, SquareLock02Icon } from "hugeicons-react";
-import { getTenants, createTenant, updateTenant, toggleTenantStatus, deleteTenant, TENANT_PLANS } from "../lib/api";
+import { getTenants, createTenant, updateTenant, toggleTenantStatus, deleteTenant, resetTenantPassword, TENANT_PLANS } from "../lib/api";
 
 function emptyForm() {
   return { name: "", ownerName: "", phone: "", email: "", address: "", plan: TENANT_PLANS[0] };
@@ -55,6 +55,11 @@ export default function SuperAdminTenantsPage() {
     navigator.clipboard.writeText(`Email: ${newCredentials.email}\nPassword: ${newCredentials.tempPassword}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleResetPassword(tenant) {
+    const creds = await resetTenantPassword(tenant._id);
+    setNewCredentials(creds);
   }
 
   async function handleToggleStatus(tenant) {
@@ -249,8 +254,17 @@ export default function SuperAdminTenantsPage() {
 
           <button
             type="button"
+            onClick={() => handleResetPassword(selected)}
+            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-(--color-border) py-2 text-sm font-medium"
+          >
+            <SquareLock02Icon size={15} strokeWidth={1.8} />
+            Reset Login Password
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleToggleStatus(selected)}
-            className={`mt-4 flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium text-white ${
+            className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium text-white ${
               selected.status === "active" ? "bg-red-500" : "bg-emerald-600"
             }`}
           >
@@ -351,7 +365,7 @@ export default function SuperAdminTenantsPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-accent)/10 text-(--color-accent)">
                 <SquareLock02Icon size={16} strokeWidth={1.8} />
               </span>
-              <h2 className="text-sm font-semibold">Client Login Created</h2>
+              <h2 className="text-sm font-semibold">Client Login Credentials</h2>
             </div>
             <p className="mt-3 text-xs text-(--color-text-muted)">
               Share these with the client — this password is shown only once and can't be retrieved later.

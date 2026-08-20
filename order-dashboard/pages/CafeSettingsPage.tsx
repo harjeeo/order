@@ -6,9 +6,10 @@ import {
   KitchenUtensilsIcon,
   PrinterIcon,
   CreditCardIcon,
+  SquareLock02Icon,
   CheckmarkCircle02Icon,
 } from "hugeicons-react";
-import { getSettings, updateSettings } from "../lib/api";
+import { getSettings, updateSettings, changePassword } from "../lib/api";
 
 const TABS = [
   { key: "restaurant", label: "Restaurant Profile", icon: Store01Icon },
@@ -17,6 +18,7 @@ const TABS = [
   { key: "kot", label: "KOT", icon: KitchenUtensilsIcon },
   { key: "printer", label: "Printer", icon: PrinterIcon },
   { key: "paymentMethods", label: "Payment Methods", icon: CreditCardIcon },
+  { key: "account", label: "Change Password", icon: SquareLock02Icon },
 ];
 
 function Field({ label, children }) {
@@ -66,7 +68,41 @@ export default function CafeSettingsPage() {
     setSaved(true);
   }
 
-  if (!settings || !draft) return null;
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
+  useEffect(() => {
+    if (!passwordSaved) return;
+    const t = setTimeout(() => setPasswordSaved(false), 2000);
+    return () => clearTimeout(t);
+  }, [passwordSaved]);
+
+  async function handleChangePassword() {
+    setPasswordError("");
+    if (!currentPassword || !newPassword) {
+      setPasswordError("Enter your current and new password.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation don't match.");
+      return;
+    }
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSaved(true);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Could not change password");
+    }
+  }
+
+  if (!settings) return null;
+  if (tab !== "account" && !draft) return null;
 
   return (
     <div className="flex h-full">
@@ -237,21 +273,68 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
-          <div className="mt-6 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white"
-            >
-              Save Changes
-            </button>
-            {saved && (
-              <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
-                Saved
-              </span>
-            )}
-          </div>
+          {tab === "account" && (
+            <div className="flex flex-col gap-3">
+              <Field label="Current Password">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="New Password">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Confirm New Password">
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              {passwordError && <div className="text-xs text-red-500">{passwordError}</div>}
+              <div className="mt-1 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleChangePassword}
+                  className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white"
+                >
+                  Update Password
+                </button>
+                {passwordSaved && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                    <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
+                    Password updated
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tab !== "account" && (
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSave}
+                className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white"
+              >
+                Save Changes
+              </button>
+              {saved && (
+                <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                  <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
+                  Saved
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

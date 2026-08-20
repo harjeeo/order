@@ -508,6 +508,10 @@ export async function updateSettings(section: string, data: any) {
   return (settings as any)[section];
 }
 
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return post("/auth/change-password", { currentPassword, newPassword });
+}
+
 // --- Super Admin: Tenant management -------------------------------------
 
 export const TENANT_PLANS = ["Free", "Basic", "Pro"];
@@ -547,6 +551,10 @@ export async function createTenant(data: any) {
 export async function updateTenant(tenantId: string, data: any) {
   const tenant = await patch(`/tenants/${tenantId}`, data);
   return mapTenant(tenant);
+}
+
+export async function resetTenantPassword(tenantId: string) {
+  return post(`/tenants/${tenantId}/reset-password`);
 }
 
 export async function toggleTenantStatus(tenantId: string) {

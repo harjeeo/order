@@ -86,6 +86,24 @@ tenantsRouter.post("/", async (req, res) => {
   res.status(201).json({ ...tenant, staffLogin: { email: parsed.data.email, tempPassword } });
 });
 
+// Resets the tenant's original ADMIN login (the one created alongside the
+// tenant) to a fresh temp password — for when a client is locked out.
+tenantsRouter.post("/:id/reset-password", async (req, res) => {
+  const admin = await prisma.user.findFirst({
+    where: { tenantId: req.params.id, role: "ADMIN" },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!admin) return res.status(404).json({ error: "No admin login found for this tenant" });
+
+  const tempPassword = generateTempPassword();
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { passwordHash: await bcrypt.hash(tempPassword, 10) },
+  });
+
+  res.json({ email: admin.email, tempPassword });
+});
+
 tenantsRouter.patch("/:id", async (req, res) => {
   const tenant = await prisma.tenant.update({ where: { id: req.params.id }, data: req.body });
   res.json(tenant);
