@@ -1,17 +1,28 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, signToken } from "../middleware/auth";
 
 export const authRouter = Router();
 
+// Blunt brute-force protection: 10 attempts per IP per 15 minutes across
+// login/register/change-password. Doesn't block on successful requests.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts. Try again in a few minutes." },
+});
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
 
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", authLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid email or password" });
 
@@ -39,7 +50,7 @@ const registerSchema = z.object({
 
 // Creates a staff account under an existing tenant. Super admin account
 // creation happens via the seed script, not a public endpoint.
-authRouter.post("/register", async (req, res) => {
+authRouter.post("/register", authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
 
@@ -74,7 +85,7 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(6, "New password must be at least 6 characters"),
 });
 
-authRouter.post("/change-password", requireAuth, async (req, res) => {
+authRouter.post("/change-password", authLimiter, requireAuth, async (req, res) => {
   const parsed = changePasswordSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
 
