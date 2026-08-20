@@ -954,3 +954,54 @@ export async function deleteTenant(tenantId) {
   if (idx > -1) SAMPLE_TENANTS.splice(idx, 1);
   return { ok: true };
 }
+
+export async function getSuperAdminReports() {
+  const revenueByPlan = TENANT_PLANS.map((plan) => ({
+    plan,
+    revenue: SAMPLE_TENANTS.filter((t) => t.plan === plan).reduce((s, t) => s + t.totalRevenue, 0),
+    count: SAMPLE_TENANTS.filter((t) => t.plan === plan).length,
+  }));
+
+  const statusCounts = {
+    active: SAMPLE_TENANTS.filter((t) => t.status === "active").length,
+    suspended: SAMPLE_TENANTS.filter((t) => t.status === "suspended").length,
+  };
+
+  const topTenants = [...SAMPLE_TENANTS].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
+
+  const expiringPlans = SAMPLE_TENANTS.filter((t) => {
+    const days = (new Date(t.planExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    return days <= 30;
+  }).sort((a, b) => new Date(a.planExpiry).getTime() - new Date(b.planExpiry).getTime());
+
+  return {
+    revenueByPlan,
+    statusCounts,
+    topTenants,
+    expiringPlans,
+    totalOrders: SAMPLE_TENANTS.reduce((s, t) => s + t.totalOrders, 0),
+    avgRevenuePerTenant: SAMPLE_TENANTS.length
+      ? Math.round(SAMPLE_TENANTS.reduce((s, t) => s + t.totalRevenue, 0) / SAMPLE_TENANTS.length)
+      : 0,
+  };
+}
+
+// --- Super Admin: Platform settings --------------------------------------
+
+const SAMPLE_PLATFORM_SETTINGS = {
+  platformName: "Order Dashboard",
+  supportEmail: "support@orderdashboard.example",
+  billingEmail: "billing@orderdashboard.example",
+  planPricing: { Free: 0, Basic: 999, Pro: 2499 },
+  trialDays: 14,
+  allowSelfSignup: true,
+};
+
+export async function getPlatformSettings() {
+  return JSON.parse(JSON.stringify(SAMPLE_PLATFORM_SETTINGS));
+}
+
+export async function updatePlatformSettings(data) {
+  Object.assign(SAMPLE_PLATFORM_SETTINGS, data);
+  return JSON.parse(JSON.stringify(SAMPLE_PLATFORM_SETTINGS));
+}
