@@ -184,6 +184,7 @@ export async function getCustomersList({ search = "" }: { search?: string } = {}
 // Simulates submitting an order to the backend (KOT/bill/hold/save/payment).
 export async function submitOrder(order: any) {
   const items = order.items.map((i: any) => ({
+    menuItemId: i.itemId,
     name: i.addons?.length ? `${i.name} (+${i.addons.map((a: any) => a.name).join(", ")})` : i.name,
     qty: i.qty,
     unitPrice: i.unitPrice + (i.addons ?? []).reduce((s: number, a: any) => s + a.price, 0),
@@ -390,6 +391,18 @@ export async function getStockLog() {
 export async function createIngredient(data: any) {
   const ingredient = await post("/inventory/ingredients", data);
   return { _id: ingredient.id, ...ingredient };
+}
+
+// --- Recipes ----------------------------------------------------------
+
+export async function getRecipe(menuItemId: string) {
+  const rows = await get(`/recipes/${menuItemId}`);
+  return rows.map((r: any) => ({ ingredientId: r.ingredientId, ingredientName: r.ingredientName, unit: r.unit, qty: r.qty }));
+}
+
+export async function saveRecipe(menuItemId: string, ingredients: { ingredientId: string; qty: number }[]) {
+  const rows = await request(`/recipes/${menuItemId}`, { method: "PUT", body: JSON.stringify({ ingredients }) });
+  return rows.map((r: any) => ({ ingredientId: r.ingredientId, ingredientName: r.ingredientName, unit: r.unit, qty: r.qty }));
 }
 
 // --- Staff & Roles --------------------------------------------------------

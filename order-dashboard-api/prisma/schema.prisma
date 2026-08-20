@@ -45,6 +45,7 @@ model Tenant {
   invoices    Invoice[]
   ingredients Ingredient[]
   stockMoves  StockMovement[]
+  recipes     RecipeIngredient[]
   expenses    Expense[]
   settings    Settings?
 }
@@ -113,6 +114,7 @@ model MenuItem {
 
   variants MenuVariant[]
   addons   MenuAddon[]
+  recipe   RecipeIngredient[]
 
   @@index([tenantId])
 }
@@ -220,13 +222,14 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  name      String
-  qty       Int
-  unitPrice Int     @default(0)
-  notes     String  @default("")
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String?
+  name       String
+  qty        Int
+  unitPrice  Int     @default(0)
+  notes      String  @default("")
 }
 
 enum KotStatus {
@@ -285,7 +288,26 @@ model Ingredient {
   minimum  Float  @default(0)
 
   movements StockMovement[]
+  recipeUses RecipeIngredient[]
 
+  @@index([tenantId])
+}
+
+// --- Recipes ----------------------------------------------------------
+
+// Links a menu item to the ingredients (and quantities) consumed to make
+// one unit of it. Used to auto-deduct stock when an order is placed.
+model RecipeIngredient {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  menuItemId   String
+  menuItem     MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  qty          Float
+
+  @@unique([menuItemId, ingredientId])
   @@index([tenantId])
 }
 
