@@ -48,6 +48,7 @@ model Tenant {
   recipes     RecipeIngredient[]
   expenses    Expense[]
   printLogs   PrintLog[]
+  shifts      Shift[]
   settings    Settings?
 }
 
@@ -79,17 +80,21 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  tenantId     String?
-  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         Role
-  phone        String   @default("")
-  active       Boolean  @default(true)
-  permissions  Json     @default("{}")
-  createdAt    DateTime @default(now())
+  id               String    @id @default(cuid())
+  tenantId         String?
+  tenant           Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  email            String    @unique
+  passwordHash     String
+  role             Role
+  phone            String    @default("")
+  active           Boolean   @default(true)
+  permissions      Json      @default("{}")
+  monthlySalary    Int       @default(0)
+  lastSalaryPaidAt DateTime?
+  createdAt        DateTime  @default(now())
+
+  shifts Shift[]
 
   @@index([tenantId])
 }
@@ -355,6 +360,21 @@ model Expense {
   notes    String   @default("")
 
   @@index([tenantId])
+}
+
+// --- Staff shifts / attendance -----------------------------------------
+
+model Shift {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clockIn   DateTime  @default(now())
+  clockOut  DateTime?
+
+  @@index([tenantId])
+  @@index([userId])
 }
 
 // --- Print / reprint audit trail -------------------------------------

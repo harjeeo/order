@@ -9,8 +9,9 @@ import {
   ShoppingBag01Icon,
   TruckDeliveryIcon,
   Alert02Icon,
+  Clock01Icon,
 } from "hugeicons-react";
-import { getCafeDashboardStats } from "../lib/api";
+import { getCafeDashboardStats, getActiveShift, clockIn, clockOut } from "../lib/api";
 
 const CARDS = [
   { key: "todaySales", label: "Today's Sales", icon: MoneyBag02Icon, format: "currency" },
@@ -30,6 +31,67 @@ function formatCurrency(n) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
+function formatShiftDuration(clockInAt) {
+  const ms = Date.now() - new Date(clockInAt).getTime();
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  return `${hours}h ${minutes}m`;
+}
+
+function ClockWidget() {
+  const [activeShift, setActiveShift] = useState(undefined);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    getActiveShift().then(setActiveShift);
+  }, []);
+
+  useEffect(() => {
+    if (!activeShift) return;
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, [activeShift]);
+
+  async function handleClockIn() {
+    setActiveShift(await clockIn());
+  }
+
+  async function handleClockOut() {
+    await clockOut();
+    setActiveShift(null);
+  }
+
+  if (activeShift === undefined) return null;
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-(--color-border) px-3 py-1.5 text-sm">
+      <Clock01Icon size={15} strokeWidth={1.8} className="text-(--color-text-muted)" />
+      {activeShift ? (
+        <>
+          <span className="text-(--color-text-muted)">
+            Clocked in · {formatShiftDuration(activeShift.clockIn)}
+          </span>
+          <button
+            type="button"
+            onClick={handleClockOut}
+            className="rounded-md bg-red-500 px-2.5 py-1 text-xs font-medium text-white"
+          >
+            Clock Out
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={handleClockIn}
+          className="rounded-md bg-(--color-accent) px-2.5 py-1 text-xs font-medium text-white"
+        >
+          Clock In
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function CafeDashboardPage() {
   const [stats, setStats] = useState(null);
 
@@ -39,8 +101,13 @@ export default function CafeDashboardPage() {
 
   return (
     <div className="px-10 py-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="mt-1 text-sm text-(--color-text-muted)">Today's overview across all order types.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="mt-1 text-sm text-(--color-text-muted)">Today's overview across all order types.</p>
+        </div>
+        <ClockWidget />
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {CARDS.map(({ key, label, icon: Icon, format }) => (

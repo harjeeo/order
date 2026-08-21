@@ -17,7 +17,17 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
 staffRouter.get("/", async (req, res) => {
   const staff = await prisma.user.findMany({
     where: { tenantId: req.user!.tenantId! },
-    select: { id: true, name: true, email: true, role: true, phone: true, active: true, permissions: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      active: true,
+      permissions: true,
+      monthlySalary: true,
+      lastSalaryPaidAt: true,
+    },
   });
   res.json(staff);
 });
@@ -59,4 +69,39 @@ staffRouter.post("/:id/toggle-active", async (req, res) => {
 staffRouter.delete("/:id", async (req, res) => {
   await prisma.user.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
+});
+
+function sameMonth(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+// Fixed-monthly-salary payroll: pays a staff member's current
+// monthlySalary and logs it as an Expense, so it shows up in the same
+// Expenses/Reports totals as everything else. Blocked if already paid
+// this calendar month, to avoid accidental double-pay.
+staffRouter.post("/:id/pay-salary", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const user = await prisma.user.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!user) return res.status(404).json({ error: "Staff member not found" });
+  if (user.monthlySalary <= 0) return res.status(400).json({ error: "Set a monthly salary for this staff member first" });
+
+  const now = new Date();
+  if (user.lastSalaryPaidAt && sameMonth(user.lastSalaryPaidAt, now)) {
+    return res.status(409).json({ error: "Already paid this month" });
+  }
+
+  const monthLabel = now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  await prisma.expense.create({
+    data: {
+      tenantId,
+      category: "Salary",
+      amount: user.monthlySalary,
+      date: now,
+      method: "bank",
+      notes: `Salary — ${user.name} — ${monthLabel}`,
+    },
+  });
+
+  const updated = await prisma.user.update({ where: { id: user.id }, data: { lastSalaryPaidAt: now } });
+  res.json({ id: updated.id, lastSalaryPaidAt: updated.lastSalaryPaidAt });
 });

@@ -19,6 +19,8 @@ import {
   Analytics01Icon,
   Settings02Icon,
   Logout01Icon,
+  Clock01Icon,
+  MoneySend01Icon,
 } from "hugeicons-react";
 
 const navLinks = [
@@ -33,6 +35,8 @@ const navLinks = [
   { to: "/cafe/recipes", label: "Recipes", icon: ChefHatIcon },
   { to: "/cafe/customers", label: "Customers", icon: UserMultiple02Icon },
   { to: "/cafe/staff", label: "Staff & Roles", icon: StaffIcon },
+  { to: "/cafe/attendance", label: "Attendance", icon: Clock01Icon },
+  { to: "/cafe/payroll", label: "Payroll", icon: MoneySend01Icon },
   { to: "/cafe/expenses", label: "Expenses", icon: Wallet01Icon },
   { to: "/cafe/reports", label: "Reports", icon: Analytics01Icon },
 ];

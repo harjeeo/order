@@ -488,6 +488,8 @@ function mapStaff(s: any) {
     phone: s.phone,
     active: s.active,
     permissions: s.permissions,
+    monthlySalary: s.monthlySalary ?? 0,
+    lastSalaryPaidAt: s.lastSalaryPaidAt ?? null,
   };
 }
 
@@ -519,6 +521,46 @@ export async function deleteStaff(staffId: string) {
 
 export async function toggleStaffActive(staffId: string) {
   return post(`/staff/${staffId}/toggle-active`);
+}
+
+export async function setStaffSalary(staffId: string, monthlySalary: number) {
+  const staff = await patch(`/staff/${staffId}`, { monthlySalary });
+  return mapStaff({ ...staff, permissions: undefined, active: true });
+}
+
+export async function paySalary(staffId: string) {
+  return post(`/staff/${staffId}/pay-salary`);
+}
+
+// --- Shifts / attendance -----------------------------------------------
+
+function mapShift(s: any) {
+  return {
+    _id: s.id,
+    userId: s.userId,
+    staffName: s.user?.name ?? "",
+    role: s.user?.role ? (ROLE_FROM_BACKEND[s.user.role] ?? s.user.role) : "",
+    clockIn: s.clockIn,
+    clockOut: s.clockOut ?? null,
+  };
+}
+
+export async function getActiveShift() {
+  const shift = await get("/shifts/me/active");
+  return shift ? mapShift(shift) : null;
+}
+
+export async function clockIn() {
+  return mapShift(await post("/shifts/clock-in"));
+}
+
+export async function clockOut() {
+  return mapShift(await post("/shifts/clock-out"));
+}
+
+export async function getShifts({ page = 1, pageSize = 30 }: { page?: number; pageSize?: number } = {}) {
+  const result = await get(`/shifts${qs({ page: String(page), pageSize: String(pageSize) })}`);
+  return { items: result.items.map(mapShift), total: result.total, page: result.page, pageSize: result.pageSize };
 }
 
 // --- Expenses ---------------------------------------------------------

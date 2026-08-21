@@ -23,6 +23,7 @@ import { settingsRouter } from "./routes/settings";
 import { reportsRouter } from "./routes/reports";
 import { platformSettingsRouter } from "./routes/platformSettings";
 import { printLogRouter } from "./routes/printLog";
+import { shiftsRouter } from "./routes/shifts";
 
 // CORS_ORIGIN is a comma-separated allowlist (e.g.
 // "https://app.example.com,https://admin.example.com"). Left unset, every
@@ -84,6 +85,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/platform-settings", platformSettingsRouter);
 app.use("/api/print-log", printLogRouter);
+app.use("/api/shifts", shiftsRouter);
 
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   // express.json()'s payload-too-large error is a routine client mistake,
