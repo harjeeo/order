@@ -6,6 +6,28 @@ import { requireAuth, requireTenant } from "../middleware/auth";
 export const menuRouter = Router();
 menuRouter.use(requireAuth, requireTenant);
 
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024; // 1.5MB decoded
+const ALLOWED_IMAGE_TYPES = ["png", "jpeg", "jpg", "webp", "gif"];
+
+// Menu item "image" is either a plain emoji (left alone) or a data: URI
+// photo upload — those get a real type + decoded-size check so a phone
+// camera photo can't silently bloat the DB (base64 inflates size ~33%,
+// so the check is against the decoded byte count, not the string length).
+function validateImage(image: string | undefined): string | null {
+  if (!image || !image.startsWith("data:image")) return null;
+  const match = image.match(/^data:image\/([a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) return "Invalid image format";
+  const [, type, base64] = match;
+  if (!ALLOWED_IMAGE_TYPES.includes(type.toLowerCase())) {
+    return `Unsupported image type: ${type}. Use PNG, JPEG, WebP or GIF.`;
+  }
+  const byteSize = Math.ceil((base64.length * 3) / 4);
+  if (byteSize > MAX_IMAGE_BYTES) {
+    return `Image is too large (${(byteSize / (1024 * 1024)).toFixed(1)}MB) — must be under ${MAX_IMAGE_BYTES / (1024 * 1024)}MB.`;
+  }
+  return null;
+}
+
 menuRouter.get("/categories", async (req, res) => {
   const categories = await prisma.menuCategory.findMany({ where: { tenantId: req.user!.tenantId! } });
   res.json(categories.map((c) => c.name));
@@ -54,6 +76,8 @@ const itemSchema = z.object({
 menuRouter.post("/items", async (req, res) => {
   const parsed = itemSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  const imageError = validateImage(parsed.data.image);
+  if (imageError) return res.status(400).json({ error: imageError });
   const { variants, addons, ...data } = parsed.data;
 
   const item = await prisma.menuItem.create({
@@ -70,6 +94,10 @@ menuRouter.post("/items", async (req, res) => {
 
 menuRouter.patch("/items/:id", async (req, res) => {
   const { variants, addons, ...data } = req.body;
+  if (typeof data.image === "string") {
+    const imageError = validateImage(data.image);
+    if (imageError) return res.status(400).json({ error: imageError });
+  }
   if (variants) {
     await prisma.menuVariant.deleteMany({ where: { menuItemId: req.params.id } });
   }

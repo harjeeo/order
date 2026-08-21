@@ -47,6 +47,7 @@ model Tenant {
   stockMoves  StockMovement[]
   recipes     RecipeIngredient[]
   expenses    Expense[]
+  printLogs   PrintLog[]
   settings    Settings?
 }
 
@@ -349,6 +350,34 @@ model Expense {
   date     DateTime
   method   String
   notes    String   @default("")
+
+  @@index([tenantId])
+}
+
+// --- Print / reprint audit trail -------------------------------------
+
+enum PrintLogType {
+  kot
+  invoice
+}
+
+enum PrintLogAction {
+  print
+  reprint
+  download
+}
+
+// Real record behind the "Print KOT" / "Print Invoice" / "Reprint" /
+// "Download Invoice" buttons — refId is whatever was printed (an order,
+// kitchen ticket, or invoice id depending on type).
+model PrintLog {
+  id        String         @id @default(cuid())
+  tenantId  String
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type      PrintLogType
+  action    PrintLogAction
+  refId     String
+  createdAt DateTime       @default(now())
 
   @@index([tenantId])
 }

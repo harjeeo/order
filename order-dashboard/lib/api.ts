@@ -234,8 +234,19 @@ export async function toggleKitchenOrderPriority(kotId: string) {
   return mapKot(ticket);
 }
 
-export async function reprintKot(_kotId: string) {
-  return { ok: true };
+// Real audit-trail entry for what got printed — best-effort like the
+// email sending helpers, so a logging hiccup never blocks the actual
+// print/download the user is trying to do.
+async function logPrint(type: "kot" | "invoice", action: "print" | "reprint" | "download", refId: string) {
+  try {
+    await post("/print-log", { type, action, refId });
+  } catch {
+    // Non-fatal: the print/download itself still happens.
+  }
+}
+
+export async function reprintKot(kotId: string) {
+  return logPrint("kot", "reprint", kotId);
 }
 
 // --- Orders ---------------------------------------------------------------
@@ -284,8 +295,8 @@ export async function refundOrder(orderId: string) {
   return mapOrder(order);
 }
 
-export async function printInvoice(_orderId: string) {
-  return { ok: true };
+export async function printInvoice(orderId: string) {
+  return logPrint("invoice", "print", orderId);
 }
 
 // --- Billing & Payments -----------------------------------------------
@@ -323,12 +334,12 @@ export async function getInvoices({ page = 1, pageSize = 20 }: { page?: number; 
   return { items: result.items.map(mapInvoice), total: result.total, page: result.page, pageSize: result.pageSize };
 }
 
-export async function reprintInvoice(_invoiceId: string) {
-  return { ok: true };
+export async function reprintInvoice(invoiceId: string) {
+  return logPrint("invoice", "reprint", invoiceId);
 }
 
-export async function downloadInvoice(_invoiceId: string) {
-  return { ok: true };
+export async function downloadInvoice(invoiceId: string) {
+  return logPrint("invoice", "download", invoiceId);
 }
 
 export async function refundInvoice(invoiceId: string) {

@@ -32,6 +32,10 @@ function isPhotoUrl(value) {
   return typeof value === "string" && value.startsWith("data:image");
 }
 
+// Mirrors the backend's decoded-size cap in menu.ts (validateImage) so a
+// too-large photo is rejected instantly instead of after a round trip.
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+
 export default function CafeMenuPage() {
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -93,6 +97,12 @@ export default function CafeMenuPage() {
   function handleImageUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_IMAGE_BYTES) {
+      setFormError(`Image is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB) — must be under 1.5MB.`);
+      e.target.value = "";
+      return;
+    }
+    setFormError("");
     const reader = new FileReader();
     reader.onload = () => setForm((f) => ({ ...f, image: reader.result }));
     reader.readAsDataURL(file);
