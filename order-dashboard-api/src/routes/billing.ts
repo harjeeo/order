@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant } from "../middleware/auth";
 
@@ -77,4 +78,25 @@ billingRouter.post("/invoices/:id/refund", async (req, res) => {
   const invoice = await prisma.invoice.update({ where: { id: req.params.id }, data: { refunded: true } });
   await prisma.order.update({ where: { id: invoice.orderId }, data: { paymentStatus: "refunded" } });
   res.json(invoice);
+});
+
+const feedbackSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  note: z.string().max(500).default(""),
+});
+
+// Quick post-payment rating popup (Billing page) writes here — shown as
+// average rating + recent notes on the Cafe Reports page.
+billingRouter.post("/invoices/:id/feedback", async (req, res) => {
+  const parsed = feedbackSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
+  if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+  const updated = await prisma.invoice.update({
+    where: { id: req.params.id },
+    data: { rating: parsed.data.rating, feedbackNote: parsed.data.note },
+  });
+  res.json(updated);
 });

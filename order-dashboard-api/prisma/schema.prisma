@@ -277,6 +277,8 @@ model Invoice {
   total                Int
   method               String
   refunded             Boolean  @default(false)
+  rating               Int?
+  feedbackNote         String   @default("")
   createdAt            DateTime @default(now())
 
   @@unique([tenantId, invoiceNumber])

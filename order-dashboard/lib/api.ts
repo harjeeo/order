@@ -320,6 +320,8 @@ function mapInvoice(inv: any) {
     total: inv.total,
     method: inv.method,
     refunded: inv.refunded,
+    rating: inv.rating ?? null,
+    feedbackNote: inv.feedbackNote ?? "",
     createdAt: inv.createdAt,
   };
 }
@@ -344,6 +346,11 @@ export async function downloadInvoice(invoiceId: string) {
 
 export async function refundInvoice(invoiceId: string) {
   const invoice = await post(`/billing/invoices/${invoiceId}/refund`);
+  return mapInvoice(invoice);
+}
+
+export async function submitInvoiceFeedback(invoiceId: string, rating: number, note: string) {
+  const invoice = await post(`/billing/invoices/${invoiceId}/feedback`, { rating, note });
   return mapInvoice(invoice);
 }
 

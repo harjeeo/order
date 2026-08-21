@@ -73,6 +73,13 @@ reportsRouter.get("/", async (req, res) => {
     expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amount;
   }
 
+  const rated = invoices.filter((i) => i.rating != null);
+  const recentFeedback = rated
+    .filter((i) => i.feedbackNote)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 10)
+    .map((i) => ({ invoiceNumber: i.invoiceNumber, rating: i.rating, note: i.feedbackNote, createdAt: i.createdAt }));
+
   res.json({
     sales: { total: totalSales, trend },
     orders: {
@@ -92,6 +99,11 @@ reportsRouter.get("/", async (req, res) => {
     expenses: {
       total: expenses.reduce((s, e) => s + e.amount, 0),
       byCategory: Object.entries(expensesByCategory).map(([category, amount]) => ({ category, amount })),
+    },
+    feedback: {
+      count: rated.length,
+      averageRating: rated.length ? Math.round((rated.reduce((s, i) => s + (i.rating ?? 0), 0) / rated.length) * 10) / 10 : 0,
+      recent: recentFeedback,
     },
   });
 });

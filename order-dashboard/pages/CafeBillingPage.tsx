@@ -8,8 +8,10 @@ import {
   Download04Icon,
   CashbackIcon,
   ReceiptDollarIcon,
+  StarIcon,
+  Cancel01Icon,
 } from "hugeicons-react";
-import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice } from "../lib/api";
+import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
 import Pagination from "../components/Pagination";
 
@@ -43,6 +45,9 @@ export default function CafeBillingPage() {
   const [splitCash, setSplitCash] = useState(0);
   const [splitUpi, setSplitUpi] = useState(0);
   const [toast, setToast] = useState("");
+  const [feedbackInvoice, setFeedbackInvoice] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackNote, setFeedbackNote] = useState("");
 
   async function refresh() {
     setOrders(await getBillableOrders());
@@ -90,13 +95,23 @@ export default function CafeBillingPage() {
       setToast("Split amounts must add up to the total.");
       return;
     }
-    await completePayment(selected._id, {
+    const invoice = await completePayment(selected._id, {
       ...breakdown,
       method,
       splits: method === "split" ? { cash: Number(splitCash), upi: Number(splitUpi) } : undefined,
     });
     setToast(`Payment completed for ${selected.orderNumber}.`);
     setSelectedId(null);
+    setFeedbackInvoice(invoice);
+    setFeedbackRating(0);
+    setFeedbackNote("");
+    refresh();
+  }
+
+  async function handleSubmitFeedback() {
+    if (!feedbackInvoice || feedbackRating === 0) return;
+    await submitInvoiceFeedback(feedbackInvoice._id, feedbackRating, feedbackNote);
+    setFeedbackInvoice(null);
     refresh();
   }
 
@@ -356,6 +371,68 @@ export default function CafeBillingPage() {
           >
             Complete Payment & Generate Invoice
           </button>
+        </div>
+      )}
+
+      {feedbackInvoice && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4" onClick={() => setFeedbackInvoice(null)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">How was the experience?</h2>
+              <button
+                type="button"
+                onClick={() => setFeedbackInvoice(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
+                <Cancel01Icon size={16} strokeWidth={1.8} />
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-(--color-text-muted)">
+              Hand the screen to the customer — takes 5 seconds. {feedbackInvoice.invoiceNumber}
+            </p>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setFeedbackRating(n)}
+                  className="text-amber-400 transition-transform hover:scale-110"
+                >
+                  <StarIcon size={32} strokeWidth={1.8} className={n <= feedbackRating ? "fill-amber-400" : "fill-transparent"} />
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={feedbackNote}
+              onChange={(e) => setFeedbackNote(e.target.value)}
+              placeholder="Anything to share? (optional)"
+              rows={2}
+              className="mt-4 w-full resize-none rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+            />
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFeedbackInvoice(null)}
+                className="flex-1 rounded-md border border-(--color-border) py-2 text-sm font-medium text-(--color-text-muted)"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitFeedback}
+                disabled={feedbackRating === 0}
+                className="flex-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

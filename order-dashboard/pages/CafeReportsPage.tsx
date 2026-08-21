@@ -5,6 +5,7 @@ import {
   Coins01Icon,
   PackageIcon,
   Wallet01Icon,
+  StarIcon,
 } from "hugeicons-react";
 import { getReportsSummary, REPORT_RANGES } from "../lib/api";
 
@@ -182,6 +183,41 @@ export default function CafeReportsPage() {
             <div className="rounded-xl border border-(--color-border) p-3">
               <div className="text-xl font-semibold tabular-nums">{report.inventory.wastageTotal}</div>
               <div className="text-xs text-(--color-text-muted)">Wastage (units)</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Feedback */}
+        <section>
+          <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+            <StarIcon size={14} strokeWidth={1.8} />
+            Customer Feedback
+          </h2>
+          <div className="mt-2 rounded-xl border border-(--color-border) p-4">
+            <div className="flex items-center gap-2">
+              <div className="text-2xl font-semibold tabular-nums">{report.feedback.averageRating || "-"}</div>
+              <div className="flex items-center gap-0.5 text-amber-400">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <StarIcon key={n} size={14} strokeWidth={1.8} className={n <= Math.round(report.feedback.averageRating) ? "fill-amber-400" : "fill-transparent"} />
+                ))}
+              </div>
+              <span className="text-xs text-(--color-text-muted)">({report.feedback.count} ratings)</span>
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              {report.feedback.recent.map((f, i) => (
+                <div key={i} className="rounded-md border border-(--color-border) p-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{f.invoiceNumber}</span>
+                    <span className="flex items-center gap-0.5 text-amber-400">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <StarIcon key={n} size={11} strokeWidth={1.8} className={n <= f.rating ? "fill-amber-400" : "fill-transparent"} />
+                      ))}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-(--color-text-muted)">{f.note}</p>
+                </div>
+              ))}
+              {report.feedback.count === 0 && <p className="text-xs text-(--color-text-muted)">No feedback collected yet.</p>}
             </div>
           </div>
         </section>
