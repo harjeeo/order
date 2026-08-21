@@ -40,6 +40,12 @@ customersRouter.get("/", async (req, res) => {
   });
 });
 
+customersRouter.get("/:id", async (req, res) => {
+  const customer = await prisma.customer.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
+  if (!customer) return res.status(404).json({ error: "Customer not found" });
+  res.json(customer);
+});
+
 customersRouter.get("/:id/orders", async (req, res) => {
   const orders = await prisma.order.findMany({
     where: { customerId: req.params.id },

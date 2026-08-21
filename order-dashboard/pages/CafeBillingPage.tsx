@@ -11,7 +11,7 @@ import {
   StarIcon,
   Cancel01Icon,
 } from "hugeicons-react";
-import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback } from "../lib/api";
+import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback, getCustomer } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
 import Pagination from "../components/Pagination";
 
@@ -45,6 +45,8 @@ export default function CafeBillingPage() {
   const [splitCash, setSplitCash] = useState(0);
   const [splitUpi, setSplitUpi] = useState(0);
   const [toast, setToast] = useState("");
+  const [customerLoyalty, setCustomerLoyalty] = useState(null);
+  const [redeemPoints, setRedeemPoints] = useState(0);
   const [feedbackInvoice, setFeedbackInvoice] = useState(null);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackNote, setFeedbackNote] = useState("");
@@ -68,25 +70,33 @@ export default function CafeBillingPage() {
 
   const selected = orders.find((o) => o._id === selectedId) ?? null;
 
+  const maxRedeemablePoints = customerLoyalty
+    ? Math.min(customerLoyalty.loyaltyPoints, selected ? selected.amount : 0)
+    : 0;
+
   const breakdown = useMemo(() => {
     if (!selected) return null;
     const subtotal = selected.amount;
-    const discountAmount = Math.round((subtotal * discountPercent) / 100);
+    const percentDiscount = Math.round((subtotal * discountPercent) / 100);
+    const pointsDiscount = Math.min(redeemPoints, maxRedeemablePoints, subtotal - percentDiscount);
+    const discountAmount = percentDiscount + pointsDiscount;
     const serviceChargeAmount = Math.round(((subtotal - discountAmount) * serviceChargePercent) / 100);
     const taxAmount = Math.round((subtotal - discountAmount + serviceChargeAmount) * 0.05);
     const rawTotal = subtotal - discountAmount + serviceChargeAmount + taxAmount;
     const total = Math.round(rawTotal);
     const roundOff = +(total - rawTotal).toFixed(2);
-    return { subtotal, discountAmount, serviceChargeAmount, taxAmount, roundOff, total };
-  }, [selected, discountPercent, serviceChargePercent]);
+    return { subtotal, discountAmount, serviceChargeAmount, taxAmount, roundOff, total, pointsDiscount };
+  }, [selected, discountPercent, serviceChargePercent, redeemPoints, maxRedeemablePoints]);
 
-  function selectOrder(order) {
+  async function selectOrder(order) {
     setSelectedId(order._id);
     setDiscountPercent(0);
     setServiceChargePercent(5);
     setMethod("cash");
     setSplitCash(0);
     setSplitUpi(0);
+    setRedeemPoints(0);
+    setCustomerLoyalty(order.customerId ? await getCustomer(order.customerId) : null);
   }
 
   async function handleCompletePayment() {
@@ -98,10 +108,17 @@ export default function CafeBillingPage() {
     const invoice = await completePayment(selected._id, {
       ...breakdown,
       method,
+      redeemPoints: breakdown.pointsDiscount,
       splits: method === "split" ? { cash: Number(splitCash), upi: Number(splitUpi) } : undefined,
     });
-    setToast(`Payment completed for ${selected.orderNumber}.`);
+    setToast(
+      invoice.pointsEarned > 0
+        ? `Payment completed for ${selected.orderNumber}. Customer earned ${invoice.pointsEarned} points.`
+        : `Payment completed for ${selected.orderNumber}.`
+    );
     setSelectedId(null);
+    setCustomerLoyalty(null);
+    setRedeemPoints(0);
     setFeedbackInvoice(invoice);
     setFeedbackRating(0);
     setFeedbackNote("");
@@ -296,6 +313,30 @@ export default function CafeBillingPage() {
               <span className="text-(--color-text-muted)">%</span>
             </div>
           </div>
+
+          {customerLoyalty && (
+            <div className="mt-3 rounded-md border border-(--color-border) p-2.5">
+              <div className="flex items-center justify-between text-xs text-(--color-text-muted)">
+                <span className="flex items-center gap-1">
+                  <CashbackIcon size={13} strokeWidth={1.8} />
+                  {customerLoyalty.name} has {customerLoyalty.loyaltyPoints} points
+                </span>
+              </div>
+              {maxRedeemablePoints > 0 && (
+                <div className="mt-1.5 flex items-center justify-between text-sm">
+                  <span className="text-(--color-text-muted)">Redeem points (1pt = ₹1)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={maxRedeemablePoints}
+                    value={redeemPoints}
+                    onChange={(e) => setRedeemPoints(Math.min(maxRedeemablePoints, Math.max(0, Number(e.target.value))))}
+                    className="w-16 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-right text-sm outline-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3 space-y-1 border-t border-(--color-border) pt-3 text-sm">
             <div className="flex justify-between text-(--color-text-muted)">

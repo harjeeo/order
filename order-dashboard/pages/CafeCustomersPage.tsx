@@ -131,6 +131,7 @@ export default function CafeCustomersPage() {
                 <th className="px-3 py-2 font-medium">Phone</th>
                 <th className="px-3 py-2 font-medium">Total Orders</th>
                 <th className="px-3 py-2 font-medium">Total Spent</th>
+                <th className="px-3 py-2 font-medium">Points</th>
                 <th className="px-3 py-2 font-medium">Last Order</th>
                 <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
@@ -151,6 +152,7 @@ export default function CafeCustomersPage() {
                   <td className="px-3 py-2 text-(--color-text-muted)">{c.phone || "-"}</td>
                   <td className="px-3 py-2 tabular-nums">{c.totalOrders}</td>
                   <td className="px-3 py-2 tabular-nums">{formatCurrency(c.totalSpent)}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-accent)">{c.loyaltyPoints}</td>
                   <td className="px-3 py-2 text-(--color-text-muted)">{formatDate(c.lastOrderAt)}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
@@ -180,7 +182,7 @@ export default function CafeCustomersPage() {
               ))}
               {customers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                  <td colSpan={7} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
                     No customers found.
                   </td>
                 </tr>
@@ -235,8 +237,13 @@ export default function CafeCustomersPage() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-md bg-(--color-accent)/10 px-3 py-2 text-sm text-(--color-accent)">
-            Total Spent: {formatCurrency(selected.totalSpent)}
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="rounded-md bg-(--color-accent)/10 px-3 py-2 text-sm text-(--color-accent)">
+              Total Spent: {formatCurrency(selected.totalSpent)}
+            </div>
+            <div className="rounded-md bg-(--color-accent)/10 px-3 py-2 text-sm text-(--color-accent)">
+              {selected.loyaltyPoints} Points
+            </div>
           </div>
 
           <h3 className="mt-5 text-xs font-medium text-(--color-text-muted)">Order History</h3>

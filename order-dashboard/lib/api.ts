@@ -60,6 +60,7 @@ function mapOrder(o: any) {
     orderType: fromBackendOrderType(o.orderType),
     table: o.table?.number ?? null,
     tableId: o.tableId ?? null,
+    customerId: o.customerId ?? null,
     customer: o.customerName,
     waiter: o.waiter,
     items: (o.items ?? []).map((i: any) => ({ name: i.name, qty: i.qty, unitPrice: i.unitPrice, notes: i.notes })),
@@ -323,6 +324,8 @@ function mapInvoice(inv: any) {
     rating: inv.rating ?? null,
     feedbackNote: inv.feedbackNote ?? "",
     createdAt: inv.createdAt,
+    pointsEarned: inv.pointsEarned ?? 0,
+    customerPointsBalance: inv.customerPointsBalance ?? null,
   };
 }
 
@@ -366,7 +369,12 @@ function mapCustomer(c: any) {
     totalOrders: c.totalOrders ?? 0,
     totalSpent: c.totalSpent ?? 0,
     lastOrderAt: c.lastOrderAt ?? null,
+    loyaltyPoints: c.loyaltyPoints ?? 0,
   };
+}
+
+export async function getCustomer(customerId: string) {
+  return mapCustomer(await get(`/customers/${customerId}`));
 }
 
 export async function getCustomers({

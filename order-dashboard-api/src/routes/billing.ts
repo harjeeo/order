@@ -47,12 +47,34 @@ async function createInvoiceWithNumber(tenantId: string, data: any) {
   throw new Error("Could not allocate an invoice number");
 }
 
+// 1 loyalty point earned per ₹100 spent, 1 point = ₹1 when redeemed.
+const LOYALTY_EARN_RATE = 100;
+
 billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   const tenantId = req.user!.tenantId!;
   const order = await prisma.order.findUnique({ where: { id: req.params.orderId } });
   if (!order) return res.status(404).json({ error: "Order not found" });
 
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
+  const redeemPoints = Math.max(0, Math.floor(Number(req.body.redeemPoints) || 0));
+
+  let pointsEarned = 0;
+  let customerPointsBalance: number | null = null;
+
+  if (order.customerId) {
+    const customer = await prisma.customer.findUnique({ where: { id: order.customerId } });
+    if (customer) {
+      if (redeemPoints > customer.loyaltyPoints) {
+        return res.status(400).json({ error: `Customer only has ${customer.loyaltyPoints} points available` });
+      }
+      pointsEarned = Math.floor(total / LOYALTY_EARN_RATE);
+      const updatedCustomer = await prisma.customer.update({
+        where: { id: order.customerId },
+        data: { loyaltyPoints: customer.loyaltyPoints - redeemPoints + pointsEarned },
+      });
+      customerPointsBalance = updatedCustomer.loyaltyPoints;
+    }
+  }
 
   const invoice = await createInvoiceWithNumber(tenantId, {
     orderId: order.id,
@@ -71,7 +93,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     data: { paymentStatus: "paid", status: order.status === "pending" ? "completed" : order.status },
   });
 
-  res.status(201).json(invoice);
+  res.status(201).json({ ...invoice, pointsEarned, customerPointsBalance });
 });
 
 billingRouter.post("/invoices/:id/refund", async (req, res) => {

@@ -167,13 +167,14 @@ model Table {
 // --- Customers ------------------------------------------------------------
 
 model Customer {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name     String
-  phone    String @default("")
-  email    String @default("")
-  address  String @default("")
+  id            String @id @default(cuid())
+  tenantId      String
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String @default("")
+  email         String @default("")
+  address       String @default("")
+  loyaltyPoints Int    @default(0)
 
   orders Order[]
 
