@@ -8,7 +8,7 @@ import { requireAuth, signToken } from "../middleware/auth";
 export const authRouter = Router();
 
 // Blunt brute-force protection: 10 attempts per IP per 15 minutes across
-// login/register/change-password. Doesn't block on successful requests.
+// login/signup/change-password. Doesn't block on successful requests.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -40,39 +40,9 @@ authRouter.post("/login", authLimiter, async (req, res) => {
   });
 });
 
-const registerSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(6),
-  tenantId: z.string().min(1),
-  role: z.enum(["ADMIN", "MANAGER", "CASHIER", "WAITER", "KITCHEN_STAFF"]).default("WAITER"),
-});
-
-// Creates a staff account under an existing tenant. Super admin account
-// creation happens via the seed script, not a public endpoint.
-authRouter.post("/register", authLimiter, async (req, res) => {
-  const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
-
-  const { name, email, password, tenantId, role } = parsed.data;
-
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) return res.status(404).json({ error: "Tenant not found" });
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return res.status(409).json({ error: "Email already in use" });
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { name, email, passwordHash, tenantId, role },
-  });
-
-  const token = signToken({ id: user.id, role: user.role, tenantId: user.tenantId, email: user.email });
-  res.status(201).json({
-    token,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
-  });
-});
+// Staff accounts under an existing tenant are created via the
+// auth-gated POST /api/staff (ADMIN/MANAGER/SUPER_ADMIN only) — there is
+// deliberately no public "register into any tenant" endpoint here.
 
 const signupSchema = z.object({
   cafeName: z.string().min(1),

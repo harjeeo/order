@@ -1,6 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 import { authRouter } from "./routes/auth";
 import { tenantsRouter } from "./routes/tenants";
@@ -18,9 +20,34 @@ import { settingsRouter } from "./routes/settings";
 import { reportsRouter } from "./routes/reports";
 import { platformSettingsRouter } from "./routes/platformSettings";
 
+// CORS_ORIGIN is a comma-separated allowlist (e.g.
+// "https://app.example.com,https://admin.example.com"). Left unset, every
+// origin is reflected — fine for local dev, but production must set it.
+const corsOrigins = process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean);
+if (!corsOrigins && process.env.NODE_ENV === "production") {
+  console.warn("[cors] CORS_ORIGIN is not set in production — every origin is currently allowed.");
+}
+
 export const app = express();
-app.use(cors());
+// This API is deliberately consumed cross-origin (the frontend runs on its
+// own origin/port) — helmet's default same-origin Cross-Origin-Resource-
+// Policy would make browsers block fetch() responses even with CORS
+// headers present, so it's relaxed here. CSP/HSTS/etc. stay at helmet's
+// secure defaults since those don't apply to a JSON-only API anyway.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({ origin: corsOrigins ?? true }));
 app.use(express.json());
+
+// Coarse abuse protection across the whole API, on top of the stricter
+// per-route limiter in auth.ts. Generous enough not to bother a real
+// POS counter during a rush.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api", apiLimiter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

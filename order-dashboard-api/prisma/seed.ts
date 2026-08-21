@@ -4,23 +4,46 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // In production, the super admin's credentials must be supplied via env
+  // vars — falling back to the well-known demo password would hand out an
+  // admin login to anyone who's read this file. Dev/test keep the
+  // zero-config demo default.
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL ?? "owner@orderdashboard.example";
+  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+  if (isProduction && !superAdminPassword) {
+    throw new Error("SUPER_ADMIN_PASSWORD (and ideally SUPER_ADMIN_EMAIL) must be set when seeding in production.");
+  }
+  const resolvedSuperAdminPassword = superAdminPassword ?? "password123";
+  if (!superAdminPassword) {
+    console.warn(`[seed] SUPER_ADMIN_PASSWORD not set — using the well-known demo password. Change it after first login.`);
+  }
+
   const platformSettings = await prisma.platformSettings.findFirst();
   if (!platformSettings) {
     await prisma.platformSettings.create({ data: {} });
   }
 
-  const superAdminEmail = "owner@orderdashboard.example";
   const existingSuperAdmin = await prisma.user.findUnique({ where: { email: superAdminEmail } });
   if (!existingSuperAdmin) {
     await prisma.user.create({
       data: {
         name: "Platform Owner",
         email: superAdminEmail,
-        passwordHash: await bcrypt.hash("password123", 10),
+        passwordHash: await bcrypt.hash(resolvedSuperAdminPassword, 10),
         role: "SUPER_ADMIN",
       },
     });
-    console.log(`Super admin created: ${superAdminEmail} / password123`);
+    console.log(`Super admin created: ${superAdminEmail}${superAdminPassword ? "" : " / password123"}`);
+  }
+
+  // Demo tenant/staff/menu data is dev convenience only — skip it in
+  // production seeding (opt back in with SEED_DEMO_DATA=true if you
+  // genuinely want the sample cafe on a prod database).
+  if (isProduction && process.env.SEED_DEMO_DATA !== "true") {
+    console.log("[seed] Skipping demo tenant/menu data in production (set SEED_DEMO_DATA=true to force it).");
+    return;
   }
 
   let tenant = await prisma.tenant.findFirst({ where: { name: "Tanvir's Cafe" } });
