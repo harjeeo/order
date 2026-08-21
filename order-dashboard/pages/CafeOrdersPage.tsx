@@ -214,7 +214,14 @@ export default function CafeOrdersPage() {
           <tbody>
             {orders.map((o) => (
               <tr key={o._id} className="border-b border-(--color-border) last:border-0">
-                <td className="px-3 py-2 font-medium">{o.orderNumber}</td>
+                <td className="px-3 py-2 font-medium">
+                  {o.orderNumber}
+                  {o.source === "customer" && (
+                    <span className="ml-1.5 rounded-full bg-(--color-accent)/10 px-1.5 py-0.5 text-[10px] font-normal text-(--color-accent)">
+                      QR
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-2 capitalize text-(--color-text-muted)">{o.orderType}</td>
                 <td className="px-3 py-2 text-(--color-text-muted)">{o.table ?? "-"}</td>
                 <td className="px-3 py-2">{o.customer}</td>

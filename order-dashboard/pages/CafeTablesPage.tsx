@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import {
   RestaurantTableIcon,
   UserGroupIcon,
@@ -9,8 +10,50 @@ import {
   CreditCardIcon,
   CheckmarkCircle02Icon,
   Cancel01Icon,
+  QrCodeIcon,
 } from "hugeicons-react";
 import { getTables, setTableStatus, transferTable, mergeTables } from "../lib/api";
+import { getSession } from "../lib/useAuth";
+
+function TableQrModal({ table, onClose }) {
+  const [dataUrl, setDataUrl] = useState("");
+  const tenantId = getSession()?.tenantId;
+  const orderUrl = `${window.location.origin}/order/${tenantId}/${table._id}`;
+
+  useEffect(() => {
+    QRCode.toDataURL(orderUrl, { width: 320, margin: 1 }).then(setDataUrl);
+  }, [orderUrl]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-xs rounded-xl bg-(--color-canvas) p-5 text-center shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold">Table {table.number}</h3>
+        <p className="mt-1 text-xs text-(--color-text-muted)">Scan to view menu and order</p>
+        {dataUrl && <img src={dataUrl} alt={`QR code for table ${table.number}`} className="mx-auto mt-4 rounded-md" />}
+        <p className="mt-3 break-all text-[10px] text-(--color-text-muted)">{orderUrl}</p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex-1 rounded-md border border-(--color-border) py-2 text-sm"
+          >
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const STATUS_META = {
   available: { label: "Available", dot: "bg-emerald-500", card: "border-(--color-border)" },
@@ -25,6 +68,7 @@ export default function CafeTablesPage() {
   const [mode, setMode] = useState(null); // "transfer" | "merge" | null
   const [mergeSelection, setMergeSelection] = useState([]);
   const [status, setStatus] = useState("");
+  const [qrTable, setQrTable] = useState(null);
 
   async function refresh() {
     const data = await getTables();
@@ -181,6 +225,15 @@ export default function CafeTablesPage() {
             )}
 
             <div className="mt-5 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setQrTable(selected)}
+                className="flex items-center justify-center gap-1.5 rounded-md border border-(--color-border) py-2 text-sm"
+              >
+                <QrCodeIcon size={15} strokeWidth={1.8} />
+                QR Code
+              </button>
+
               {selected.status === "available" && (
                 <button
                   type="button"
@@ -256,6 +309,8 @@ export default function CafeTablesPage() {
           </div>
         )}
       </div>
+
+      {qrTable && <TableQrModal table={qrTable} onClose={() => setQrTable(null)} />}
     </div>
   );
 }

@@ -54,7 +54,7 @@ const createOrderSchema = z.object({
 // Order numbers are derived from the DB (not an in-memory counter, which
 // would collide with existing rows after every server restart). A short
 // retry loop handles the rare race between two orders in the same tenant.
-async function createOrderWithNumber(tenantId: string, data: any, items: any[]) {
+export async function createOrderWithNumber(tenantId: string, data: any, items: any[]) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const count = await prisma.order.count({ where: { tenantId } });
     const orderNumber = `ORD-${3001 + count + attempt}`;
@@ -73,7 +73,7 @@ async function createOrderWithNumber(tenantId: string, data: any, items: any[]) 
 // Deducts ingredient stock for any order line linked to a recipe. Ingredient
 // needs from multiple lines/items are aggregated first so a shared
 // ingredient (e.g. milk in two drinks) is only fetched/updated once.
-async function deductStockForOrder(tenantId: string, orderNumber: string, items: { menuItemId?: string; qty: number }[]) {
+export async function deductStockForOrder(tenantId: string, orderNumber: string, items: { menuItemId?: string; qty: number }[]) {
   const menuItemIds = [...new Set(items.filter((i) => i.menuItemId).map((i) => i.menuItemId!))];
   if (menuItemIds.length === 0) return;
 

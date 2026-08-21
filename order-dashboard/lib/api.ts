@@ -69,6 +69,7 @@ function mapOrder(o: any) {
     status: o.status,
     notes: o.notes,
     createdAt: o.createdAt,
+    source: o.source ?? "staff",
   };
 }
 
@@ -763,4 +764,36 @@ export async function getAuditLog({ page = 1, pageSize = 30 }: { page?: number; 
     page: result.page,
     pageSize: result.pageSize,
   };
+}
+
+// --- Public QR ordering (no auth) --------------------------------------
+// Uses fetch() directly rather than request()/get() since those attach
+// whatever staff auth token happens to be in this browser, which has
+// nothing to do with the customer viewing this page.
+
+async function publicRequest(path: string, options: RequestInit = {}) {
+  const res = await fetch(`${BASE_URL}/api/public${path}`, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...options.headers },
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(data?.error ?? "Request failed");
+  return data;
+}
+
+export async function getPublicMenu(tenantId: string) {
+  const data = await publicRequest(`/${tenantId}/menu`);
+  return { tenantName: data.tenantName, categories: data.categories, items: data.items.map(mapMenuItem) };
+}
+
+export async function getPublicTable(tenantId: string, tableId: string) {
+  return publicRequest(`/${tenantId}/tables/${tableId}`);
+}
+
+export async function placePublicOrder(
+  tenantId: string,
+  payload: { tableId: string; customerName?: string; notes?: string; items: any[]; amount: number }
+) {
+  return publicRequest(`/${tenantId}/orders`, { method: "POST", body: JSON.stringify(payload) });
 }

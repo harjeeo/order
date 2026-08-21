@@ -208,12 +208,18 @@ enum PaymentStatus {
   refunded
 }
 
+enum OrderSource {
+  staff
+  customer
+}
+
 model Order {
   id            String        @id @default(cuid())
   tenantId      String
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orderNumber   String
   orderType     OrderType
+  source        OrderSource   @default(staff)
   tableId       String?
   table         Table?        @relation(fields: [tableId], references: [id])
   customerId    String?
