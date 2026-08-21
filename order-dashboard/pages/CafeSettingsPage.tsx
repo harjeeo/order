@@ -8,8 +8,9 @@ import {
   CreditCardIcon,
   SquareLock02Icon,
   CheckmarkCircle02Icon,
+  Building02Icon,
 } from "hugeicons-react";
-import { getSettings, updateSettings, changePassword } from "../lib/api";
+import { getSettings, updateSettings, changePassword, getOutlets, createOutlet, setCurrentOutletId } from "../lib/api";
 
 const TABS = [
   { key: "restaurant", label: "Restaurant Profile", icon: Store01Icon },
@@ -18,6 +19,7 @@ const TABS = [
   { key: "kot", label: "KOT", icon: KitchenUtensilsIcon },
   { key: "printer", label: "Printer", icon: PrinterIcon },
   { key: "paymentMethods", label: "Payment Methods", icon: CreditCardIcon },
+  { key: "outlets", label: "Outlets (Pro)", icon: Building02Icon },
   { key: "account", label: "Change Password", icon: SquareLock02Icon },
 ];
 
@@ -68,6 +70,31 @@ export default function CafeSettingsPage() {
     setSaved(true);
   }
 
+  const [outlets, setOutlets] = useState([]);
+  const [newOutletName, setNewOutletName] = useState("");
+  const [newOutletAddress, setNewOutletAddress] = useState("");
+
+  async function refreshOutlets() {
+    setOutlets(await getOutlets());
+  }
+
+  useEffect(() => {
+    if (tab === "outlets") refreshOutlets();
+  }, [tab]);
+
+  async function handleAddOutlet() {
+    if (!newOutletName.trim()) return;
+    await createOutlet({ name: newOutletName.trim(), address: newOutletAddress.trim() });
+    setNewOutletName("");
+    setNewOutletAddress("");
+    refreshOutlets();
+  }
+
+  function handleSwitchOutlet(outletId) {
+    setCurrentOutletId(outletId);
+    window.location.href = "/cafe";
+  }
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -102,7 +129,7 @@ export default function CafeSettingsPage() {
   }
 
   if (!settings) return null;
-  if (tab !== "account" && !draft) return null;
+  if (tab !== "account" && tab !== "outlets" && !draft) return null;
 
   return (
     <div className="flex h-full">
@@ -273,6 +300,70 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
+          {tab === "outlets" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Run more than one branch under this account. Staff share one login and switch between outlets — each
+                has its own menu, tables and inventory.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {outlets.map((o) => (
+                  <div
+                    key={o._id}
+                    className="flex items-center justify-between rounded-md border border-(--color-border) px-3 py-2"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">
+                        {o.name}
+                        {o.isDefault && (
+                          <span className="ml-1.5 rounded-full bg-(--color-accent)/10 px-1.5 py-0.5 text-[10px] text-(--color-accent)">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      {o.address && <div className="text-xs text-(--color-text-muted)">{o.address}</div>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchOutlet(o._id)}
+                      className="rounded-md border border-(--color-border) px-3 py-1 text-xs"
+                    >
+                      Switch to this outlet
+                    </button>
+                  </div>
+                ))}
+                {outlets.length === 0 && <p className="text-sm text-(--color-text-muted)">Loading…</p>}
+              </div>
+
+              <div className="rounded-md border border-(--color-border) p-3">
+                <div className="text-xs font-medium text-(--color-text-muted)">Add a new outlet</div>
+                <div className="mt-2 flex flex-col gap-2">
+                  <input
+                    placeholder="Outlet name (e.g. HSR Layout Branch)"
+                    value={newOutletName}
+                    onChange={(e) => setNewOutletName(e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    placeholder="Address (optional)"
+                    value={newOutletAddress}
+                    onChange={(e) => setNewOutletAddress(e.target.value)}
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddOutlet}
+                    disabled={!newOutletName.trim()}
+                    className="w-fit rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                  >
+                    Add Outlet
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {tab === "account" && (
             <div className="flex flex-col gap-3">
               <Field label="Current Password">
@@ -318,7 +409,7 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
-          {tab !== "account" && (
+          {tab !== "account" && tab !== "outlets" && (
             <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"

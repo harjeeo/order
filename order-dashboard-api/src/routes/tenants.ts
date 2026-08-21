@@ -143,6 +143,7 @@ tenantsRouter.post("/", async (req, res) => {
   // Give every new tenant an empty settings row so the Cafe dashboard
   // isn't blank on first login.
   await prisma.settings.create({ data: { tenantId: tenant.id } });
+  await prisma.outlet.create({ data: { tenantId: tenant.id, name: "Main Outlet", isDefault: true } });
 
   // Every tenant needs at least one login to actually get into the Cafe
   // dashboard — create a starter Admin account with a one-time temp

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 
 export const inventoryRouter = Router();
-inventoryRouter.use(requireAuth, requireTenant);
+inventoryRouter.use(requireAuth, requireTenant, requireOutlet);
 
 function statusFor(stock: number, minimum: number) {
   if (stock <= 0) return "out";
@@ -12,13 +12,15 @@ function statusFor(stock: number, minimum: number) {
 }
 
 inventoryRouter.get("/ingredients", async (req, res) => {
-  const ingredients = await prisma.ingredient.findMany({ where: { tenantId: req.user!.tenantId! } });
+  const ingredients = await prisma.ingredient.findMany({ where: { outletId: req.outletId! } });
   res.json(ingredients.map((i) => ({ ...i, status: statusFor(i.stock, i.minimum) })));
 });
 
 inventoryRouter.post("/ingredients", async (req, res) => {
   const { name, unit, stock, minimum } = req.body;
-  const ingredient = await prisma.ingredient.create({ data: { tenantId: req.user!.tenantId!, name, unit, stock, minimum } });
+  const ingredient = await prisma.ingredient.create({
+    data: { tenantId: req.user!.tenantId!, outletId: req.outletId!, name, unit, stock, minimum },
+  });
   res.status(201).json(ingredient);
 });
 
@@ -43,7 +45,7 @@ inventoryRouter.post("/ingredients/:id/movements", async (req, res) => {
 
 inventoryRouter.get("/movements", async (req, res) => {
   const movements = await prisma.stockMovement.findMany({
-    where: { tenantId: req.user!.tenantId! },
+    where: { tenantId: req.user!.tenantId!, ingredient: { outletId: req.outletId! } },
     include: { ingredient: true },
     orderBy: { createdAt: "desc" },
     take: 50,

@@ -80,21 +80,27 @@ async function main() {
 
   await prisma.settings.upsert({ where: { tenantId: tenant.id }, update: {}, create: { tenantId: tenant.id } });
 
+  let outlet = await prisma.outlet.findFirst({ where: { tenantId: tenant.id, isDefault: true } });
+  if (!outlet) {
+    outlet = await prisma.outlet.create({ data: { tenantId: tenant.id, name: "Main Outlet", isDefault: true } });
+  }
+
   const categoryNames = ["Burgers", "Pizza", "Beverages", "Sandwiches", "Desserts"];
   for (const name of categoryNames) {
     await prisma.menuCategory.upsert({
-      where: { tenantId_name: { tenantId: tenant.id, name } },
+      where: { outletId_name: { outletId: outlet.id, name } },
       update: {},
-      create: { tenantId: tenant.id, name },
+      create: { tenantId: tenant.id, outletId: outlet.id, name },
     });
   }
 
   const existingItems = await prisma.menuItem.count({ where: { tenantId: tenant.id } });
   if (existingItems === 0) {
-    const burgers = await prisma.menuCategory.findFirstOrThrow({ where: { tenantId: tenant.id, name: "Burgers" } });
+    const burgers = await prisma.menuCategory.findFirstOrThrow({ where: { outletId: outlet.id, name: "Burgers" } });
     await prisma.menuItem.create({
       data: {
         tenantId: tenant.id,
+        outletId: outlet.id,
         categoryId: burgers.id,
         name: "Cheese Burger",
         image: "🍔",
@@ -105,9 +111,9 @@ async function main() {
       },
     });
 
-    const beverages = await prisma.menuCategory.findFirstOrThrow({ where: { tenantId: tenant.id, name: "Beverages" } });
+    const beverages = await prisma.menuCategory.findFirstOrThrow({ where: { outletId: outlet.id, name: "Beverages" } });
     await prisma.menuItem.create({
-      data: { tenantId: tenant.id, categoryId: beverages.id, name: "Cappuccino", image: "☕", price: 110, tax: 5 },
+      data: { tenantId: tenant.id, outletId: outlet.id, categoryId: beverages.id, name: "Cappuccino", image: "☕", price: 110, tax: 5 },
     });
   }
 
@@ -115,9 +121,9 @@ async function main() {
   if (existingTables === 0) {
     await prisma.table.createMany({
       data: [
-        { tenantId: tenant.id, number: "T1", capacity: 2 },
-        { tenantId: tenant.id, number: "T2", capacity: 4 },
-        { tenantId: tenant.id, number: "T3", capacity: 4 },
+        { tenantId: tenant.id, outletId: outlet.id, number: "T1", capacity: 2 },
+        { tenantId: tenant.id, outletId: outlet.id, number: "T2", capacity: 4 },
+        { tenantId: tenant.id, outletId: outlet.id, number: "T3", capacity: 4 },
       ],
     });
   }
@@ -126,8 +132,8 @@ async function main() {
   if (existingIngredients === 0) {
     await prisma.ingredient.createMany({
       data: [
-        { tenantId: tenant.id, name: "Cheese", unit: "kg", stock: 5, minimum: 2 },
-        { tenantId: tenant.id, name: "Coffee Beans", unit: "kg", stock: 1, minimum: 1 },
+        { tenantId: tenant.id, outletId: outlet.id, name: "Cheese", unit: "kg", stock: 5, minimum: 2 },
+        { tenantId: tenant.id, outletId: outlet.id, name: "Coffee Beans", unit: "kg", stock: 1, minimum: 1 },
       ],
     });
   }

@@ -18,7 +18,7 @@ describe("menu item image validation", () => {
     const t = await createTenantWithAdmin("Menu Image Test Cafe");
     tenantId = t.tenant.id;
     token = t.token;
-    const category = await prisma.menuCategory.create({ data: { tenantId, name: "Test Category" } });
+    const category = await prisma.menuCategory.create({ data: { tenantId, outletId: t.outlet.id, name: "Test Category" } });
     categoryId = category.id;
   });
 

@@ -18,15 +18,31 @@ const publicLimiter = rateLimit({
 });
 publicRouter.use(publicLimiter);
 
-publicRouter.get("/:tenantId/menu", async (req, res) => {
-  const { tenantId } = req.params;
+publicRouter.get("/:tenantId/tables/:tableId", async (req, res) => {
+  const { tenantId, tableId } = req.params;
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant || tenant.status !== "active") return res.status(404).json({ error: "Not found" });
 
+  const table = await prisma.table.findFirst({ where: { id: tableId, tenantId } });
+  if (!table) return res.status(404).json({ error: "Table not found" });
+  res.json({ id: table.id, number: table.number, outletId: table.outletId });
+});
+
+// The menu is scoped to the table's own outlet — a tenant can run several
+// branches, each with its own menu, and the table's QR code is the only
+// signal an unauthenticated customer request carries for which one.
+publicRouter.get("/:tenantId/tables/:tableId/menu", async (req, res) => {
+  const { tenantId, tableId } = req.params;
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant || tenant.status !== "active") return res.status(404).json({ error: "Not found" });
+
+  const table = await prisma.table.findFirst({ where: { id: tableId, tenantId } });
+  if (!table) return res.status(404).json({ error: "Table not found" });
+
   const [categories, items] = await Promise.all([
-    prisma.menuCategory.findMany({ where: { tenantId } }),
+    prisma.menuCategory.findMany({ where: { outletId: table.outletId } }),
     prisma.menuItem.findMany({
-      where: { tenantId, available: true },
+      where: { outletId: table.outletId, available: true },
       include: { category: true, variants: true, addons: true },
     }),
   ]);
@@ -36,16 +52,6 @@ publicRouter.get("/:tenantId/menu", async (req, res) => {
     categories: categories.map((c) => c.name),
     items,
   });
-});
-
-publicRouter.get("/:tenantId/tables/:tableId", async (req, res) => {
-  const { tenantId, tableId } = req.params;
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant || tenant.status !== "active") return res.status(404).json({ error: "Not found" });
-
-  const table = await prisma.table.findFirst({ where: { id: tableId, tenantId } });
-  if (!table) return res.status(404).json({ error: "Table not found" });
-  res.json({ id: table.id, number: table.number });
 });
 
 const orderItemSchema = z.object({
@@ -78,7 +84,7 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
   const { items, tableId, ...rest } = parsed.data;
   const order = await createOrderWithNumber(
     tenantId,
-    { ...rest, orderType: "dine_in", tableId, source: "customer" },
+    { ...rest, orderType: "dine_in", tableId, outletId: table.outletId, source: "customer" },
     items
   );
   await deductStockForOrder(tenantId, order.orderNumber, items);

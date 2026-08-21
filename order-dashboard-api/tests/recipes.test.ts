@@ -5,6 +5,7 @@ import { createTenantWithAdmin, deleteTenant } from "./helpers";
 
 describe("recipes + automatic stock deduction", () => {
   let tenantId: string;
+  let outletId: string;
   let token: string;
   let menuItemId: string;
   let ingredientId: string;
@@ -12,16 +13,17 @@ describe("recipes + automatic stock deduction", () => {
   beforeAll(async () => {
     const t = await createTenantWithAdmin("Recipe Test Cafe");
     tenantId = t.tenant.id;
+    outletId = t.outlet.id;
     token = t.token;
 
-    const category = await prisma.menuCategory.create({ data: { tenantId, name: "Burgers" } });
+    const category = await prisma.menuCategory.create({ data: { tenantId, outletId, name: "Burgers" } });
     const menuItem = await prisma.menuItem.create({
-      data: { tenantId, categoryId: category.id, name: "Cheese Burger", price: 179 },
+      data: { tenantId, outletId, categoryId: category.id, name: "Cheese Burger", price: 179 },
     });
     menuItemId = menuItem.id;
 
     const ingredient = await prisma.ingredient.create({
-      data: { tenantId, name: "Cheese", unit: "kg", stock: 8, minimum: 2 },
+      data: { tenantId, outletId, name: "Cheese", unit: "kg", stock: 8, minimum: 2 },
     });
     ingredientId = ingredient.id;
   });

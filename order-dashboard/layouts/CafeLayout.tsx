@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import ImpersonationBanner from "../components/ImpersonationBanner";
 import { logout, getImpersonation, exitImpersonation } from "../lib/useAuth";
+import { getOutlets, getCurrentOutletId, setCurrentOutletId } from "../lib/api";
 import {
   RestaurantIcon,
   Home01Icon,
@@ -21,7 +23,49 @@ import {
   Logout01Icon,
   Clock01Icon,
   MoneySend01Icon,
+  Building02Icon,
 } from "hugeicons-react";
+
+function OutletSwitcher() {
+  const [outlets, setOutlets] = useState([]);
+  const [currentId, setCurrentId] = useState(getCurrentOutletId());
+
+  useEffect(() => {
+    getOutlets().then((list) => {
+      setOutlets(list);
+      if (!currentId && list.length > 0) {
+        const def = list.find((o) => o.isDefault) ?? list[0];
+        setCurrentOutletId(def._id);
+        setCurrentId(def._id);
+      }
+    });
+  }, []);
+
+  function handleChange(e) {
+    const outletId = e.target.value;
+    setCurrentOutletId(outletId);
+    window.location.href = "/cafe";
+  }
+
+  if (outlets.length <= 1) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-(--color-text-muted)">
+      <Building02Icon size={14} strokeWidth={1.8} />
+      <select
+        value={currentId ?? ""}
+        onChange={handleChange}
+        className="w-full rounded-md border border-(--color-border) bg-transparent px-1.5 py-1 text-xs outline-none"
+      >
+        {outlets.map((o) => (
+          <option key={o._id} value={o._id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 const navLinks = [
   { to: "/cafe", label: "Dashboard", icon: Home01Icon, end: true },
@@ -84,6 +128,8 @@ export default function CafeLayout() {
           </span>
           <span className="text-sm font-semibold">Cafe POS</span>
         </div>
+
+        <OutletSwitcher />
 
         <nav className="mt-4 flex flex-col gap-0.5">
           {navLinks.map((link) => (

@@ -5,13 +5,28 @@ import { getToken, logout } from "./useAuth";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
+// Which outlet (branch) the current staff session is operating on — a UI
+// preference, not part of the auth session, since one login can switch
+// between every outlet in its tenant.
+const OUTLET_STORAGE_KEY = "order-dashboard-outlet";
+
+export function getCurrentOutletId(): string | null {
+  return localStorage.getItem(OUTLET_STORAGE_KEY);
+}
+
+export function setCurrentOutletId(outletId: string) {
+  localStorage.setItem(OUTLET_STORAGE_KEY, outletId);
+}
+
 async function request(path: string, options: RequestInit = {}) {
   const token = getToken();
+  const outletId = getCurrentOutletId();
   const res = await fetch(`${BASE_URL}/api${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(outletId ? { "X-Outlet-Id": outletId } : {}),
       ...options.headers,
     },
   });
@@ -766,6 +781,22 @@ export async function getAuditLog({ page = 1, pageSize = 30 }: { page?: number; 
   };
 }
 
+// --- Outlets / branches --------------------------------------------------
+
+function mapOutlet(o: any) {
+  return { _id: o.id, name: o.name, address: o.address, isDefault: o.isDefault };
+}
+
+export async function getOutlets() {
+  const outlets = await get("/outlets");
+  return outlets.map(mapOutlet);
+}
+
+export async function createOutlet(data: { name: string; address?: string }) {
+  const outlet = await post("/outlets", data);
+  return mapOutlet(outlet);
+}
+
 // --- Public QR ordering (no auth) --------------------------------------
 // Uses fetch() directly rather than request()/get() since those attach
 // whatever staff auth token happens to be in this browser, which has
@@ -782,8 +813,8 @@ async function publicRequest(path: string, options: RequestInit = {}) {
   return data;
 }
 
-export async function getPublicMenu(tenantId: string) {
-  const data = await publicRequest(`/${tenantId}/menu`);
+export async function getPublicMenu(tenantId: string, tableId: string) {
+  const data = await publicRequest(`/${tenantId}/tables/${tableId}/menu`);
   return { tenantName: data.tenantName, categories: data.categories, items: data.items.map(mapMenuItem) };
 }
 

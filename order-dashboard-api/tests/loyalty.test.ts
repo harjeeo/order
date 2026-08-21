@@ -14,9 +14,9 @@ describe("loyalty points: earn and redeem", () => {
     tenantId = t.tenant.id;
     token = t.token;
 
-    const category = await prisma.menuCategory.create({ data: { tenantId, name: "Test Category" } });
+    const category = await prisma.menuCategory.create({ data: { tenantId, outletId: t.outlet.id, name: "Test Category" } });
     const menuItem = await prisma.menuItem.create({
-      data: { tenantId, categoryId: category.id, name: "Loyalty Item", price: 500 },
+      data: { tenantId, outletId: t.outlet.id, categoryId: category.id, name: "Loyalty Item", price: 500 },
     });
     menuItemId = menuItem.id;
 

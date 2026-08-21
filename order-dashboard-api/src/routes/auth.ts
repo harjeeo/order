@@ -104,6 +104,7 @@ authRouter.post("/signup", authLimiter, async (req, res) => {
     },
   });
   await prisma.settings.create({ data: { tenantId: tenant.id } });
+  await prisma.outlet.create({ data: { tenantId: tenant.id, name: "Main Outlet", isDefault: true } });
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({

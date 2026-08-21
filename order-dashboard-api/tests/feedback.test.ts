@@ -5,6 +5,7 @@ import { createTenantWithAdmin, deleteTenant } from "./helpers";
 
 describe("invoice feedback + reports aggregate", () => {
   let tenantId: string;
+  let outletId: string;
   let token: string;
   let invoiceId: string;
   let invoiceNumber: string;
@@ -12,11 +13,12 @@ describe("invoice feedback + reports aggregate", () => {
   beforeAll(async () => {
     const t = await createTenantWithAdmin("Feedback Test Cafe");
     tenantId = t.tenant.id;
+    outletId = t.outlet.id;
     token = t.token;
 
-    const category = await prisma.menuCategory.create({ data: { tenantId, name: "Test Category" } });
+    const category = await prisma.menuCategory.create({ data: { tenantId, outletId, name: "Test Category" } });
     const menuItem = await prisma.menuItem.create({
-      data: { tenantId, categoryId: category.id, name: "Test Item", price: 100 },
+      data: { tenantId, outletId, categoryId: category.id, name: "Test Item", price: 100 },
     });
 
     const orderRes = await request(app)

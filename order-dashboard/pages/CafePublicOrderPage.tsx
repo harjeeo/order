@@ -29,7 +29,7 @@ export default function CafePublicOrderPage() {
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    Promise.all([getPublicMenu(tenantId), getPublicTable(tenantId, tableId)])
+    Promise.all([getPublicMenu(tenantId, tableId), getPublicTable(tenantId, tableId)])
       .then(([menu, table]) => {
         setTenantName(menu.tenantName);
         setCategories(["All", ...menu.categories]);

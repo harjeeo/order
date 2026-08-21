@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 
 export const kitchenRouter = Router();
-kitchenRouter.use(requireAuth, requireTenant);
+kitchenRouter.use(requireAuth, requireTenant, requireOutlet);
 
 kitchenRouter.get("/", async (req, res) => {
   const tickets = await prisma.kitchenTicket.findMany({
-    where: { tenantId: req.user!.tenantId! },
+    where: { tenantId: req.user!.tenantId!, order: { outletId: req.outletId! } },
     include: { order: { include: { items: true, table: true } } },
     orderBy: { createdAt: "desc" },
   });

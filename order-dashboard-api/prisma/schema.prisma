@@ -37,6 +37,7 @@ model Tenant {
   createdAt   DateTime     @default(now())
 
   users       User[]
+  outlets     Outlet[]
   categories  MenuCategory[]
   menuItems   MenuItem[]
   tables      Table[]
@@ -50,6 +51,29 @@ model Tenant {
   printLogs   PrintLog[]
   shifts      Shift[]
   settings    Settings?
+}
+
+// --- Outlets / branches ----------------------------------------------
+// Pro-plan multi-outlet support: staff share one login across every
+// outlet under their tenant and switch between them in the UI. Menu,
+// tables, inventory and orders are scoped per-outlet; staff, customers,
+// expenses and invoices stay shared across the whole tenant.
+model Outlet {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  address   String   @default("")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  categories  MenuCategory[]
+  menuItems   MenuItem[]
+  tables      Table[]
+  orders      Order[]
+  ingredients Ingredient[]
+
+  @@index([tenantId])
 }
 
 model PlatformSettings {
@@ -105,17 +129,22 @@ model MenuCategory {
   id       String @id @default(cuid())
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId String
+  outlet   Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
   name     String
 
   items MenuItem[]
 
-  @@unique([tenantId, name])
+  @@unique([outletId, name])
+  @@index([tenantId])
 }
 
 model MenuItem {
   id         String       @id @default(cuid())
   tenantId   String
   tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId   String
+  outlet     Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
   categoryId String
   category   MenuCategory @relation(fields: [categoryId], references: [id])
   name       String
@@ -129,6 +158,7 @@ model MenuItem {
   recipe   RecipeIngredient[]
 
   @@index([tenantId])
+  @@index([outletId])
 }
 
 model MenuVariant {
@@ -160,6 +190,8 @@ model Table {
   id       String      @id @default(cuid())
   tenantId String
   tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId String
+  outlet   Outlet      @relation(fields: [outletId], references: [id], onDelete: Cascade)
   number   String
   capacity Int
   status   TableStatus @default(available)
@@ -167,6 +199,7 @@ model Table {
   orders Order[]
 
   @@index([tenantId])
+  @@index([outletId])
 }
 
 // --- Customers ------------------------------------------------------------
@@ -217,6 +250,8 @@ model Order {
   id            String        @id @default(cuid())
   tenantId      String
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId      String
+  outlet        Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
   orderNumber   String
   orderType     OrderType
   source        OrderSource   @default(staff)
@@ -238,6 +273,7 @@ model Order {
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId])
+  @@index([outletId])
 }
 
 model OrderItem {
@@ -303,6 +339,8 @@ model Ingredient {
   id       String @id @default(cuid())
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId String
+  outlet   Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
   name     String
   unit     String @default("kg")
   stock    Float  @default(0)
@@ -312,6 +350,7 @@ model Ingredient {
   recipeUses RecipeIngredient[]
 
   @@index([tenantId])
+  @@index([outletId])
 }
 
 // --- Recipes ----------------------------------------------------------

@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 
 export const menuRouter = Router();
-menuRouter.use(requireAuth, requireTenant);
+menuRouter.use(requireAuth, requireTenant, requireOutlet);
 
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024; // 1.5MB decoded
 const ALLOWED_IMAGE_TYPES = ["png", "jpeg", "jpg", "webp", "gif"];
@@ -29,7 +29,7 @@ function validateImage(image: string | undefined): string | null {
 }
 
 menuRouter.get("/categories", async (req, res) => {
-  const categories = await prisma.menuCategory.findMany({ where: { tenantId: req.user!.tenantId! } });
+  const categories = await prisma.menuCategory.findMany({ where: { outletId: req.outletId! } });
   res.json(categories.map((c) => c.name));
 });
 
@@ -37,15 +37,15 @@ menuRouter.post("/categories", async (req, res) => {
   const name = String(req.body.name ?? "").trim();
   if (!name) return res.status(400).json({ error: "Name required" });
   const category = await prisma.menuCategory.upsert({
-    where: { tenantId_name: { tenantId: req.user!.tenantId!, name } },
+    where: { outletId_name: { outletId: req.outletId!, name } },
     update: {},
-    create: { tenantId: req.user!.tenantId!, name },
+    create: { tenantId: req.user!.tenantId!, outletId: req.outletId!, name },
   });
   res.status(201).json(category);
 });
 
 menuRouter.delete("/categories/:name", async (req, res) => {
-  await prisma.menuCategory.deleteMany({ where: { tenantId: req.user!.tenantId!, name: req.params.name } });
+  await prisma.menuCategory.deleteMany({ where: { outletId: req.outletId!, name: req.params.name } });
   res.json({ ok: true });
 });
 
@@ -53,7 +53,7 @@ menuRouter.get("/items", async (req, res) => {
   const { category, search = "" } = req.query as { category?: string; search?: string };
   const items = await prisma.menuItem.findMany({
     where: {
-      tenantId: req.user!.tenantId!,
+      outletId: req.outletId!,
       name: { contains: search, mode: "insensitive" },
       ...(category && category !== "All" ? { category: { name: category } } : {}),
     },
@@ -84,6 +84,7 @@ menuRouter.post("/items", async (req, res) => {
     data: {
       ...data,
       tenantId: req.user!.tenantId!,
+      outletId: req.outletId!,
       variants: { create: variants },
       addons: { create: addons },
     },

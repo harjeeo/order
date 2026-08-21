@@ -12,13 +12,13 @@ describe("public QR ordering", () => {
     const t = await createTenantWithAdmin("QR Order Test Cafe");
     tenantId = t.tenant.id;
 
-    const category = await prisma.menuCategory.create({ data: { tenantId, name: "Drinks" } });
+    const category = await prisma.menuCategory.create({ data: { tenantId, outletId: t.outlet.id, name: "Drinks" } });
     const item = await prisma.menuItem.create({
-      data: { tenantId, categoryId: category.id, name: "Cold Coffee", price: 150, available: true },
+      data: { tenantId, outletId: t.outlet.id, categoryId: category.id, name: "Cold Coffee", price: 150, available: true },
     });
     menuItemId = item.id;
 
-    const table = await prisma.table.create({ data: { tenantId, number: "T1", capacity: 4 } });
+    const table = await prisma.table.create({ data: { tenantId, outletId: t.outlet.id, number: "T1", capacity: 4 } });
     tableId = table.id;
   });
 
@@ -28,12 +28,12 @@ describe("public QR ordering", () => {
   });
 
   it("returns 404 for an unknown tenant", async () => {
-    const res = await request(app).get("/api/public/nonexistent-tenant/menu");
+    const res = await request(app).get(`/api/public/nonexistent-tenant/tables/${tableId}/menu`);
     expect(res.status).toBe(404);
   });
 
-  it("serves the public menu without auth", async () => {
-    const res = await request(app).get(`/api/public/${tenantId}/menu`);
+  it("serves the public menu without auth, scoped to the table's outlet", async () => {
+    const res = await request(app).get(`/api/public/${tenantId}/tables/${tableId}/menu`);
     expect(res.status).toBe(200);
     expect(res.body.tenantName).toBeTruthy();
     expect(res.body.items.some((i: any) => i.id === menuItemId)).toBe(true);
@@ -42,9 +42,9 @@ describe("public QR ordering", () => {
   it("excludes unavailable items from the public menu", async () => {
     const category = await prisma.menuCategory.findFirstOrThrow({ where: { tenantId } });
     const hidden = await prisma.menuItem.create({
-      data: { tenantId, categoryId: category.id, name: "86'd Item", price: 99, available: false },
+      data: { tenantId, outletId: category.outletId, categoryId: category.id, name: "86'd Item", price: 99, available: false },
     });
-    const res = await request(app).get(`/api/public/${tenantId}/menu`);
+    const res = await request(app).get(`/api/public/${tenantId}/tables/${tableId}/menu`);
     expect(res.body.items.some((i: any) => i.id === hidden.id)).toBe(false);
   });
 

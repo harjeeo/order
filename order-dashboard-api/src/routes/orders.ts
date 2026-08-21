@@ -1,17 +1,17 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 
 export const ordersRouter = Router();
-ordersRouter.use(requireAuth, requireTenant);
+ordersRouter.use(requireAuth, requireTenant, requireOutlet);
 
 ordersRouter.get("/", async (req, res) => {
   const { search = "", status, orderType } = req.query as { search?: string; status?: string; orderType?: string };
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
   const where = {
-    tenantId: req.user!.tenantId!,
+    outletId: req.outletId!,
     ...(status && status !== "all" ? { status: status as any } : {}),
     ...(orderType && orderType !== "all" ? { orderType: orderType as any } : {}),
     OR: [{ orderNumber: { contains: search, mode: "insensitive" as const } }, { customerName: { contains: search, mode: "insensitive" as const } }],
@@ -110,7 +110,7 @@ ordersRouter.post("/", async (req, res) => {
   const { items, action, ...data } = parsed.data;
   const tenantId = req.user!.tenantId!;
 
-  const order = await createOrderWithNumber(tenantId, data, items);
+  const order = await createOrderWithNumber(tenantId, { ...data, outletId: req.outletId! }, items);
   await deductStockForOrder(tenantId, order.orderNumber, items);
 
   if (action === "kitchen" || action === "kot") {

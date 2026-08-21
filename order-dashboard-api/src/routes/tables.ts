@@ -1,18 +1,18 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 
 export const tablesRouter = Router();
-tablesRouter.use(requireAuth, requireTenant);
+tablesRouter.use(requireAuth, requireTenant, requireOutlet);
 
 tablesRouter.get("/", async (req, res) => {
-  const tables = await prisma.table.findMany({ where: { tenantId: req.user!.tenantId! }, orderBy: { number: "asc" } });
+  const tables = await prisma.table.findMany({ where: { outletId: req.outletId! }, orderBy: { number: "asc" } });
   res.json(tables);
 });
 
 tablesRouter.post("/", async (req, res) => {
   const { number, capacity } = req.body;
-  const table = await prisma.table.create({ data: { tenantId: req.user!.tenantId!, number, capacity } });
+  const table = await prisma.table.create({ data: { tenantId: req.user!.tenantId!, outletId: req.outletId!, number, capacity } });
   res.status(201).json(table);
 });
 
@@ -28,7 +28,7 @@ tablesRouter.post("/:id/transfer/:toId", async (req, res) => {
   if (!from) return res.status(404).json({ error: "Not found" });
   await prisma.table.update({ where: { id: req.params.toId }, data: { status: from.status } });
   await prisma.table.update({ where: { id: req.params.id }, data: { status: "available" } });
-  const tables = await prisma.table.findMany({ where: { tenantId: req.user!.tenantId! } });
+  const tables = await prisma.table.findMany({ where: { outletId: req.outletId! } });
   res.json(tables);
 });
 
@@ -39,6 +39,6 @@ tablesRouter.post("/merge", async (req, res) => {
     where: { id: { in: sourceIds.filter((id) => id !== targetId) } },
     data: { status: "available" },
   });
-  const tables = await prisma.table.findMany({ where: { tenantId: req.user!.tenantId! } });
+  const tables = await prisma.table.findMany({ where: { outletId: req.outletId! } });
   res.json(tables);
 });

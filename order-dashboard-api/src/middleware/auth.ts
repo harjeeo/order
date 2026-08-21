@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { Role } from "@prisma/client";
+import { prisma } from "../prisma";
 
 const INSECURE_DEFAULT_JWT_SECRET = "dev-secret-change-in-production-please";
 
@@ -29,6 +30,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthUser;
+      outletId?: string;
     }
   }
 }
@@ -63,5 +65,25 @@ export function requireRole(...roles: Role[]) {
 // (super admins have none, and only manage the /tenants routes).
 export function requireTenant(req: Request, res: Response, next: NextFunction) {
   if (!req.user?.tenantId) return res.status(403).json({ error: "No tenant on this account" });
+  next();
+}
+
+// Resolves which outlet (branch) this request operates on. Staff share one
+// login across every outlet in their tenant and switch between them in the
+// UI, sending their choice as the X-Outlet-Id header — this just validates
+// that header actually belongs to the caller's tenant (never trusts it
+// blindly) and falls back to the tenant's default outlet when it's absent,
+// so routes/clients that haven't been updated for outlets yet still work.
+export async function requireOutlet(req: Request, res: Response, next: NextFunction) {
+  const tenantId = req.user!.tenantId!;
+  const requested = req.headers["x-outlet-id"];
+  const requestedId = typeof requested === "string" ? requested : undefined;
+
+  const outlet = requestedId
+    ? await prisma.outlet.findFirst({ where: { id: requestedId, tenantId } })
+    : await prisma.outlet.findFirst({ where: { tenantId }, orderBy: { isDefault: "desc" } });
+
+  if (!outlet) return res.status(404).json({ error: "Outlet not found" });
+  req.outletId = outlet.id;
   next();
 }

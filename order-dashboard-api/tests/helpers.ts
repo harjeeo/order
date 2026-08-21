@@ -8,6 +8,7 @@ export async function createTenantWithAdmin(namePrefix: string, password = "pass
   const tenant = await prisma.tenant.create({
     data: { name: `${namePrefix} ${suffix}`, ownerName: "Test Owner" },
   });
+  const outlet = await prisma.outlet.create({ data: { tenantId: tenant.id, name: "Main Outlet", isDefault: true } });
   const email = `admin-${suffix}@example.test`;
   const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.create({
@@ -17,7 +18,7 @@ export async function createTenantWithAdmin(namePrefix: string, password = "pass
   const loginRes = await request(app).post("/api/auth/login").send({ email, password });
   const token: string = loginRes.body.token;
 
-  return { tenant, email, token };
+  return { tenant, outlet, email, token };
 }
 
 export async function deleteTenant(tenantId: string) {
