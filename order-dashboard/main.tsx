@@ -23,6 +23,7 @@ import SuperAdminDashboardPage from "./pages/SuperAdminDashboardPage";
 import SuperAdminTenantsPage from "./pages/SuperAdminTenantsPage";
 import SuperAdminReportsPage from "./pages/SuperAdminReportsPage";
 import SuperAdminSettingsPage from "./pages/SuperAdminSettingsPage";
+import SuperAdminActivityPage from "./pages/SuperAdminActivityPage";
 import SuperAdminLoginPage from "./pages/SuperAdminLoginPage";
 import CafeLoginPage from "./pages/CafeLoginPage";
 import CafeSignupPage from "./pages/CafeSignupPage";
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { index: true, element: <SuperAdminDashboardPage /> },
       { path: "tenants", element: <SuperAdminTenantsPage /> },
       { path: "reports", element: <SuperAdminReportsPage /> },
+      { path: "activity", element: <SuperAdminActivityPage /> },
       { path: "settings", element: <SuperAdminSettingsPage /> },
     ],
   },

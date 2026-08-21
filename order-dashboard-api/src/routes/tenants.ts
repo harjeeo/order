@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireRole, signToken } from "../middleware/auth";
 import { sendEmail, credentialsEmailHtml } from "../lib/email";
+import { logAudit } from "../lib/auditLog";
 
 function generateTempPassword() {
   // 10 random chars, easy to read/type out loud to a client over the phone.
@@ -113,6 +114,7 @@ tenantsRouter.post("/bulk", async (req, res) => {
     await prisma.tenant.updateMany({ where: { id: { in: ids } }, data: { plan } });
   }
 
+  await logAudit(req.user!, `tenant.bulk_${action}`, "tenant", undefined, { ids, plan });
   res.json({ ok: true, count: ids.length });
 });
 
@@ -171,6 +173,8 @@ tenantsRouter.post("/", async (req, res) => {
     }),
   });
 
+  await logAudit(req.user!, "tenant.create", "tenant", tenant.id, { name: tenant.name, plan: tenant.plan });
+
   res.status(201).json({
     ...tenant,
     staffLogin: { email: parsed.data.email, tempPassword },
@@ -205,6 +209,8 @@ tenantsRouter.post("/:id/reset-password", async (req, res) => {
     }),
   });
 
+  await logAudit(req.user!, "tenant.reset_password", "tenant", req.params.id, { adminEmail: admin.email });
+
   res.json({ email: admin.email, tempPassword, emailSent: emailResult.ok });
 });
 
@@ -223,6 +229,7 @@ tenantsRouter.post("/:id/impersonate", async (req, res) => {
   if (!admin) return res.status(404).json({ error: "No admin login found for this tenant" });
 
   const token = signToken({ id: admin.id, role: admin.role, tenantId: admin.tenantId, email: admin.email });
+  await logAudit(req.user!, "tenant.impersonate", "tenant", req.params.id, { asUserEmail: admin.email });
   res.json({
     token,
     user: { id: admin.id, name: admin.name, email: admin.email, role: admin.role, tenantId: admin.tenantId },
@@ -231,22 +238,43 @@ tenantsRouter.post("/:id/impersonate", async (req, res) => {
 
 tenantsRouter.patch("/:id", async (req, res) => {
   const tenant = await prisma.tenant.update({ where: { id: req.params.id }, data: req.body });
+  await logAudit(req.user!, "tenant.update", "tenant", req.params.id, req.body);
   res.json(tenant);
 });
 
 tenantsRouter.post("/:id/toggle-status", async (req, res) => {
   const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
   if (!tenant) return res.status(404).json({ error: "Not found" });
+  const newStatus = tenant.status === "active" ? "suspended" : "active";
   const updated = await prisma.tenant.update({
     where: { id: req.params.id },
-    data: { status: tenant.status === "active" ? "suspended" : "active" },
+    data: { status: newStatus },
   });
+  await logAudit(req.user!, `tenant.${newStatus === "suspended" ? "suspend" : "activate"}`, "tenant", req.params.id);
   res.json(updated);
 });
 
 tenantsRouter.delete("/:id", async (req, res) => {
+  const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
   await prisma.tenant.delete({ where: { id: req.params.id } });
+  await logAudit(req.user!, "tenant.delete", "tenant", req.params.id, { name: tenant?.name });
   res.json({ ok: true });
+});
+
+tenantsRouter.get("/audit-log", async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 30));
+
+  const [items, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.auditLog.count(),
+  ]);
+
+  res.json({ items, total, page, pageSize });
 });
 
 tenantsRouter.get("/stats/summary", async (_req, res) => {

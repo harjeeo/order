@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, signToken } from "../middleware/auth";
+import { logAudit } from "../lib/auditLog";
 
 export const authRouter = Router();
 
@@ -32,6 +33,29 @@ authRouter.post("/login", authLimiter, async (req, res) => {
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+
+  // Cafe staff logins (not Super Admin, who has no tenantId) are gated on
+  // their tenant's status — this is what actually makes "Suspend Client"
+  // in Super Admin block access, and where an expired plan gets enforced.
+  if (user.tenantId) {
+    const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId } });
+    if (tenant) {
+      const isExpired = tenant.status === "active" && tenant.planExpiry != null && tenant.planExpiry.getTime() < Date.now();
+      if (isExpired) {
+        await prisma.tenant.update({ where: { id: tenant.id }, data: { status: "suspended" } });
+        await logAudit(null, "tenant.auto_suspend_expired", "tenant", tenant.id, { planExpiry: tenant.planExpiry });
+      }
+      // tenant.status here is from the read above, before the update just
+      // made — check isExpired too so the just-suspended case isn't missed.
+      if (isExpired || tenant.status === "suspended") {
+        return res.status(403).json({
+          error: isExpired
+            ? "Your plan has expired. Contact support to renew and regain access."
+            : "This account has been suspended. Contact support for help.",
+        });
+      }
+    }
+  }
 
   const token = signToken({ id: user.id, role: user.role, tenantId: user.tenantId, email: user.email });
   res.json({

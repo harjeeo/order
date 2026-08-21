@@ -686,3 +686,24 @@ export const EMAIL_PROVIDERS = [
 export async function sendTestEmail(to: string) {
   return post("/platform-settings/email/test", { to });
 }
+
+// --- Super Admin: Audit log -----------------------------------------
+
+export async function getAuditLog({ page = 1, pageSize = 30 }: { page?: number; pageSize?: number } = {}) {
+  const result = await get(`/tenants/audit-log${qs({ page: String(page), pageSize: String(pageSize) })}`);
+  return {
+    items: result.items.map((e: any) => ({
+      _id: e.id,
+      actorEmail: e.actorEmail,
+      actorRole: e.actorRole,
+      action: e.action,
+      targetType: e.targetType,
+      targetId: e.targetId,
+      meta: e.meta,
+      createdAt: e.createdAt,
+    })),
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+  };
+}

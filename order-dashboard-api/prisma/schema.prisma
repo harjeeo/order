@@ -382,6 +382,26 @@ model PrintLog {
   @@index([tenantId])
 }
 
+// --- Platform-level audit trail (Super Admin actions on tenants) --------
+
+// Not tenant-scoped — this records what a Super Admin (or the automatic
+// plan-expiry check) did to a tenant, so it survives that tenant being
+// deleted. actorId is nullable for system-initiated entries.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String
+  actorRole  String
+  action     String
+  targetType String
+  targetId   String?
+  meta       Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
 // --- Per-tenant settings (Restaurant profile, GST/Tax, Invoice, KOT, Printer, Payments) --
 
 model Settings {
