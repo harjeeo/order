@@ -3,7 +3,8 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import ImpersonationBanner from "../components/ImpersonationBanner";
 import { logout, getImpersonation, exitImpersonation } from "../lib/useAuth";
-import { getOutlets, getCurrentOutletId, setCurrentOutletId } from "../lib/api";
+import { getOutlets, getCurrentOutletId, setCurrentOutletId, flushOfflineQueue } from "../lib/api";
+import { queuedOrderCount } from "../lib/offlineQueue";
 import {
   RestaurantIcon,
   Home01Icon,
@@ -24,7 +25,55 @@ import {
   Clock01Icon,
   MoneySend01Icon,
   Building02Icon,
+  WifiError01Icon,
 } from "hugeicons-react";
+
+function OfflineBanner() {
+  const [online, setOnline] = useState(navigator.onLine);
+  const [queued, setQueued] = useState(queuedOrderCount());
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    async function handleOnline() {
+      setOnline(true);
+      setSyncing(true);
+      await flushOfflineQueue();
+      setQueued(queuedOrderCount());
+      setSyncing(false);
+    }
+    function handleOffline() {
+      setOnline(false);
+    }
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Orders could already be queued from a previous offline session — try
+    // syncing on mount too, not just on the next "online" transition.
+    if (navigator.onLine && queuedOrderCount() > 0) handleOnline();
+
+    const poll = setInterval(() => setQueued(queuedOrderCount()), 3000);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      clearInterval(poll);
+    };
+  }, []);
+
+  if (online && queued === 0) return null;
+
+  return (
+    <div
+      className={`flex items-center gap-2 px-4 py-1.5 text-xs font-medium text-white ${
+        online ? "bg-amber-500" : "bg-red-500"
+      }`}
+    >
+      <WifiError01Icon size={14} strokeWidth={1.8} />
+      {!online && `You're offline — orders will be saved and sent once you're back online.`}
+      {online && syncing && `Back online — syncing ${queued} queued order${queued === 1 ? "" : "s"}…`}
+      {online && !syncing && queued > 0 && `${queued} order${queued === 1 ? "" : "s"} still waiting to sync.`}
+    </div>
+  );
+}
 
 function OutletSwitcher() {
   const [outlets, setOutlets] = useState([]);
@@ -152,6 +201,7 @@ export default function CafeLayout() {
       </aside>
 
       <main className="flex flex-1 flex-col overflow-hidden">
+        <OfflineBanner />
         <ImpersonationBanner />
         <div className="flex-1 overflow-y-auto">
           <Outlet />

@@ -2,6 +2,7 @@
 // pages only need their import path swapped. Talks to order-dashboard-api.
 
 import { getToken, logout } from "./useAuth";
+import { enqueueOrder, getQueuedOrders, removeQueuedOrder, isNetworkError } from "./offlineQueue";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -199,6 +200,9 @@ export async function getCustomersList({ search = "" }: { search?: string } = {}
 }
 
 // Simulates submitting an order to the backend (KOT/bill/hold/save/payment).
+// If the network is down, the order is queued locally instead of lost —
+// see lib/offlineQueue.ts — and synced automatically once connectivity
+// returns (flushOfflineQueue, called on the browser's "online" event).
 export async function submitOrder(order: any) {
   const items = order.items.map((i: any) => ({
     menuItemId: i.itemId,
@@ -207,7 +211,7 @@ export async function submitOrder(order: any) {
     unitPrice: i.unitPrice + (i.addons ?? []).reduce((s: number, a: any) => s + a.price, 0),
     notes: i.notes ?? "",
   }));
-  const created = await post("/orders", {
+  const payload = {
     orderType: toBackendOrderType(order.orderType),
     tableId: order.tableId || null,
     customerId: order.customerId || null,
@@ -216,8 +220,54 @@ export async function submitOrder(order: any) {
     items,
     amount: order.total,
     action: order.action,
-  });
-  return mapOrder(created);
+  };
+
+  try {
+    const created = await post("/orders", payload);
+    return mapOrder(created);
+  } catch (err) {
+    if (!isNetworkError(err)) throw err;
+    const queued = enqueueOrder(payload);
+    return {
+      _id: queued.id,
+      orderNumber: "Queued (offline)",
+      orderType: order.orderType,
+      table: null,
+      customerId: order.customerId ?? null,
+      customer: order.customerName ?? "Walk-in Customer",
+      waiter: order.waiter ?? "",
+      items: order.items,
+      amount: order.total,
+      paymentStatus: "unpaid",
+      status: "pending",
+      notes: order.notes ?? "",
+      createdAt: queued.queuedAt,
+      source: "staff",
+      _offline: true,
+    };
+  }
+}
+
+// Replays every locally-queued order against the real API, in the order
+// they were placed. Stops at the first failure (still offline, or a real
+// server error) so the rest stay queued for the next attempt rather than
+// being retried out of order.
+export async function flushOfflineQueue() {
+  const queue = getQueuedOrders();
+  let synced = 0;
+  for (const entry of queue) {
+    try {
+      await post("/orders", entry.payload);
+      removeQueuedOrder(entry.id);
+      synced++;
+    } catch (err) {
+      if (isNetworkError(err)) break;
+      // A real server error (e.g. a table that no longer exists) — drop it
+      // rather than retrying forever, but don't stop the rest of the queue.
+      removeQueuedOrder(entry.id);
+    }
+  }
+  return { synced, remaining: getQueuedOrders().length };
 }
 
 // --- Kitchen / KOT -------------------------------------------------------
