@@ -130,7 +130,10 @@ export default function CafeTablesPage() {
       <div className="flex-1 overflow-y-auto p-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Tables</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <RestaurantTableIcon size={20} strokeWidth={1.8} />
+              Tables
+            </h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Floor plan and live table status.</p>
           </div>
           <div className="flex items-center gap-3 text-xs text-(--color-text-muted)">

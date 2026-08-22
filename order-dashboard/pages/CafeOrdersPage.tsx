@@ -9,6 +9,7 @@ import {
   Add01Icon,
   MinusSignIcon,
   Delete02Icon,
+  Invoice01Icon,
 } from "hugeicons-react";
 import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
@@ -160,7 +161,10 @@ export default function CafeOrdersPage() {
 
   return (
     <div className="px-8 py-6">
-      <h1 className="text-2xl font-semibold">{t("orders.title")}</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-semibold">
+        <Invoice01Icon size={20} strokeWidth={1.8} />
+        {t("orders.title")}
+      </h1>
       <p className="mt-1 text-sm text-(--color-text-muted)">All orders across dine-in, takeaway and delivery.</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

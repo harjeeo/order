@@ -10,6 +10,7 @@ import {
   TruckDeliveryIcon,
   Alert02Icon,
   Clock01Icon,
+  Home01Icon,
 } from "hugeicons-react";
 import { getCafeDashboardStats, getActiveShift, clockIn, clockOut } from "../lib/api";
 
@@ -103,7 +104,10 @@ export default function CafeDashboardPage() {
     <div className="px-10 py-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <Home01Icon size={20} strokeWidth={1.8} />
+            Dashboard
+          </h1>
           <p className="mt-1 text-sm text-(--color-text-muted)">Today's overview across all order types.</p>
         </div>
         <ClockWidget />

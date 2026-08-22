@@ -54,7 +54,10 @@ export default function CafeExpensesPage() {
     <div className="px-8 py-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Expenses</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <Wallet01Icon size={20} strokeWidth={1.8} />
+            Expenses
+          </h1>
           <p className="mt-1 text-sm text-(--color-text-muted)">Rent, salaries, purchases and other costs.</p>
         </div>
         <button

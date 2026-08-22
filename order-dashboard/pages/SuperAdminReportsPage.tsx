@@ -86,7 +86,10 @@ export default function SuperAdminReportsPage() {
     <div className="px-10 py-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Platform Reports</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <ChartLineData02Icon size={20} strokeWidth={1.8} />
+            Platform Reports
+          </h1>
           <p className="mt-1 text-sm text-(--color-text-muted)">Revenue, status and health across every client.</p>
         </div>
         <button

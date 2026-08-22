@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search01Icon, PlusSignIcon, Edit02Icon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon } from "hugeicons-react";
+import { Search01Icon, PlusSignIcon, Edit02Icon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon, UserMultiple02Icon } from "hugeicons-react";
 import { getCustomers, getCustomerOrderHistory, createCustomer, updateCustomer, deleteCustomer } from "../lib/api";
 import Avatar from "../components/Avatar";
 import Pagination from "../components/Pagination";
@@ -96,7 +96,10 @@ export default function CafeCustomersPage() {
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Customers</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <UserMultiple02Icon size={20} strokeWidth={1.8} />
+              Customers
+            </h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Contacts, order history and lifetime spend.</p>
           </div>
           <button

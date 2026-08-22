@@ -8,6 +8,7 @@ import {
   FireIcon,
   StickyNote01Icon,
   ComputerVideoIcon,
+  KitchenUtensilsIcon,
 } from "hugeicons-react";
 import { getKitchenOrders, updateKitchenOrderStatus, toggleKitchenOrderPriority, reprintKot } from "../lib/api";
 import { buildKotHtml, printHtml } from "../lib/print";
@@ -76,7 +77,10 @@ export default function CafeKitchenPage() {
     <div className="flex h-full flex-col overflow-hidden px-8 py-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Kitchen</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <KitchenUtensilsIcon size={20} strokeWidth={1.8} />
+            Kitchen
+          </h1>
           <p className="mt-1 text-sm text-(--color-text-muted)">Live order queue — New → Preparing → Ready → Completed.</p>
         </div>
         <Link

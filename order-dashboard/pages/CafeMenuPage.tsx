@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PlusSignIcon, Edit02Icon, Delete02Icon, Cancel01Icon, Image01Icon } from "hugeicons-react";
+import { PlusSignIcon, Edit02Icon, Delete02Icon, Cancel01Icon, Image01Icon, MenuRestaurantIcon } from "hugeicons-react";
 import {
   getMenuCategories,
   addMenuCategory,
@@ -249,7 +249,10 @@ export default function CafeMenuPage() {
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Menu</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <MenuRestaurantIcon size={20} strokeWidth={1.8} />
+              Menu
+            </h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Categories, items, variants and add-ons.</p>
           </div>
           <button

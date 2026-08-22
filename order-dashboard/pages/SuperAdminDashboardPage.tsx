@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building06Icon, CheckmarkCircle02Icon, PauseIcon, MoneyBag02Icon } from "hugeicons-react";
+import { Building06Icon, CheckmarkCircle02Icon, PauseIcon, MoneyBag02Icon, Home01Icon } from "hugeicons-react";
 import { getSuperAdminStats } from "../lib/api";
 
 const CARDS = [
@@ -22,7 +22,10 @@ export default function SuperAdminDashboardPage() {
 
   return (
     <div className="px-10 py-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-semibold">
+        <Home01Icon size={20} strokeWidth={1.8} />
+        Dashboard
+      </h1>
       <p className="mt-1 text-sm text-(--color-text-muted)">Overview across every cafe/restaurant on the platform.</p>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">

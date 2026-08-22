@@ -7,6 +7,7 @@ import {
   Alert02Icon,
   PlusSignIcon,
   Cancel01Icon,
+  PackageIcon,
 } from "hugeicons-react";
 import { getIngredients, recordStockMovement, getStockLog, createIngredient } from "../lib/api";
 
@@ -90,7 +91,10 @@ export default function CafeInventoryPage() {
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Inventory</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <PackageIcon size={20} strokeWidth={1.8} />
+              Inventory
+            </h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Ingredient stock levels and movements.</p>
           </div>
           <button
