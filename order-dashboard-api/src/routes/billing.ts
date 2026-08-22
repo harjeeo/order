@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant } from "../middleware/auth";
+import { couponError } from "./coupons";
 
 export const billingRouter = Router();
 billingRouter.use(requireAuth, requireTenant);
@@ -58,6 +59,17 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
   const tipAmount = Math.max(0, Math.round(Number(req.body.tipAmount) || 0));
   const redeemPoints = Math.max(0, Math.floor(Number(req.body.redeemPoints) || 0));
+  const couponCode = req.body.couponCode ? String(req.body.couponCode).trim().toUpperCase() : "";
+
+  // Re-checked here (not just at /coupons/validate) so two staff can't
+  // both redeem the last use of a maxUses coupon in a race, and so a
+  // coupon can't be deactivated/expired between preview and payment.
+  let coupon = null;
+  if (couponCode) {
+    coupon = await prisma.coupon.findUnique({ where: { tenantId_code: { tenantId, code: couponCode } } });
+    const error = couponError(coupon);
+    if (error) return res.status(400).json({ error });
+  }
 
   let pointsEarned = 0;
   let customerPointsBalance: number | null = null;
@@ -87,8 +99,13 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     roundOff,
     total,
     tipAmount,
+    couponCode,
     method,
   });
+
+  if (coupon) {
+    await prisma.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
+  }
 
   await prisma.order.update({
     where: { id: order.id },

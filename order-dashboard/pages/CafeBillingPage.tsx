@@ -12,7 +12,7 @@ import {
   StarIcon,
   Cancel01Icon,
 } from "hugeicons-react";
-import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback, getCustomer, getSettings } from "../lib/api";
+import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback, getCustomer, getSettings, validateCoupon } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
 import Pagination from "../components/Pagination";
 
@@ -47,6 +47,9 @@ export default function CafeBillingPage() {
   const [splitUpi, setSplitUpi] = useState(0);
   const [tipAmount, setTipAmount] = useState(0);
   const [splitPeople, setSplitPeople] = useState(1);
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discountAmount }
+  const [couponError, setCouponError] = useState("");
   const [upiId, setUpiId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [upiQrDataUrl, setUpiQrDataUrl] = useState("");
@@ -91,15 +94,16 @@ export default function CafeBillingPage() {
     if (!selected) return null;
     const subtotal = selected.amount;
     const percentDiscount = Math.round((subtotal * discountPercent) / 100);
-    const pointsDiscount = Math.min(redeemPoints, maxRedeemablePoints, subtotal - percentDiscount);
-    const discountAmount = percentDiscount + pointsDiscount;
+    const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discountAmount, subtotal - percentDiscount) : 0;
+    const pointsDiscount = Math.min(redeemPoints, maxRedeemablePoints, subtotal - percentDiscount - couponDiscount);
+    const discountAmount = percentDiscount + couponDiscount + pointsDiscount;
     const serviceChargeAmount = Math.round(((subtotal - discountAmount) * serviceChargePercent) / 100);
     const taxAmount = Math.round((subtotal - discountAmount + serviceChargeAmount) * 0.05);
     const rawTotal = subtotal - discountAmount + serviceChargeAmount + taxAmount;
     const total = Math.round(rawTotal);
     const roundOff = +(total - rawTotal).toFixed(2);
-    return { subtotal, discountAmount, serviceChargeAmount, taxAmount, roundOff, total, pointsDiscount };
-  }, [selected, discountPercent, serviceChargePercent, redeemPoints, maxRedeemablePoints]);
+    return { subtotal, discountAmount, serviceChargeAmount, taxAmount, roundOff, total, pointsDiscount, couponDiscount };
+  }, [selected, discountPercent, serviceChargePercent, redeemPoints, maxRedeemablePoints, appliedCoupon]);
 
   const grandTotal = breakdown ? breakdown.total + Number(tipAmount || 0) : 0;
   const perPersonShare = splitPeople > 1 ? grandTotal / splitPeople : 0;
@@ -126,7 +130,22 @@ export default function CafeBillingPage() {
     setRedeemPoints(0);
     setTipAmount(0);
     setSplitPeople(1);
+    setCouponInput("");
+    setAppliedCoupon(null);
+    setCouponError("");
     setCustomerLoyalty(order.customerId ? await getCustomer(order.customerId) : null);
+  }
+
+  async function handleApplyCoupon() {
+    if (!couponInput.trim() || !selected) return;
+    setCouponError("");
+    try {
+      const result = await validateCoupon(couponInput.trim(), selected.amount);
+      setAppliedCoupon({ code: result.code, discountAmount: result.discountAmount });
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponError(err instanceof Error ? err.message : "Invalid coupon");
+    }
   }
 
   async function handleCompletePayment() {
@@ -140,6 +159,7 @@ export default function CafeBillingPage() {
       method,
       tipAmount: Number(tipAmount) || 0,
       redeemPoints: breakdown.pointsDiscount,
+      couponCode: appliedCoupon?.code,
       splits: method === "split" ? { cash: Number(splitCash), upi: Number(splitUpi) } : undefined,
     });
     setToast(
@@ -315,7 +335,35 @@ export default function CafeBillingPage() {
             {selected.orderType} {selected.table ? `· ${selected.table}` : ""} · {selected.customer}
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm">
+          <div className="mt-4">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                <span>Coupon {appliedCoupon.code} applied (-{formatCurrency(appliedCoupon.discountAmount)})</span>
+                <button type="button" onClick={() => setAppliedCoupon(null)} className="font-medium underline">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  placeholder="Coupon code"
+                  className="flex-1 rounded-md border border-(--color-border) bg-transparent px-2 py-1.5 text-sm outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  className="rounded-md border border-(--color-border) px-2.5 py-1.5 text-xs font-medium"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+            {couponError && <p className="mt-1 text-xs text-red-500">{couponError}</p>}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-(--color-text-muted)">Discount</span>
             <div className="flex items-center gap-1">
               <input

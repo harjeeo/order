@@ -51,6 +51,7 @@ model Tenant {
   printLogs   PrintLog[]
   shifts      Shift[]
   settings    Settings?
+  coupons     Coupon[]
 }
 
 // --- Outlets / branches ----------------------------------------------
@@ -324,6 +325,7 @@ model Invoice {
   roundOff             Float    @default(0)
   total                Int
   tipAmount            Int      @default(0)
+  couponCode           String   @default("")
   method               String
   refunded             Boolean  @default(false)
   rating               Int?
@@ -331,6 +333,30 @@ model Invoice {
   createdAt            DateTime @default(now())
 
   @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+}
+
+// --- Coupons / promo codes -----------------------------------------------
+
+enum CouponType {
+  percent
+  fixed
+}
+
+model Coupon {
+  id        String     @id @default(cuid())
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code      String
+  type      CouponType
+  value     Int
+  maxUses   Int?
+  usedCount Int        @default(0)
+  expiresAt DateTime?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 

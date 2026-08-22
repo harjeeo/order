@@ -9,8 +9,19 @@ import {
   SquareLock02Icon,
   CheckmarkCircle02Icon,
   Building02Icon,
+  CouponPercentIcon,
 } from "hugeicons-react";
-import { getSettings, updateSettings, changePassword, getOutlets, createOutlet, setCurrentOutletId } from "../lib/api";
+import {
+  getSettings,
+  updateSettings,
+  changePassword,
+  getOutlets,
+  createOutlet,
+  setCurrentOutletId,
+  getCoupons,
+  createCoupon,
+  setCouponActive,
+} from "../lib/api";
 
 const TABS = [
   { key: "restaurant", label: "Restaurant Profile", icon: Store01Icon },
@@ -19,6 +30,7 @@ const TABS = [
   { key: "kot", label: "KOT", icon: KitchenUtensilsIcon },
   { key: "printer", label: "Printer", icon: PrinterIcon },
   { key: "paymentMethods", label: "Payment Methods", icon: CreditCardIcon },
+  { key: "coupons", label: "Coupons", icon: CouponPercentIcon },
   { key: "outlets", label: "Outlets (Pro)", icon: Building02Icon },
   { key: "account", label: "Change Password", icon: SquareLock02Icon },
 ];
@@ -95,6 +107,45 @@ export default function CafeSettingsPage() {
     window.location.href = "/cafe";
   }
 
+  const [coupons, setCoupons] = useState([]);
+  const [newCouponCode, setNewCouponCode] = useState("");
+  const [newCouponType, setNewCouponType] = useState("percent");
+  const [newCouponValue, setNewCouponValue] = useState("");
+  const [newCouponMaxUses, setNewCouponMaxUses] = useState("");
+  const [couponError, setCouponError] = useState("");
+
+  async function refreshCoupons() {
+    setCoupons(await getCoupons());
+  }
+
+  useEffect(() => {
+    if (tab === "coupons") refreshCoupons();
+  }, [tab]);
+
+  async function handleAddCoupon() {
+    setCouponError("");
+    if (!newCouponCode.trim() || !newCouponValue) return;
+    try {
+      await createCoupon({
+        code: newCouponCode.trim(),
+        type: newCouponType,
+        value: Number(newCouponValue),
+        maxUses: newCouponMaxUses ? Number(newCouponMaxUses) : null,
+      });
+      setNewCouponCode("");
+      setNewCouponValue("");
+      setNewCouponMaxUses("");
+      refreshCoupons();
+    } catch (err) {
+      setCouponError(err instanceof Error ? err.message : "Could not create coupon");
+    }
+  }
+
+  async function handleToggleCoupon(coupon) {
+    await setCouponActive(coupon._id, !coupon.active);
+    refreshCoupons();
+  }
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -129,7 +180,7 @@ export default function CafeSettingsPage() {
   }
 
   if (!settings) return null;
-  if (tab !== "account" && tab !== "outlets" && !draft) return null;
+  if (tab !== "account" && tab !== "outlets" && tab !== "coupons" && !draft) return null;
 
   return (
     <div className="flex h-full">
@@ -308,6 +359,96 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
+          {tab === "coupons" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Discount codes staff can apply on the Billing page (e.g. "WELCOME10").
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {coupons.map((c) => (
+                  <div
+                    key={c._id}
+                    className="flex items-center justify-between rounded-md border border-(--color-border) px-3 py-2"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">
+                        {c.code}
+                        {!c.active && (
+                          <span className="ml-1.5 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] text-(--color-text-muted) dark:bg-white/10">
+                            Inactive
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-(--color-text-muted)">
+                        {c.type === "percent" ? `${c.value}% off` : `₹${c.value} off`}
+                        {c.maxUses != null && ` · ${c.usedCount}/${c.maxUses} used`}
+                        {c.maxUses == null && c.usedCount > 0 && ` · used ${c.usedCount}×`}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleCoupon(c)}
+                      className="rounded-md border border-(--color-border) px-3 py-1 text-xs"
+                    >
+                      {c.active ? "Deactivate" : "Activate"}
+                    </button>
+                  </div>
+                ))}
+                {coupons.length === 0 && <p className="text-sm text-(--color-text-muted)">No coupons yet.</p>}
+              </div>
+
+              <div className="rounded-md border border-(--color-border) p-3">
+                <div className="text-xs font-medium text-(--color-text-muted)">Create a coupon</div>
+                {couponError && <p className="mt-1 text-xs text-red-500">{couponError}</p>}
+                <div className="mt-2 flex flex-wrap items-end gap-2">
+                  <Field label="Code">
+                    <input
+                      placeholder="WELCOME10"
+                      value={newCouponCode}
+                      onChange={(e) => setNewCouponCode(e.target.value)}
+                      className={`${inputClass} w-32`}
+                    />
+                  </Field>
+                  <Field label="Type">
+                    <select
+                      value={newCouponType}
+                      onChange={(e) => setNewCouponType(e.target.value)}
+                      className={`${inputClass} w-28`}
+                    >
+                      <option value="percent">% off</option>
+                      <option value="fixed">₹ off</option>
+                    </select>
+                  </Field>
+                  <Field label="Value">
+                    <input
+                      type="number"
+                      value={newCouponValue}
+                      onChange={(e) => setNewCouponValue(e.target.value)}
+                      className={`${inputClass} w-20`}
+                    />
+                  </Field>
+                  <Field label="Max uses (optional)">
+                    <input
+                      type="number"
+                      value={newCouponMaxUses}
+                      onChange={(e) => setNewCouponMaxUses(e.target.value)}
+                      className={`${inputClass} w-28`}
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    onClick={handleAddCoupon}
+                    disabled={!newCouponCode.trim() || !newCouponValue}
+                    className="rounded-md bg-(--color-accent) px-3 py-2 text-xs font-medium text-white disabled:opacity-40"
+                  >
+                    Add Coupon
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {tab === "outlets" && (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-(--color-text-muted)">
@@ -417,7 +558,7 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
-          {tab !== "account" && tab !== "outlets" && (
+          {tab !== "account" && tab !== "outlets" && tab !== "coupons" && (
             <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"

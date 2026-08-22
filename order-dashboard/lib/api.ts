@@ -386,6 +386,7 @@ function mapInvoice(inv: any) {
     roundOff: inv.roundOff,
     total: inv.total,
     tipAmount: inv.tipAmount ?? 0,
+    couponCode: inv.couponCode ?? "",
     method: inv.method,
     refunded: inv.refunded,
     rating: inv.rating ?? null,
@@ -846,6 +847,40 @@ export async function getOutlets() {
 export async function createOutlet(data: { name: string; address?: string }) {
   const outlet = await post("/outlets", data);
   return mapOutlet(outlet);
+}
+
+// --- Coupons / promo codes ------------------------------------------------
+
+function mapCoupon(c: any) {
+  return {
+    _id: c.id,
+    code: c.code,
+    type: c.type,
+    value: c.value,
+    maxUses: c.maxUses,
+    usedCount: c.usedCount,
+    expiresAt: c.expiresAt,
+    active: c.active,
+  };
+}
+
+export async function getCoupons() {
+  const coupons = await get("/coupons");
+  return coupons.map(mapCoupon);
+}
+
+export async function createCoupon(data: { code: string; type: string; value: number; maxUses?: number | null; expiresAt?: string | null }) {
+  const coupon = await post("/coupons", data);
+  return mapCoupon(coupon);
+}
+
+export async function setCouponActive(id: string, active: boolean) {
+  const coupon = await patch(`/coupons/${id}`, { active });
+  return mapCoupon(coupon);
+}
+
+export async function validateCoupon(code: string, subtotal: number) {
+  return post("/coupons/validate", { code, subtotal });
 }
 
 // --- Public QR ordering (no auth) --------------------------------------
