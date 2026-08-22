@@ -77,6 +77,14 @@ export default function CafeInventoryPage() {
   const lowCount = ingredients.filter((i) => i.status === "low").length;
   const outCount = ingredients.filter((i) => i.status === "out").length;
 
+  // Simple reorder heuristic: top the stock back up to 2x the minimum
+  // threshold. No supplier integration — this is just a suggestion list
+  // for staff to act on manually.
+  const reorderSuggestions = ingredients
+    .filter((i) => i.status !== "ok" && i.minimum > 0)
+    .map((i) => ({ ...i, suggestedQty: Math.max(i.minimum, i.minimum * 2 - i.stock) }))
+    .sort((a, b) => (a.status === "out" ? -1 : 1) - (b.status === "out" ? -1 : 1));
+
   return (
     <div className="flex h-full">
       <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -109,6 +117,28 @@ export default function CafeInventoryPage() {
             <div className="text-xs text-(--color-text-muted)">Out of Stock</div>
           </div>
         </div>
+
+        {reorderSuggestions.length > 0 && (
+          <div className="mt-5 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
+            <h2 className="flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+              <Alert02Icon size={14} strokeWidth={1.8} />
+              Reorder Suggestions
+            </h2>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {reorderSuggestions.map((s) => (
+                <div key={s._id} className="flex items-center justify-between text-sm">
+                  <span>{s.name}</span>
+                  <span className="text-xs text-(--color-text-muted)">
+                    {s.stock} {s.unit} left — suggested reorder{" "}
+                    <span className="font-medium text-(--color-text)">
+                      {s.suggestedQty} {s.unit}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-(--color-border)">
           <table className="w-full text-left text-sm">

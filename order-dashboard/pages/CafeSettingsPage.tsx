@@ -197,6 +197,14 @@ export default function CafeSettingsPage() {
               <Field label="GSTIN">
                 <input value={draft.gstin} onChange={(e) => set("gstin", e.target.value)} className={inputClass} />
               </Field>
+              <Field label="UPI ID (for the payment QR on Billing)">
+                <input
+                  value={draft.upiId ?? ""}
+                  onChange={(e) => set("upiId", e.target.value)}
+                  placeholder="cafename@upi"
+                  className={inputClass}
+                />
+              </Field>
               <div className="flex gap-3">
                 <Field label="CGST %">
                   <input

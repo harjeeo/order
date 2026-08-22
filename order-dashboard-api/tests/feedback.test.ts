@@ -26,6 +26,7 @@ describe("invoice feedback + reports aggregate", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({
         orderType: "dine_in",
+        waiter: "Rahul",
         items: [{ menuItemId: menuItem.id, name: "Test Item", qty: 1, unitPrice: 100 }],
         amount: 100,
         action: "save",
@@ -80,5 +81,11 @@ describe("invoice feedback + reports aggregate", () => {
     expect(res.body.feedback.count).toBe(1);
     expect(res.body.feedback.averageRating).toBe(5);
     expect(res.body.feedback.recent[0]).toMatchObject({ invoiceNumber, rating: 5, note: "Great coffee!" });
+  });
+
+  it("aggregates sales by waiter into a leaderboard", async () => {
+    const res = await request(app).get("/api/reports").set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.waiterLeaderboard).toEqual([{ waiter: "Rahul", sales: 105, orders: 1 }]);
   });
 });

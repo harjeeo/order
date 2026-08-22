@@ -56,6 +56,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   if (!order) return res.status(404).json({ error: "Order not found" });
 
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
+  const tipAmount = Math.max(0, Math.round(Number(req.body.tipAmount) || 0));
   const redeemPoints = Math.max(0, Math.floor(Number(req.body.redeemPoints) || 0));
 
   let pointsEarned = 0;
@@ -85,6 +86,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     taxAmount,
     roundOff,
     total,
+    tipAmount,
     method,
   });
 

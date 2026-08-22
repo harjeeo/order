@@ -323,6 +323,7 @@ model Invoice {
   taxAmount            Int      @default(0)
   roundOff             Float    @default(0)
   total                Int
+  tipAmount            Int      @default(0)
   method               String
   refunded             Boolean  @default(false)
   rating               Int?

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import {
   Coins01Icon,
   QrCodeIcon,
@@ -11,7 +12,7 @@ import {
   StarIcon,
   Cancel01Icon,
 } from "hugeicons-react";
-import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback, getCustomer } from "../lib/api";
+import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback, getCustomer, getSettings } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
 import Pagination from "../components/Pagination";
 
@@ -44,6 +45,18 @@ export default function CafeBillingPage() {
   const [method, setMethod] = useState("cash");
   const [splitCash, setSplitCash] = useState(0);
   const [splitUpi, setSplitUpi] = useState(0);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [splitPeople, setSplitPeople] = useState(1);
+  const [upiId, setUpiId] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
+  const [upiQrDataUrl, setUpiQrDataUrl] = useState("");
+
+  useEffect(() => {
+    getSettings().then((s: any) => {
+      setUpiId(s.tax?.upiId ?? "");
+      setRestaurantName(s.restaurant?.name ?? "");
+    });
+  }, []);
   const [toast, setToast] = useState("");
   const [customerLoyalty, setCustomerLoyalty] = useState(null);
   const [redeemPoints, setRedeemPoints] = useState(0);
@@ -88,6 +101,21 @@ export default function CafeBillingPage() {
     return { subtotal, discountAmount, serviceChargeAmount, taxAmount, roundOff, total, pointsDiscount };
   }, [selected, discountPercent, serviceChargePercent, redeemPoints, maxRedeemablePoints]);
 
+  const grandTotal = breakdown ? breakdown.total + Number(tipAmount || 0) : 0;
+  const perPersonShare = splitPeople > 1 ? grandTotal / splitPeople : 0;
+
+  // A static UPI deep-link QR — the customer scans and pays via their own
+  // UPI app; there's no gateway/webhook here, so staff still confirms the
+  // payment landed before completing it (same as any other manual method).
+  useEffect(() => {
+    if (method !== "upi" || !upiId || grandTotal <= 0) {
+      setUpiQrDataUrl("");
+      return;
+    }
+    const link = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(restaurantName || "Cafe")}&am=${grandTotal.toFixed(2)}&cu=INR`;
+    QRCode.toDataURL(link, { width: 200, margin: 1 }).then(setUpiQrDataUrl);
+  }, [method, upiId, grandTotal, restaurantName]);
+
   async function selectOrder(order) {
     setSelectedId(order._id);
     setDiscountPercent(0);
@@ -96,18 +124,21 @@ export default function CafeBillingPage() {
     setSplitCash(0);
     setSplitUpi(0);
     setRedeemPoints(0);
+    setTipAmount(0);
+    setSplitPeople(1);
     setCustomerLoyalty(order.customerId ? await getCustomer(order.customerId) : null);
   }
 
   async function handleCompletePayment() {
     if (!selected || !breakdown) return;
-    if (method === "split" && Number(splitCash) + Number(splitUpi) !== breakdown.total) {
+    if (method === "split" && Number(splitCash) + Number(splitUpi) !== grandTotal) {
       setToast("Split amounts must add up to the total.");
       return;
     }
     const invoice = await completePayment(selected._id, {
       ...breakdown,
       method,
+      tipAmount: Number(tipAmount) || 0,
       redeemPoints: breakdown.pointsDiscount,
       splits: method === "split" ? { cash: Number(splitCash), upi: Number(splitUpi) } : undefined,
     });
@@ -314,6 +345,40 @@ export default function CafeBillingPage() {
             </div>
           </div>
 
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="text-(--color-text-muted)">Tip</span>
+            <div className="flex items-center gap-1">
+              <span className="text-(--color-text-muted)">₹</span>
+              <input
+                type="number"
+                min={0}
+                value={tipAmount}
+                onChange={(e) => setTipAmount(Math.max(0, Number(e.target.value)))}
+                className="w-20 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-right text-sm outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="text-(--color-text-muted)">Split between</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={splitPeople}
+                onChange={(e) => setSplitPeople(Math.min(20, Math.max(1, Number(e.target.value))))}
+                className="w-14 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-right text-sm outline-none"
+              />
+              <span className="text-(--color-text-muted)">people</span>
+            </div>
+          </div>
+          {splitPeople > 1 && (
+            <div className="mt-1 rounded-md bg-(--color-accent)/10 px-2.5 py-1.5 text-xs text-(--color-accent)">
+              {formatCurrency(perPersonShare)} per person ({splitPeople} people) — bill stays one invoice, this is just a split calculator.
+            </div>
+          )}
+
           {customerLoyalty && (
             <div className="mt-3 rounded-md border border-(--color-border) p-2.5">
               <div className="flex items-center justify-between text-xs text-(--color-text-muted)">
@@ -359,9 +424,15 @@ export default function CafeBillingPage() {
               <span>Round Off</span>
               <span className="tabular-nums">{breakdown.roundOff >= 0 ? "+" : ""}{breakdown.roundOff}</span>
             </div>
+            {tipAmount > 0 && (
+              <div className="flex justify-between text-(--color-text-muted)">
+                <span>Tip</span>
+                <span className="tabular-nums">+{formatCurrency(tipAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-semibold">
               <span>Total</span>
-              <span className="tabular-nums">{formatCurrency(breakdown.total)}</span>
+              <span className="tabular-nums">{formatCurrency(grandTotal)}</span>
             </div>
           </div>
 
@@ -381,6 +452,23 @@ export default function CafeBillingPage() {
               </button>
             ))}
           </div>
+
+          {method === "upi" && (
+            <div className="mt-3 flex flex-col items-center gap-2 rounded-md border border-(--color-border) p-3">
+              {upiQrDataUrl ? (
+                <>
+                  <img src={upiQrDataUrl} alt="UPI payment QR" className="rounded-md" />
+                  <p className="text-center text-xs text-(--color-text-muted)">
+                    Customer scans and pays {formatCurrency(grandTotal)}. Confirm it landed before completing.
+                  </p>
+                </>
+              ) : (
+                <p className="text-center text-xs text-(--color-text-muted)">
+                  Set a UPI ID in Settings → GST/Tax to show a payment QR here.
+                </p>
+              )}
+            </div>
+          )}
 
           {method === "split" && (
             <div className="mt-3 flex items-center gap-2">

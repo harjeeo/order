@@ -8,7 +8,7 @@ reportsRouter.use(requireAuth, requireTenant);
 async function loadReportData(tenantId: string) {
   const [orders, invoices, ingredients, movements, expenses, menuItems] = await Promise.all([
     prisma.order.findMany({ where: { tenantId }, include: { items: true } }),
-    prisma.invoice.findMany({ where: { tenantId } }),
+    prisma.invoice.findMany({ where: { tenantId }, include: { order: true } }),
     prisma.ingredient.findMany({ where: { tenantId } }),
     prisma.stockMovement.findMany({ where: { tenantId, type: "wastage" } }),
     prisma.expense.findMany({ where: { tenantId } }),
@@ -73,6 +73,20 @@ reportsRouter.get("/", async (req, res) => {
     expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amount;
   }
 
+  const waiterTotals = new Map<string, { sales: number; orders: number }>();
+  for (const inv of invoices) {
+    if (inv.refunded) continue;
+    const waiter = (inv as any).order?.waiter?.trim();
+    if (!waiter) continue;
+    const entry = waiterTotals.get(waiter) ?? { sales: 0, orders: 0 };
+    entry.sales += inv.total;
+    entry.orders += 1;
+    waiterTotals.set(waiter, entry);
+  }
+  const waiterLeaderboard = [...waiterTotals.entries()]
+    .map(([waiter, stats]) => ({ waiter, ...stats }))
+    .sort((a, b) => b.sales - a.sales);
+
   const rated = invoices.filter((i) => i.rating != null);
   const recentFeedback = rated
     .filter((i) => i.feedbackNote)
@@ -105,6 +119,7 @@ reportsRouter.get("/", async (req, res) => {
       averageRating: rated.length ? Math.round((rated.reduce((s, i) => s + (i.rating ?? 0), 0) / rated.length) * 10) / 10 : 0,
       recent: recentFeedback,
     },
+    waiterLeaderboard,
   });
 });
 

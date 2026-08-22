@@ -385,6 +385,7 @@ function mapInvoice(inv: any) {
     taxAmount: inv.taxAmount,
     roundOff: inv.roundOff,
     total: inv.total,
+    tipAmount: inv.tipAmount ?? 0,
     method: inv.method,
     refunded: inv.refunded,
     rating: inv.rating ?? null,

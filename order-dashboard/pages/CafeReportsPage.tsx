@@ -6,6 +6,7 @@ import {
   PackageIcon,
   Wallet01Icon,
   StarIcon,
+  Medal01Icon,
 } from "hugeicons-react";
 import { getReportsSummary, REPORT_RANGES } from "../lib/api";
 
@@ -218,6 +219,33 @@ export default function CafeReportsPage() {
                 </div>
               ))}
               {report.feedback.count === 0 && <p className="text-xs text-(--color-text-muted)">No feedback collected yet.</p>}
+            </div>
+          </div>
+        </section>
+
+        {/* Waiter leaderboard */}
+        <section>
+          <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+            <Medal01Icon size={14} strokeWidth={1.8} />
+            Waiter Leaderboard
+          </h2>
+          <div className="mt-2 rounded-xl border border-(--color-border) p-4">
+            <div className="flex flex-col gap-2">
+              {report.waiterLeaderboard.map((w, i) => (
+                <div key={w.waiter} className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="w-5 text-xs text-(--color-text-muted)">#{i + 1}</span>
+                    {w.waiter}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-xs text-(--color-text-muted)">{w.orders} orders</span>
+                    <span className="tabular-nums font-medium">{formatCurrency(w.sales)}</span>
+                  </span>
+                </div>
+              ))}
+              {report.waiterLeaderboard.length === 0 && (
+                <p className="text-xs text-(--color-text-muted)">No waiter-attributed sales yet.</p>
+              )}
             </div>
           </div>
         </section>
