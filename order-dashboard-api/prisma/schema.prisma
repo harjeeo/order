@@ -76,6 +76,8 @@ model Outlet {
   orders       Order[]
   ingredients  Ingredient[]
   reservations Reservation[]
+  invoices     Invoice[]
+  expenses     Expense[]
 
   @@index([tenantId])
 }
@@ -367,6 +369,8 @@ model Invoice {
   id                   String   @id @default(cuid())
   tenantId             String
   tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId             String
+  outlet               Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
   invoiceNumber        String
   orderId              String
   order                Order    @relation(fields: [orderId], references: [id])
@@ -387,6 +391,7 @@ model Invoice {
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
+  @@index([outletId])
 }
 
 // --- Coupons / promo codes -----------------------------------------------
@@ -478,6 +483,8 @@ model Expense {
   id       String   @id @default(cuid())
   tenantId String
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId String
+  outlet   Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
   category String
   amount   Int
   date     DateTime
@@ -485,6 +492,7 @@ model Expense {
   notes    String   @default("")
 
   @@index([tenantId])
+  @@index([outletId])
 }
 
 // --- Staff shifts / attendance -----------------------------------------

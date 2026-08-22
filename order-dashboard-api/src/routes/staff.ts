@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant, requireRole } from "../middleware/auth";
+import { requireAuth, requireTenant, requireRole, requireOutlet } from "../middleware/auth";
 
 export const staffRouter = Router();
 staffRouter.use(requireAuth, requireTenant);
@@ -79,7 +79,7 @@ function sameMonth(a: Date, b: Date) {
 // monthlySalary and logs it as an Expense, so it shows up in the same
 // Expenses/Reports totals as everything else. Blocked if already paid
 // this calendar month, to avoid accidental double-pay.
-staffRouter.post("/:id/pay-salary", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
+staffRouter.post("/:id/pay-salary", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), requireOutlet, async (req, res) => {
   const tenantId = req.user!.tenantId!;
   const user = await prisma.user.findFirst({ where: { id: req.params.id, tenantId } });
   if (!user) return res.status(404).json({ error: "Staff member not found" });
@@ -94,6 +94,7 @@ staffRouter.post("/:id/pay-salary", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN
   await prisma.expense.create({
     data: {
       tenantId,
+      outletId: req.outletId!,
       category: "Salary",
       amount: user.monthlySalary,
       date: now,

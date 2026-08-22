@@ -1,17 +1,17 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 import { couponError } from "./coupons";
 import { sendSms } from "../lib/sms";
 import { notifyOutlet } from "../socket";
 
 export const billingRouter = Router();
-billingRouter.use(requireAuth, requireTenant);
+billingRouter.use(requireAuth, requireTenant, requireOutlet);
 
 billingRouter.get("/billable-orders", async (req, res) => {
   const orders = await prisma.order.findMany({
-    where: { tenantId: req.user!.tenantId!, paymentStatus: "unpaid", status: { not: "cancelled" } },
+    where: { tenantId: req.user!.tenantId!, outletId: req.outletId!, paymentStatus: "unpaid", status: { not: "cancelled" } },
     include: { items: true, table: true },
   });
   res.json(orders);
@@ -19,18 +19,19 @@ billingRouter.get("/billable-orders", async (req, res) => {
 
 billingRouter.get("/invoices", async (req, res) => {
   const tenantId = req.user!.tenantId!;
+  const outletId = req.outletId!;
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
 
   const [items, total] = await Promise.all([
     prisma.invoice.findMany({
-      where: { tenantId },
+      where: { tenantId, outletId },
       orderBy: { createdAt: "desc" },
       include: { order: true },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.invoice.count({ where: { tenantId } }),
+    prisma.invoice.count({ where: { tenantId, outletId } }),
   ]);
 
   res.json({ items, total, page, pageSize });
@@ -92,6 +93,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   }
 
   const invoice = await createInvoiceWithNumber(tenantId, {
+    outletId: order.outletId,
     orderId: order.id,
     customerName: order.customerName,
     subtotal,
@@ -127,6 +129,9 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
 });
 
 billingRouter.post("/invoices/:id/refund", async (req, res) => {
+  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
+  if (!existing) return res.status(404).json({ error: "Invoice not found" });
+
   const invoice = await prisma.invoice.update({ where: { id: req.params.id }, data: { refunded: true } });
   await prisma.order.update({ where: { id: invoice.orderId }, data: { paymentStatus: "refunded" } });
   res.json(invoice);
