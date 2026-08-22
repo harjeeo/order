@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { sendEmail } from "../lib/email";
+import { sendSms } from "../lib/sms";
 
 export const platformSettingsRouter = Router();
 platformSettingsRouter.use(requireAuth, requireRole("SUPER_ADMIN"));
@@ -39,6 +40,26 @@ platformSettingsRouter.post("/email/test", async (req, res) => {
   });
 
   if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test email", provider: result.provider });
+  res.json({ ok: true, provider: result.provider });
+});
+
+const testSmsSchema = z.object({ to: z.string().min(5) });
+
+// Same idea as /email/test — sends a real SMS through the configured
+// provider so a Super Admin can verify credentials before it's relied on
+// for automatic order-ready/bill-paid notifications. Not tenant-scoped
+// (platform settings), so this uses a placeholder tenantId for the log row.
+platformSettingsRouter.post("/sms/test", async (req, res) => {
+  const parsed = testSmsSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const result = await sendSms(
+    "platform-settings-test",
+    parsed.data.to,
+    "This is a test SMS from your Order Dashboard platform settings. If you're reading this, your SMS provider is configured correctly."
+  );
+
+  if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test SMS", provider: result.provider });
   res.json({ ok: true, provider: result.provider });
 });
 

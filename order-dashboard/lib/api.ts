@@ -838,6 +838,25 @@ export async function sendTestEmail(to: string) {
   return post("/platform-settings/email/test", { to });
 }
 
+// --- SMS/WhatsApp provider (order-ready / bill-paid notifications) -------
+
+export const SMS_PROVIDERS = [
+  { key: "none", label: "None (no customer notifications)", fields: [] as { key: string; label: string }[] },
+  {
+    key: "twilio",
+    label: "Twilio",
+    fields: [
+      { key: "accountSid", label: "Account SID" },
+      { key: "authToken", label: "Auth Token" },
+      { key: "fromNumber", label: "From Number" },
+    ],
+  },
+];
+
+export async function sendTestSms(to: string) {
+  return post("/platform-settings/sms/test", { to });
+}
+
 // --- Super Admin: Audit log -----------------------------------------
 
 export async function getAuditLog({ page = 1, pageSize = 30 }: { page?: number; pageSize?: number } = {}) {

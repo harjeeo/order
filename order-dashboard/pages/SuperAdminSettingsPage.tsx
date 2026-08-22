@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
-import { CheckmarkCircle02Icon, SquareLock02Icon, MailSend02Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
-import { getPlatformSettings, updatePlatformSettings, changePassword, sendTestEmail, TENANT_PLANS, EMAIL_PROVIDERS } from "../lib/api";
+import { CheckmarkCircle02Icon, SquareLock02Icon, MailSend02Icon, SmartPhone01Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
+import {
+  getPlatformSettings,
+  updatePlatformSettings,
+  changePassword,
+  sendTestEmail,
+  sendTestSms,
+  TENANT_PLANS,
+  EMAIL_PROVIDERS,
+  SMS_PROVIDERS,
+} from "../lib/api";
 
 const inputClass =
   "rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)";
@@ -111,9 +120,45 @@ export default function SuperAdminSettingsPage() {
     }
   }
 
+  const [testSmsTo, setTestSmsTo] = useState("");
+  const [testSmsStatus, setTestSmsStatus] = useState(null); // { ok: boolean, message: string } | null
+  const [testingSms, setTestingSms] = useState(false);
+
+  function setSmsField(field, value) {
+    setForm((f) => ({ ...f, smsSettings: { ...f.smsSettings, [field]: value } }));
+  }
+
+  function setSmsProviderField(provider, field, value) {
+    setForm((f) => ({
+      ...f,
+      smsSettings: {
+        ...f.smsSettings,
+        [provider]: { ...f.smsSettings[provider], [field]: value },
+      },
+    }));
+  }
+
+  async function handleSendTestSms() {
+    setTestSmsStatus(null);
+    if (!testSmsTo.trim()) {
+      setTestSmsStatus({ ok: false, message: "Enter a phone number to send the test to." });
+      return;
+    }
+    setTestingSms(true);
+    try {
+      await sendTestSms(testSmsTo.trim());
+      setTestSmsStatus({ ok: true, message: `Test SMS sent to ${testSmsTo.trim()}.` });
+    } catch (err) {
+      setTestSmsStatus({ ok: false, message: err instanceof Error ? err.message : "Could not send test SMS" });
+    } finally {
+      setTestingSms(false);
+    }
+  }
+
   if (!form) return null;
 
   const activeProvider = EMAIL_PROVIDERS.find((p) => p.key === form.emailSettings?.provider) ?? EMAIL_PROVIDERS[0];
+  const activeSmsProvider = SMS_PROVIDERS.find((p) => p.key === form.smsSettings?.provider) ?? SMS_PROVIDERS[0];
 
   return (
     <div className="px-10 py-8">
@@ -292,6 +337,90 @@ export default function SuperAdminSettingsPage() {
             )}
             <p className="mt-2 text-[11px] text-(--color-text-muted)">
               Save your API key above first — the test uses whatever is currently saved, not the unsaved form.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-2 border-t border-(--color-border) pt-6">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+            <SmartPhone01Icon size={15} strokeWidth={1.8} />
+            SMS / WhatsApp
+          </h2>
+          <p className="mt-1 text-xs text-(--color-text-muted)">
+            Text customers automatically when their order is ready or their bill is paid — sent from whichever cafe's
+            order it is, using whatever phone number is on the customer record.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <Field label="Provider">
+              <select
+                value={form.smsSettings?.provider ?? "none"}
+                onChange={(e) => setSmsField("provider", e.target.value)}
+                className={`${inputClass} w-56`}
+              >
+                {SMS_PROVIDERS.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {activeSmsProvider.key !== "none" &&
+              activeSmsProvider.fields.map((f) => {
+                const secretId = `sms.${activeSmsProvider.key}.${f.key}`;
+                const revealed = !!showSecret[secretId];
+                return (
+                  <Field key={f.key} label={`${activeSmsProvider.label} ${f.label}`}>
+                    <div className="relative">
+                      <input
+                        type={revealed ? "text" : "password"}
+                        value={form.smsSettings?.[activeSmsProvider.key]?.[f.key] ?? ""}
+                        onChange={(e) => setSmsProviderField(activeSmsProvider.key, f.key, e.target.value)}
+                        placeholder="Paste value here"
+                        className={`${inputClass} w-full pr-9`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSecret((s) => ({ ...s, [secretId]: !s[secretId] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
+                      >
+                        {revealed ? <ViewOffIcon size={15} strokeWidth={1.8} /> : <ViewIcon size={15} strokeWidth={1.8} />}
+                      </button>
+                    </div>
+                  </Field>
+                );
+              })}
+          </div>
+        </div>
+
+        {activeSmsProvider.key !== "none" && (
+          <div className="rounded-lg border border-(--color-border) p-3">
+            <div className="text-xs font-medium text-(--color-text-muted)">Send a test SMS</div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                value={testSmsTo}
+                onChange={(e) => setTestSmsTo(e.target.value)}
+                placeholder="+919876543210"
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                type="button"
+                onClick={handleSendTestSms}
+                disabled={testingSms}
+                className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+              >
+                <SmartPhone01Icon size={14} strokeWidth={1.8} />
+                {testingSms ? "Sending…" : "Send Test"}
+              </button>
+            </div>
+            {testSmsStatus && (
+              <div className={`mt-2 text-xs ${testSmsStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                {testSmsStatus.message}
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-(--color-text-muted)">
+              Save your provider credentials above first — the test uses whatever is currently saved.
             </p>
           </div>
         )}

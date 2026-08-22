@@ -49,6 +49,7 @@ model Tenant {
   recipes     RecipeIngredient[]
   expenses    Expense[]
   printLogs   PrintLog[]
+  notificationLogs NotificationLog[]
   shifts      Shift[]
   settings    Settings?
   coupons      Coupon[]
@@ -93,6 +94,10 @@ model PlatformSettings {
   // later is just a new key here plus a case in src/lib/email.ts — no
   // migration needed since it's JSON.
   emailSettings Json @default("{\"provider\":\"none\",\"fromName\":\"Order Dashboard\",\"fromEmail\":\"\",\"mailjet\":{\"apiKey\":\"\",\"apiSecret\":\"\"},\"brevo\":{\"apiKey\":\"\"}}")
+
+  // Pluggable SMS/WhatsApp config for "order ready" / "bill paid" customer
+  // notifications — same shape as emailSettings above.
+  smsSettings Json @default("{\"provider\":\"none\",\"twilio\":{\"accountSid\":\"\",\"authToken\":\"\",\"fromNumber\":\"\"}}")
 }
 
 // --- Users / staff / roles ------------------------------------------------
@@ -507,6 +512,34 @@ model PrintLog {
   action    PrintLogAction
   refId     String
   createdAt DateTime       @default(now())
+
+  @@index([tenantId])
+}
+
+// --- Customer notifications (SMS/WhatsApp) -------------------------------
+
+enum NotificationChannel {
+  sms
+}
+
+enum NotificationStatus {
+  sent
+  logged
+}
+
+// One row per notification attempt ("order ready", "bill paid"), whether
+// or not a real SMS provider is configured — status is "logged" when it
+// wasn't (see src/lib/sms.ts), so the history is visible before a
+// provider is switched on, same as PrintLog for print/reprint actions.
+model NotificationLog {
+  id        String              @id @default(cuid())
+  tenantId  String
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channel   NotificationChannel
+  to        String
+  message   String
+  status    NotificationStatus
+  createdAt DateTime            @default(now())
 
   @@index([tenantId])
 }

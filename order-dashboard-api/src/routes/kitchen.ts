@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
+import { sendSms } from "../lib/sms";
 
 export const kitchenRouter = Router();
 kitchenRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -15,7 +16,21 @@ kitchenRouter.get("/", async (req, res) => {
 });
 
 kitchenRouter.patch("/:id/status", async (req, res) => {
-  const ticket = await prisma.kitchenTicket.update({ where: { id: req.params.id }, data: { status: req.body.status } });
+  const ticket = await prisma.kitchenTicket.update({
+    where: { id: req.params.id },
+    data: { status: req.body.status },
+    include: { order: true },
+  });
+
+  // Best-effort — never blocks the status update if the customer has no
+  // phone on file or SMS isn't configured (see lib/sms.ts).
+  if (ticket.status === "ready" && ticket.order.customerId) {
+    const customer = await prisma.customer.findUnique({ where: { id: ticket.order.customerId } });
+    if (customer?.phone) {
+      sendSms(ticket.tenantId, customer.phone, `Your order ${ticket.orderNumber} is ready for pickup!`).catch(() => {});
+    }
+  }
+
   res.json(ticket);
 });
 

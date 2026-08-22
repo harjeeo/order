@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant } from "../middleware/auth";
 import { couponError } from "./coupons";
+import { sendSms } from "../lib/sms";
 
 export const billingRouter = Router();
 billingRouter.use(requireAuth, requireTenant);
@@ -111,6 +112,13 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     where: { id: order.id },
     data: { paymentStatus: "paid", status: order.status === "pending" ? "completed" : order.status },
   });
+
+  if (order.customerId) {
+    const customer = await prisma.customer.findUnique({ where: { id: order.customerId } });
+    if (customer?.phone) {
+      sendSms(tenantId, customer.phone, `Payment of ₹${total} received for order ${order.orderNumber}. Thank you!`).catch(() => {});
+    }
+  }
 
   res.status(201).json({ ...invoice, pointsEarned, customerPointsBalance });
 });
