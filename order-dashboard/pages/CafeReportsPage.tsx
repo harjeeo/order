@@ -7,20 +7,41 @@ import {
   Wallet01Icon,
   StarIcon,
   Medal01Icon,
+  Download04Icon,
 } from "hugeicons-react";
-import { getReportsSummary, REPORT_RANGES } from "../lib/api";
+import { getReportsSummary, exportGstReportCsv, REPORT_RANGES } from "../lib/api";
 
 function formatCurrency(n) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function CafeReportsPage() {
   const [range, setRange] = useState("daily");
   const [report, setReport] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     getReportsSummary({ range }).then(setReport);
   }, [range]);
+
+  async function handleExportGst() {
+    setExporting(true);
+    try {
+      const blob = await exportGstReportCsv();
+      downloadBlob(blob, `gst-sales-register-${new Date().toISOString().slice(0, 10)}.csv`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   if (!report) return null;
 
@@ -51,6 +72,16 @@ export default function CafeReportsPage() {
           ))}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={handleExportGst}
+        disabled={exporting}
+        className="mt-4 flex w-fit items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm disabled:opacity-50"
+      >
+        <Download04Icon size={14} strokeWidth={1.8} />
+        {exporting ? "Exporting…" : "Export GST Sales Register (CSV)"}
+      </button>
 
       {/* Sales */}
       <section className="mt-6">

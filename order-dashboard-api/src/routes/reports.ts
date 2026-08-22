@@ -165,3 +165,62 @@ reportsRouter.get("/dashboard", async (req, res) => {
     salesByHour,
   });
 });
+
+// A GST-ready sales register CSV — one row per paid invoice in the range,
+// plus a totals row. Generic enough for any accountant/CA to work from;
+// not a Tally-specific import format.
+reportsRouter.get("/gst-export", async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const from = req.query.from ? new Date(String(req.query.from)) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+  to.setHours(23, 59, 59, 999);
+
+  const [settings, invoices] = await Promise.all([
+    prisma.settings.findUnique({ where: { tenantId } }),
+    prisma.invoice.findMany({
+      where: { tenantId, refunded: false, createdAt: { gte: from, lte: to } },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+  const gstin = (settings?.tax as any)?.gstin ?? "";
+
+  const csvEscape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const row = (cells: unknown[]) => cells.map(csvEscape).join(",");
+  const lines: string[] = [];
+
+  lines.push(`GST Sales Register — ${from.toISOString().slice(0, 10)} to ${to.toISOString().slice(0, 10)}`);
+  lines.push(row(["GSTIN", gstin]));
+  lines.push("");
+  lines.push(row(["Invoice #", "Date", "Customer", "Subtotal", "Discount", "Tax", "Total", "Payment Method"]));
+  for (const inv of invoices) {
+    lines.push(
+      row([
+        inv.invoiceNumber,
+        inv.createdAt.toISOString().slice(0, 10),
+        inv.customerName,
+        inv.subtotal,
+        inv.discountAmount,
+        inv.taxAmount,
+        inv.total,
+        inv.method,
+      ])
+    );
+  }
+  lines.push("");
+  lines.push(
+    row([
+      "TOTAL",
+      "",
+      "",
+      invoices.reduce((s, i) => s + i.subtotal, 0),
+      invoices.reduce((s, i) => s + i.discountAmount, 0),
+      invoices.reduce((s, i) => s + i.taxAmount, 0),
+      invoices.reduce((s, i) => s + i.total, 0),
+      "",
+    ])
+  );
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="gst-sales-register-${Date.now()}.csv"`);
+  res.send(lines.join("\n"));
+});

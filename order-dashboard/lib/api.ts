@@ -662,6 +662,14 @@ export async function getReportsSummary(_opts: { range?: string } = {}) {
   return get("/reports");
 }
 
+export async function exportGstReportCsv({ from, to }: { from?: string; to?: string } = {}) {
+  const res = await fetch(`${BASE_URL}/api/reports/gst-export${qs({ from, to })}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error("Could not export GST report");
+  return res.blob();
+}
+
 // --- Settings (Restaurant Profile, GST/Tax, Invoice, KOT, Printer, Payments) --
 
 export async function getSettings() {
