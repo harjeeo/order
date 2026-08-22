@@ -67,7 +67,7 @@ export default function SuperAdminIconLibraryPage() {
   return (
     <div className="px-10 py-8">
       <h1 className="flex items-center gap-2 text-2xl font-semibold">
-        <Image01Icon size={22} strokeWidth={1.8} />
+        <Image01Icon size={20} strokeWidth={1.8} />
         Menu Icon Library
       </h1>
       <p className="mt-1 text-sm text-(--color-text-muted)">
