@@ -101,12 +101,12 @@ function OutletSwitcher() {
   if (outlets.length <= 1) return null;
 
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-(--color-text-muted)">
-      <Building02Icon size={14} strokeWidth={1.8} />
+    <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-(--color-text-muted)">
+      <Building02Icon size={18} strokeWidth={1.8} />
       <select
         value={currentId ?? ""}
         onChange={handleChange}
-        className="w-full rounded-md border border-(--color-border) bg-transparent px-1.5 py-1 text-xs outline-none"
+        className="w-full rounded-md border border-(--color-border) bg-transparent px-1.5 py-1 text-sm outline-none"
       >
         {outlets.map((o) => (
           <option key={o._id} value={o._id}>
