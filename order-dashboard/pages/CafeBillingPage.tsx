@@ -15,6 +15,7 @@ import {
 import { getBillableOrders, completePayment, getInvoices, reprintInvoice, downloadInvoice, refundInvoice, submitInvoiceFeedback, getCustomer, getSettings, validateCoupon } from "../lib/api";
 import { buildInvoiceHtml, printHtml, downloadInvoicePdf } from "../lib/print";
 import Pagination from "../components/Pagination";
+import { useTranslation } from "../lib/i18n";
 
 const INVOICE_PAGE_SIZE = 10;
 
@@ -34,6 +35,7 @@ function formatTime(iso) {
 }
 
 export default function CafeBillingPage() {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [invoiceTotal, setInvoiceTotal] = useState(0);
@@ -222,8 +224,8 @@ export default function CafeBillingPage() {
   return (
     <div className="flex h-full">
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        <h1 className="text-2xl font-semibold">Billing & Payments</h1>
-        <p className="mt-1 text-sm text-(--color-text-muted)">Bills pending payment.</p>
+        <h1 className="text-2xl font-semibold">{t("billing.title")}</h1>
+        <p className="mt-1 text-sm text-(--color-text-muted)">{t("billing.pendingBills")}</p>
 
         {toast && (
           <div className="mt-3 inline-block rounded-md bg-(--color-accent)/10 px-3 py-1.5 text-xs text-(--color-accent)">
@@ -259,7 +261,7 @@ export default function CafeBillingPage() {
 
         <h2 className="mt-8 flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
           <ReceiptDollarIcon size={14} strokeWidth={1.8} />
-          Recent Invoices
+          {t("billing.recentInvoices")}
         </h2>
         <div className="mt-2 overflow-x-auto rounded-xl border border-(--color-border)">
           <table className="w-full text-left text-sm">
@@ -394,7 +396,7 @@ export default function CafeBillingPage() {
           </div>
 
           <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="text-(--color-text-muted)">Tip</span>
+            <span className="text-(--color-text-muted)">{t("billing.tip")}</span>
             <div className="flex items-center gap-1">
               <span className="text-(--color-text-muted)">₹</span>
               <input
@@ -408,7 +410,7 @@ export default function CafeBillingPage() {
           </div>
 
           <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="text-(--color-text-muted)">Split between</span>
+            <span className="text-(--color-text-muted)">{t("billing.splitBetween")}</span>
             <div className="flex items-center gap-1">
               <input
                 type="number"
@@ -474,7 +476,7 @@ export default function CafeBillingPage() {
             </div>
             {tipAmount > 0 && (
               <div className="flex justify-between text-(--color-text-muted)">
-                <span>Tip</span>
+                <span>{t("billing.tip")}</span>
                 <span className="tabular-nums">+{formatCurrency(tipAmount)}</span>
               </div>
             )}
@@ -484,7 +486,7 @@ export default function CafeBillingPage() {
             </div>
           </div>
 
-          <div className="mt-4 text-xs font-medium text-(--color-text-muted)">Payment Method</div>
+          <div className="mt-4 text-xs font-medium text-(--color-text-muted)">{t("billing.paymentMethod")}</div>
           <div className="mt-2 grid grid-cols-4 gap-1.5">
             {METHODS.map(({ key, label, icon: Icon }) => (
               <button
@@ -546,7 +548,7 @@ export default function CafeBillingPage() {
             onClick={handleCompletePayment}
             className="mt-5 w-full rounded-md bg-(--color-accent) py-2.5 text-sm font-medium text-white"
           >
-            Complete Payment & Generate Invoice
+            {t("billing.completePayment")}
           </button>
         </div>
       )}

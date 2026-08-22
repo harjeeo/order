@@ -5,6 +5,7 @@ import ImpersonationBanner from "../components/ImpersonationBanner";
 import { logout, getImpersonation, exitImpersonation } from "../lib/useAuth";
 import { getOutlets, getCurrentOutletId, setCurrentOutletId, flushOfflineQueue } from "../lib/api";
 import { queuedOrderCount } from "../lib/offlineQueue";
+import { useTranslation } from "../lib/i18n";
 import {
   RestaurantIcon,
   Home01Icon,
@@ -118,22 +119,22 @@ function OutletSwitcher() {
 }
 
 const navLinks = [
-  { to: "/cafe", label: "Dashboard", icon: Home01Icon, end: true },
-  { to: "/cafe/pos", label: "POS / New Order", icon: ShoppingCart01Icon },
-  { to: "/cafe/orders", label: "Orders", icon: Invoice01Icon },
-  { to: "/cafe/tables", label: "Tables", icon: RestaurantTableIcon },
-  { to: "/cafe/reservations", label: "Reservations", icon: CalendarAdd01Icon },
-  { to: "/cafe/kitchen", label: "Kitchen", icon: KitchenUtensilsIcon },
-  { to: "/cafe/menu", label: "Menu", icon: MenuRestaurantIcon },
-  { to: "/cafe/billing", label: "Billing", icon: CreditCardIcon },
-  { to: "/cafe/inventory", label: "Inventory", icon: PackageIcon },
-  { to: "/cafe/recipes", label: "Recipes", icon: ChefHatIcon },
-  { to: "/cafe/customers", label: "Customers", icon: UserMultiple02Icon },
-  { to: "/cafe/staff", label: "Staff & Roles", icon: StaffIcon },
-  { to: "/cafe/attendance", label: "Attendance", icon: Clock01Icon },
-  { to: "/cafe/payroll", label: "Payroll", icon: MoneySend01Icon },
-  { to: "/cafe/expenses", label: "Expenses", icon: Wallet01Icon },
-  { to: "/cafe/reports", label: "Reports", icon: Analytics01Icon },
+  { to: "/cafe", labelKey: "nav.dashboard", icon: Home01Icon, end: true },
+  { to: "/cafe/pos", labelKey: "nav.pos", icon: ShoppingCart01Icon },
+  { to: "/cafe/orders", labelKey: "nav.orders", icon: Invoice01Icon },
+  { to: "/cafe/tables", labelKey: "nav.tables", icon: RestaurantTableIcon },
+  { to: "/cafe/reservations", labelKey: "nav.reservations", icon: CalendarAdd01Icon },
+  { to: "/cafe/kitchen", labelKey: "nav.kitchen", icon: KitchenUtensilsIcon },
+  { to: "/cafe/menu", labelKey: "nav.menu", icon: MenuRestaurantIcon },
+  { to: "/cafe/billing", labelKey: "nav.billing", icon: CreditCardIcon },
+  { to: "/cafe/inventory", labelKey: "nav.inventory", icon: PackageIcon },
+  { to: "/cafe/recipes", labelKey: "nav.recipes", icon: ChefHatIcon },
+  { to: "/cafe/customers", labelKey: "nav.customers", icon: UserMultiple02Icon },
+  { to: "/cafe/staff", labelKey: "nav.staff", icon: StaffIcon },
+  { to: "/cafe/attendance", labelKey: "nav.attendance", icon: Clock01Icon },
+  { to: "/cafe/payroll", labelKey: "nav.payroll", icon: MoneySend01Icon },
+  { to: "/cafe/expenses", labelKey: "nav.expenses", icon: Wallet01Icon },
+  { to: "/cafe/reports", labelKey: "nav.reports", icon: Analytics01Icon },
 ];
 
 function CafeLink({ to, label, icon: Icon, end = false }) {
@@ -155,8 +156,25 @@ function CafeLink({ to, label, icon: Icon, end = false }) {
   );
 }
 
+function LanguageToggle() {
+  const { lang, setLanguage } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={() => setLanguage(lang === "en" ? "hi" : "en")}
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
+    >
+      <span className="flex h-[18px] w-[18px] items-center justify-center text-xs font-semibold">
+        {lang === "en" ? "अ" : "A"}
+      </span>
+      <span>{lang === "en" ? "हिन्दी" : "English"}</span>
+    </button>
+  );
+}
+
 export default function CafeLayout() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   function handleLogout() {
     // While impersonating, "Logout" exits back to the Super Admin's own
@@ -184,12 +202,13 @@ export default function CafeLayout() {
 
         <nav className="mt-4 flex flex-col gap-0.5">
           {navLinks.map((link) => (
-            <CafeLink key={link.to} {...link} />
+            <CafeLink key={link.to} to={link.to} icon={link.icon} end={link.end} label={t(link.labelKey)} />
           ))}
-          <CafeLink to="/cafe/settings" label="Settings" icon={Settings02Icon} />
+          <CafeLink to="/cafe/settings" label={t("nav.settings")} icon={Settings02Icon} />
         </nav>
 
         <div className="mt-auto flex flex-col gap-0.5">
+          <LanguageToggle />
           <ThemeToggle />
           <button
             type="button"
@@ -197,7 +216,7 @@ export default function CafeLayout() {
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
           >
             <Logout01Icon size={16} strokeWidth={1.8} />
-            <span>Logout</span>
+            <span>{t("nav.logout")}</span>
           </button>
         </div>
       </aside>

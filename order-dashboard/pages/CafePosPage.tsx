@@ -24,11 +24,12 @@ import {
   submitOrder,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
+import { useTranslation } from "../lib/i18n";
 
 const ORDER_TYPES = [
-  { key: "dine-in", label: "Dine-In", icon: Store01Icon },
-  { key: "takeaway", label: "Takeaway", icon: ShoppingBag01Icon },
-  { key: "delivery", label: "Delivery", icon: TruckDeliveryIcon },
+  { key: "dine-in", labelKey: "pos.dineIn", icon: Store01Icon },
+  { key: "takeaway", labelKey: "pos.takeaway", icon: ShoppingBag01Icon },
+  { key: "delivery", labelKey: "pos.delivery", icon: TruckDeliveryIcon },
 ];
 
 function formatCurrency(n) {
@@ -41,6 +42,7 @@ function lineTotal(line) {
 }
 
 export default function CafePosPage() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState(["All"]);
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
@@ -217,7 +219,7 @@ export default function CafePosPage() {
       {/* Menu / product selection */}
       <div className="flex flex-1 flex-col overflow-hidden border-r border-(--color-border)">
         <div className="flex items-center gap-3 border-b border-(--color-border) px-6 py-4">
-          {ORDER_TYPES.map(({ key, label, icon: Icon }) => (
+          {ORDER_TYPES.map(({ key, labelKey, icon: Icon }) => (
             <button
               key={key}
               type="button"
@@ -229,7 +231,7 @@ export default function CafePosPage() {
               }`}
             >
               <Icon size={16} strokeWidth={1.8} />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
 
@@ -242,7 +244,7 @@ export default function CafePosPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search items…"
+              placeholder={t("pos.searchItems")}
               className="w-full rounded-md border border-(--color-border) bg-transparent py-1.5 pl-8 pr-3 text-sm outline-none focus:border-(--color-accent)"
             />
           </div>
@@ -390,7 +392,7 @@ export default function CafePosPage() {
                 onClick={() => setConfiguring(null)}
                 className="flex-1 rounded-md border border-(--color-border) py-2 text-sm"
               >
-                Cancel
+                {t("pos.cancel")}
               </button>
               <button
                 type="button"
@@ -451,11 +453,11 @@ export default function CafePosPage() {
             </div>
 
             <div className="mt-5 flex-1">
-              <div className="text-xs font-medium text-(--color-text-muted)">Cart ({cart.length})</div>
+              <div className="text-xs font-medium text-(--color-text-muted)">{t("pos.cart")} ({cart.length})</div>
               <div className="mt-2 flex flex-col gap-2">
                 {cart.length === 0 && (
                   <div className="rounded-md border border-dashed border-(--color-border) py-6 text-center text-xs text-(--color-text-muted)">
-                    No items yet. Tap a menu item to add it.
+                    {t("pos.noItemsYet")}
                   </div>
                 )}
                 {cart.map((line) => (
@@ -512,14 +514,14 @@ export default function CafePosPage() {
               <textarea
                 value={orderNotes}
                 onChange={(e) => setOrderNotes(e.target.value)}
-                placeholder="Order notes…"
+                placeholder={t("pos.orderNotes")}
                 rows={1}
                 className="w-full resize-none rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
             </div>
 
             <div className="mt-4 flex items-center justify-between text-sm">
-              <span className="text-(--color-text-muted)">Discount</span>
+              <span className="text-(--color-text-muted)">{t("pos.discount")}</span>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -535,11 +537,11 @@ export default function CafePosPage() {
 
             <div className="mt-3 space-y-1 border-t border-(--color-border) pt-3 text-sm">
               <div className="flex justify-between text-(--color-text-muted)">
-                <span>Subtotal</span>
+                <span>{t("pos.subtotal")}</span>
                 <span className="tabular-nums">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between text-(--color-text-muted)">
-                <span>Discount</span>
+                <span>{t("pos.discount")}</span>
                 <span className="tabular-nums">-{formatCurrency(discountAmount)}</span>
               </div>
               <div className="flex justify-between text-(--color-text-muted)">
@@ -564,7 +566,7 @@ export default function CafePosPage() {
                 onClick={() => handleAction("save")}
                 className="rounded-md border border-(--color-border) py-2 text-xs font-medium"
               >
-                Save Order
+                {t("pos.saveOrder")}
               </button>
               <button
                 type="button"
@@ -572,7 +574,7 @@ export default function CafePosPage() {
                 className="flex items-center justify-center gap-1 rounded-md border border-(--color-border) py-2 text-xs font-medium"
               >
                 <PauseIcon size={13} strokeWidth={1.8} />
-                Hold
+                {t("pos.hold")}
               </button>
               <button
                 type="button"
@@ -580,7 +582,7 @@ export default function CafePosPage() {
                 className="flex items-center justify-center gap-1 rounded-md border border-(--color-border) py-2 text-xs font-medium"
               >
                 <SentIcon size={13} strokeWidth={1.8} />
-                Send to Kitchen
+                {t("pos.sendToKitchen")}
               </button>
               <button
                 type="button"
@@ -588,7 +590,7 @@ export default function CafePosPage() {
                 className="flex items-center justify-center gap-1 rounded-md border border-(--color-border) py-2 text-xs font-medium"
               >
                 <PrinterIcon size={13} strokeWidth={1.8} />
-                Print KOT
+                {t("pos.printKot")}
               </button>
               <button
                 type="button"
@@ -596,7 +598,7 @@ export default function CafePosPage() {
                 className="flex items-center justify-center gap-1 rounded-md border border-(--color-border) py-2 text-xs font-medium"
               >
                 <PrinterIcon size={13} strokeWidth={1.8} />
-                Print Bill
+                {t("pos.printBill")}
               </button>
               <button
                 type="button"
@@ -604,7 +606,7 @@ export default function CafePosPage() {
                 className="flex items-center justify-center gap-1 rounded-md border border-(--color-border) py-2 text-xs font-medium text-red-500"
               >
                 <Cancel01Icon size={13} strokeWidth={1.8} />
-                Cancel
+                {t("pos.cancel")}
               </button>
               <button
                 type="button"
@@ -612,7 +614,7 @@ export default function CafePosPage() {
                 className="col-span-2 flex items-center justify-center gap-1.5 rounded-md bg-(--color-accent) py-2.5 text-sm font-medium text-white"
               >
                 <CreditCardIcon size={15} strokeWidth={1.8} />
-                Complete Payment
+                {t("pos.completePayment")}
               </button>
             </div>
           </div>

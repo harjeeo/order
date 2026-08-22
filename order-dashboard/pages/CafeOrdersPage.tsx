@@ -13,6 +13,7 @@ import {
 import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import Pagination from "../components/Pagination";
+import { useTranslation } from "../lib/i18n";
 
 const PAGE_SIZE = 20;
 
@@ -36,6 +37,7 @@ function formatTime(iso) {
 }
 
 export default function CafeOrdersPage() {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -152,7 +154,7 @@ export default function CafeOrdersPage() {
 
   return (
     <div className="px-8 py-6">
-      <h1 className="text-2xl font-semibold">Orders</h1>
+      <h1 className="text-2xl font-semibold">{t("orders.title")}</h1>
       <p className="mt-1 text-sm text-(--color-text-muted)">All orders across dine-in, takeaway and delivery.</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -198,17 +200,17 @@ export default function CafeOrdersPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
-              <th className="px-3 py-2 font-medium">Order #</th>
-              <th className="px-3 py-2 font-medium">Type</th>
-              <th className="px-3 py-2 font-medium">Table</th>
-              <th className="px-3 py-2 font-medium">Customer</th>
-              <th className="px-3 py-2 font-medium">Waiter</th>
-              <th className="px-3 py-2 font-medium">Items</th>
-              <th className="px-3 py-2 font-medium">Amount</th>
-              <th className="px-3 py-2 font-medium">Payment</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Time</th>
-              <th className="px-3 py-2 font-medium">Actions</th>
+              <th className="px-3 py-2 font-medium">{t("orders.orderNumber")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.type")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.table")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.customer")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.waiter")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.items")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.amount")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.payment")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.status")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.time")}</th>
+              <th className="px-3 py-2 font-medium">{t("orders.actions")}</th>
             </tr>
           </thead>
           <tbody>
