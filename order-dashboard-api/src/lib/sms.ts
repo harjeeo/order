@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { PLATFORM_SETTINGS_SINGLETON_ID } from "./platformSettingsId";
 
 // Same "configure now, activate later" pattern as email.ts — adding a
 // provider is a new key in the default JSON below, a case in sendSms(),
@@ -17,7 +18,7 @@ const DEFAULT_SMS_SETTINGS: SmsSettings = {
 };
 
 export async function getSmsSettings(): Promise<SmsSettings> {
-  const settings = await prisma.platformSettings.findFirst();
+  const settings = await prisma.platformSettings.findUnique({ where: { id: PLATFORM_SETTINGS_SINGLETON_ID } });
   const raw = (settings?.smsSettings as Partial<SmsSettings>) ?? {};
   return {
     ...DEFAULT_SMS_SETTINGS,

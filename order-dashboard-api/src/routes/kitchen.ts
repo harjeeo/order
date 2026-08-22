@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 import { sendSms } from "../lib/sms";
+import { notifyOutlet } from "../socket";
 
 export const kitchenRouter = Router();
 kitchenRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -31,6 +32,7 @@ kitchenRouter.patch("/:id/status", async (req, res) => {
     }
   }
 
+  notifyOutlet(req.outletId!, "kitchen:changed");
   res.json(ticket);
 });
 
@@ -38,5 +40,6 @@ kitchenRouter.post("/:id/toggle-priority", async (req, res) => {
   const ticket = await prisma.kitchenTicket.findUnique({ where: { id: req.params.id } });
   if (!ticket) return res.status(404).json({ error: "Not found" });
   const updated = await prisma.kitchenTicket.update({ where: { id: req.params.id }, data: { priority: !ticket.priority } });
+  notifyOutlet(req.outletId!, "kitchen:changed");
   res.json(updated);
 });

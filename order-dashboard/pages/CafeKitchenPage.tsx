@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   RestaurantTableIcon,
   Clock01Icon,
@@ -6,9 +7,11 @@ import {
   PrinterIcon,
   FireIcon,
   StickyNote01Icon,
+  ComputerVideoIcon,
 } from "hugeicons-react";
 import { getKitchenOrders, updateKitchenOrderStatus, toggleKitchenOrderPriority, reprintKot } from "../lib/api";
 import { buildKotHtml, printHtml } from "../lib/print";
+import { onOutletEvent } from "../lib/socket";
 
 const COLUMNS = [
   { key: "new", label: "New", next: "preparing" },
@@ -31,11 +34,15 @@ export default function CafeKitchenPage() {
 
   useEffect(() => {
     refresh();
-    const poll = setInterval(refresh, 5000);
+    // Real-time updates (socket) are the primary path now; this is just a
+    // slow fallback poll in case a connection drops silently.
+    const poll = setInterval(refresh, 30000);
     const tick = setInterval(() => setNow(Date.now()), 30000);
+    const unsubscribe = onOutletEvent("kitchen:changed", refresh);
     return () => {
       clearInterval(poll);
       clearInterval(tick);
+      unsubscribe();
     };
   }, []);
 
@@ -67,9 +74,19 @@ export default function CafeKitchenPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden px-8 py-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Kitchen</h1>
-        <p className="mt-1 text-sm text-(--color-text-muted)">Live order queue — New → Preparing → Ready → Completed.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Kitchen</h1>
+          <p className="mt-1 text-sm text-(--color-text-muted)">Live order queue — New → Preparing → Ready → Completed.</p>
+        </div>
+        <Link
+          to="/cafe/kitchen/display"
+          target="_blank"
+          className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm"
+        >
+          <ComputerVideoIcon size={15} strokeWidth={1.8} />
+          Open Kitchen Display
+        </Link>
       </div>
 
       <div className="mt-6 grid flex-1 grid-cols-1 gap-4 overflow-hidden sm:grid-cols-2 lg:grid-cols-4">

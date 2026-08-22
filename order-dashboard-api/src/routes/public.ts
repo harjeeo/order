@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { createOrderWithNumber, deductStockForOrder } from "./orders";
+import { notifyOutlet } from "../socket";
 
 // Unauthenticated, internet-facing routes for QR-code table ordering.
 // No requireAuth/requireTenant here — anyone with a table's QR code can
@@ -89,6 +90,8 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
   );
   await deductStockForOrder(tenantId, order.orderNumber, items);
   await prisma.kitchenTicket.create({ data: { tenantId, orderId: order.id, orderNumber: order.orderNumber } });
+  notifyOutlet(table.outletId, "orders:changed");
+  notifyOutlet(table.outletId, "kitchen:changed");
   await prisma.table.update({ where: { id: tableId }, data: { status: "occupied" } });
 
   res.status(201).json({ orderNumber: order.orderNumber });

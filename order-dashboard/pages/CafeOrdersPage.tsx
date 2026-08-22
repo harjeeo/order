@@ -14,6 +14,7 @@ import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, pr
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import Pagination from "../components/Pagination";
 import { useTranslation } from "../lib/i18n";
+import { onOutletEvent } from "../lib/socket";
 
 const PAGE_SIZE = 20;
 
@@ -58,6 +59,11 @@ export default function CafeOrdersPage() {
   useEffect(() => {
     refresh();
   }, [search, status, orderType, page]);
+
+  // Live updates — a new order, status change, cancellation or payment
+  // anywhere in this outlet refetches the current page instead of staff
+  // needing to hit refresh.
+  useEffect(() => onOutletEvent("orders:changed", refresh), [search, status, orderType, page]);
 
   useEffect(() => {
     setPage(1);

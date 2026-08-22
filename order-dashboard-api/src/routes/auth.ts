@@ -6,6 +6,7 @@ import { authenticator } from "otplib";
 import { prisma } from "../prisma";
 import { requireAuth, signToken, signMfaToken, verifyMfaToken } from "../middleware/auth";
 import { logAudit } from "../lib/auditLog";
+import { PLATFORM_SETTINGS_SINGLETON_ID } from "../lib/platformSettingsId";
 
 export const authRouter = Router();
 
@@ -168,7 +169,7 @@ const signupSchema = z.object({
 // Mirrors the tenant + starter-admin creation in tenants.ts, except the
 // owner picks their own password instead of getting a temp one.
 authRouter.post("/signup", authLimiter, async (req, res) => {
-  const settings = await prisma.platformSettings.findFirst();
+  const settings = await prisma.platformSettings.findUnique({ where: { id: PLATFORM_SETTINGS_SINGLETON_ID } });
   if (settings && !settings.allowSelfSignup) {
     return res.status(403).json({ error: "Self sign-up is currently disabled. Contact us to get started." });
   }

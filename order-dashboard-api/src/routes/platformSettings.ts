@@ -4,14 +4,22 @@ import { prisma } from "../prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { sendEmail } from "../lib/email";
 import { sendSms } from "../lib/sms";
+import { PLATFORM_SETTINGS_SINGLETON_ID } from "../lib/platformSettingsId";
 
 export const platformSettingsRouter = Router();
 platformSettingsRouter.use(requireAuth, requireRole("SUPER_ADMIN"));
 
+// PlatformSettings is a singleton row, but `findFirst` then `create`
+// isn't atomic — two concurrent first-ever requests can both find nothing
+// and both create a row, leaving two "singletons" that reads/writes
+// inconsistently pick between. upsert on a fixed, well-known id is
+// race-free (a single INSERT ... ON CONFLICT DO NOTHING at the DB level).
 async function getOrCreate() {
-  const existing = await prisma.platformSettings.findFirst();
-  if (existing) return existing;
-  return prisma.platformSettings.create({ data: {} });
+  return prisma.platformSettings.upsert({
+    where: { id: PLATFORM_SETTINGS_SINGLETON_ID },
+    update: {},
+    create: { id: PLATFORM_SETTINGS_SINGLETON_ID },
+  });
 }
 
 platformSettingsRouter.get("/", async (_req, res) => {

@@ -1,6 +1,8 @@
+import http from "http";
 import { app } from "./app";
 import { logger } from "./lib/logger";
 import { captureException } from "./lib/monitoring";
+import { initSocket } from "./socket";
 
 // Last line of defense: log (and forward to Sentry if configured) instead
 // of the process dying silently or dumping a raw stack trace with no
@@ -14,6 +16,8 @@ process.on("uncaughtException", (err) => {
 });
 
 const port = Number(process.env.PORT ?? 4000);
-app.listen(port, () => {
+const server = http.createServer(app);
+initSocket(server);
+server.listen(port, () => {
   logger.info(`order-dashboard-api listening on http://localhost:${port}`);
 });

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
+import { notifyOutlet } from "../socket";
 
 export const ordersRouter = Router();
 ordersRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -122,11 +123,15 @@ ordersRouter.post("/", async (req, res) => {
     await prisma.table.update({ where: { id: data.tableId }, data: { status: "occupied" } });
   }
 
+  notifyOutlet(req.outletId!, "orders:changed");
+  if (action === "kitchen" || action === "kot") notifyOutlet(req.outletId!, "kitchen:changed");
+
   res.status(201).json(order);
 });
 
 ordersRouter.patch("/:id/status", async (req, res) => {
   const order = await prisma.order.update({ where: { id: req.params.id }, data: { status: req.body.status } });
+  notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });
 
@@ -140,15 +145,18 @@ ordersRouter.patch("/:id", async (req, res) => {
     data: { ...data, ...(items ? { items: { create: items } } : {}) },
     include: { items: true },
   });
+  notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });
 
 ordersRouter.post("/:id/cancel", async (req, res) => {
   const order = await prisma.order.update({ where: { id: req.params.id }, data: { status: "cancelled" } });
+  notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });
 
 ordersRouter.post("/:id/refund", async (req, res) => {
   const order = await prisma.order.update({ where: { id: req.params.id }, data: { paymentStatus: "refunded" } });
+  notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });

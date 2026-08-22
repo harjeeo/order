@@ -9,6 +9,7 @@ import CafePosPage from "./pages/CafePosPage";
 import CafeTablesPage from "./pages/CafeTablesPage";
 import CafeReservationsPage from "./pages/CafeReservationsPage";
 import CafeKitchenPage from "./pages/CafeKitchenPage";
+import CafeKitchenDisplayPage from "./pages/CafeKitchenDisplayPage";
 import CafeOrdersPage from "./pages/CafeOrdersPage";
 import CafeMenuPage from "./pages/CafeMenuPage";
 import CafeRecipesPage from "./pages/CafeRecipesPage";
@@ -39,6 +40,14 @@ const router = createBrowserRouter([
   { path: "/login/cafe", element: <CafeLoginPage /> },
   { path: "/signup", element: <CafeSignupPage /> },
   { path: "/order/:tenantId/:tableId", element: <CafePublicOrderPage /> },
+  {
+    path: "/cafe/kitchen/display",
+    element: (
+      <RequireAuth role="cafe">
+        <CafeKitchenDisplayPage />
+      </RequireAuth>
+    ),
+  },
   {
     path: "/super-admin",
     element: (

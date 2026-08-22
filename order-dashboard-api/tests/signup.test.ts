@@ -1,19 +1,31 @@
 import request from "supertest";
 import { app } from "../src/app";
 import { prisma } from "../src/prisma";
+import { PLATFORM_SETTINGS_SINGLETON_ID } from "../src/lib/platformSettingsId";
+
+// PlatformSettings is a singleton keyed by a fixed id (see
+// platformSettingsId.ts) — tests must upsert that same row rather than
+// deleteMany+create with a random id, or the app's findUnique-by-id reads
+// will simply miss it.
+async function setAllowSelfSignup(allowSelfSignup: boolean) {
+  await prisma.platformSettings.upsert({
+    where: { id: PLATFORM_SETTINGS_SINGLETON_ID },
+    update: { allowSelfSignup },
+    create: { id: PLATFORM_SETTINGS_SINGLETON_ID, allowSelfSignup },
+  });
+}
 
 describe("public self sign-up", () => {
   const createdTenantIds: string[] = [];
 
   afterAll(async () => {
     await prisma.tenant.deleteMany({ where: { id: { in: createdTenantIds } } }).catch(() => {});
-    await prisma.platformSettings.updateMany({ data: { allowSelfSignup: true } });
+    await setAllowSelfSignup(true);
     await prisma.$disconnect();
   });
 
   it("creates a tenant + admin login and returns a token when self sign-up is allowed", async () => {
-    await prisma.platformSettings.deleteMany();
-    await prisma.platformSettings.create({ data: { allowSelfSignup: true } });
+    await setAllowSelfSignup(true);
 
     const suffix = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
     const res = await request(app).post("/api/auth/signup").send({
@@ -40,8 +52,7 @@ describe("public self sign-up", () => {
   });
 
   it("rejects sign-up with a 403 when self sign-up is disabled", async () => {
-    await prisma.platformSettings.deleteMany();
-    await prisma.platformSettings.create({ data: { allowSelfSignup: false } });
+    await setAllowSelfSignup(false);
 
     const suffix = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
     const res = await request(app).post("/api/auth/signup").send({
@@ -56,8 +67,7 @@ describe("public self sign-up", () => {
   });
 
   it("rejects a duplicate email", async () => {
-    await prisma.platformSettings.deleteMany();
-    await prisma.platformSettings.create({ data: { allowSelfSignup: true } });
+    await setAllowSelfSignup(true);
 
     const suffix = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
     const email = `dup-${suffix}@example.test`;

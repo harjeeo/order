@@ -4,6 +4,7 @@ import { prisma } from "../prisma";
 import { requireAuth, requireTenant } from "../middleware/auth";
 import { couponError } from "./coupons";
 import { sendSms } from "../lib/sms";
+import { notifyOutlet } from "../socket";
 
 export const billingRouter = Router();
 billingRouter.use(requireAuth, requireTenant);
@@ -112,6 +113,8 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     where: { id: order.id },
     data: { paymentStatus: "paid", status: order.status === "pending" ? "completed" : order.status },
   });
+
+  notifyOutlet(order.outletId, "orders:changed");
 
   if (order.customerId) {
     const customer = await prisma.customer.findUnique({ where: { id: order.customerId } });

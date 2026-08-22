@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { PLATFORM_SETTINGS_SINGLETON_ID } from "./platformSettingsId";
 
 // Adding a new provider: add its default block to the Prisma
 // PlatformSettings.emailSettings JSON default, add a case to the
@@ -23,7 +24,7 @@ const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
 };
 
 export async function getEmailSettings(): Promise<EmailSettings> {
-  const settings = await prisma.platformSettings.findFirst();
+  const settings = await prisma.platformSettings.findUnique({ where: { id: PLATFORM_SETTINGS_SINGLETON_ID } });
   const raw = (settings?.emailSettings as Partial<EmailSettings>) ?? {};
   return {
     ...DEFAULT_EMAIL_SETTINGS,
