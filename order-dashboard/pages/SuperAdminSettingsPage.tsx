@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { CheckmarkCircle02Icon, SquareLock02Icon, MailSend02Icon, SmartPhone01Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
+import {
+  CheckmarkCircle02Icon,
+  SquareLock02Icon,
+  MailSend02Icon,
+  SmartPhone01Icon,
+  ViewIcon,
+  ViewOffIcon,
+  Settings02Icon,
+} from "hugeicons-react";
 import {
   getPlatformSettings,
   updatePlatformSettings,
@@ -10,6 +18,13 @@ import {
   EMAIL_PROVIDERS,
   SMS_PROVIDERS,
 } from "../lib/api";
+
+const TABS = [
+  { key: "platform", label: "Platform", icon: Settings02Icon },
+  { key: "email", label: "Email / API", icon: MailSend02Icon },
+  { key: "sms", label: "SMS / WhatsApp", icon: SmartPhone01Icon },
+  { key: "account", label: "My Account", icon: SquareLock02Icon },
+];
 
 const inputClass =
   "rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)";
@@ -24,6 +39,7 @@ function Field({ label, children }) {
 }
 
 export default function SuperAdminSettingsPage() {
+  const [tab, setTab] = useState("platform");
   const [form, setForm] = useState(null);
   const [saved, setSaved] = useState(false);
 
@@ -161,120 +177,224 @@ export default function SuperAdminSettingsPage() {
   const activeSmsProvider = SMS_PROVIDERS.find((p) => p.key === form.smsSettings?.provider) ?? SMS_PROVIDERS[0];
 
   return (
-    <div className="px-10 py-8">
-      <h1 className="text-2xl font-semibold">Platform Settings</h1>
-      <p className="mt-1 text-sm text-(--color-text-muted)">Configuration that applies across every client.</p>
+    <div className="flex h-full">
+      <div className="w-56 shrink-0 border-r border-(--color-border) px-3 py-6">
+        <h1 className="px-2 text-lg font-semibold">Settings</h1>
+        <nav className="mt-4 flex flex-col gap-0.5">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+                tab === key
+                  ? "bg-black/5 font-medium text-(--color-text) dark:bg-white/10"
+                  : "text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
+              }`}
+            >
+              <Icon size={16} strokeWidth={1.8} />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-      <div className="mt-6 max-w-lg space-y-4">
-        <Field label="Platform Name">
-          <input value={form.platformName} onChange={(e) => set("platformName", e.target.value)} className={inputClass} />
-        </Field>
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="max-w-lg">
+          {tab === "platform" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">Configuration that applies across every client.</p>
 
-        <Field label="Support Email">
-          <input value={form.supportEmail} onChange={(e) => set("supportEmail", e.target.value)} className={inputClass} />
-        </Field>
+              <Field label="Platform Name">
+                <input value={form.platformName} onChange={(e) => set("platformName", e.target.value)} className={inputClass} />
+              </Field>
 
-        <Field label="Billing Email">
-          <input value={form.billingEmail} onChange={(e) => set("billingEmail", e.target.value)} className={inputClass} />
-        </Field>
+              <Field label="Support Email">
+                <input value={form.supportEmail} onChange={(e) => set("supportEmail", e.target.value)} className={inputClass} />
+              </Field>
 
-        <Field label="Trial Period (days)">
-          <input
-            type="number"
-            value={form.trialDays}
-            onChange={(e) => set("trialDays", Number(e.target.value))}
-            className={`${inputClass} w-24`}
-          />
-        </Field>
+              <Field label="Billing Email">
+                <input value={form.billingEmail} onChange={(e) => set("billingEmail", e.target.value)} className={inputClass} />
+              </Field>
 
-        <div>
-          <div className="text-xs text-(--color-text-muted)">Plan Pricing (₹ / month)</div>
-          <div className="mt-2 flex gap-3">
-            {TENANT_PLANS.map((plan) => (
-              <label key={plan} className="flex flex-col gap-1">
-                <span className="text-xs text-(--color-text-muted)">{plan}</span>
+              <Field label="Trial Period (days)">
                 <input
                   type="number"
-                  value={form.planPricing[plan]}
-                  onChange={(e) => setPlanPrice(plan, e.target.value)}
+                  value={form.trialDays}
+                  onChange={(e) => set("trialDays", Number(e.target.value))}
                   className={`${inputClass} w-24`}
                 />
+              </Field>
+
+              <div>
+                <div className="text-xs text-(--color-text-muted)">Plan Pricing (₹ / month)</div>
+                <div className="mt-2 flex gap-3">
+                  {TENANT_PLANS.map((plan) => (
+                    <label key={plan} className="flex flex-col gap-1">
+                      <span className="text-xs text-(--color-text-muted)">{plan}</span>
+                      <input
+                        type="number"
+                        value={form.planPricing[plan]}
+                        onChange={(e) => setPlanPrice(plan, e.target.value)}
+                        className={`${inputClass} w-24`}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.allowSelfSignup}
+                  onChange={(e) => set("allowSelfSignup", e.target.checked)}
+                />
+                Allow new cafes to self sign up (instead of Super Admin-only onboarding)
               </label>
-            ))}
-          </div>
-        </div>
+              <p className="-mt-2 text-xs text-(--color-text-muted)">
+                When enabled, anyone can create their own cafe account at{" "}
+                <span className="font-mono text-(--color-text)">/signup</span>. When off, that page still loads but
+                the server rejects new sign-ups until this is turned back on.
+              </p>
+            </div>
+          )}
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.allowSelfSignup}
-            onChange={(e) => set("allowSelfSignup", e.target.checked)}
-          />
-          Allow new cafes to self sign up (instead of Super Admin-only onboarding)
-        </label>
-        <p className="-mt-2 text-xs text-(--color-text-muted)">
-          When enabled, anyone can create their own cafe account at{" "}
-          <span className="font-mono text-(--color-text)">/signup</span>. When off, that page still loads but the
-          server rejects new sign-ups until this is turned back on.
-        </p>
+          {tab === "email" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Automatically email a new client or staff member's login credentials instead of copying and sending
+                them manually. Pick a provider, add its API key, and save.
+              </p>
 
-        <div className="border-t border-(--color-border) pt-6">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-            <MailSend02Icon size={15} strokeWidth={1.8} />
-            Email / API
-          </h2>
-          <p className="mt-1 text-xs text-(--color-text-muted)">
-            Automatically email a new client or staff member's login credentials instead of copying and sending them
-            manually. Pick a provider, add its API key, and save.
-          </p>
+              <Field label="Provider">
+                <select
+                  value={form.emailSettings?.provider ?? "none"}
+                  onChange={(e) => setEmailField("provider", e.target.value)}
+                  className={`${inputClass} w-56`}
+                >
+                  {EMAIL_PROVIDERS.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-          <div className="mt-4 flex flex-col gap-3">
-            <Field label="Provider">
-              <select
-                value={form.emailSettings?.provider ?? "none"}
-                onChange={(e) => setEmailField("provider", e.target.value)}
-                className={`${inputClass} w-56`}
-              >
-                {EMAIL_PROVIDERS.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
+              {activeProvider.key !== "none" && (
+                <>
+                  <div className="flex gap-3">
+                    <Field label="From Name">
+                      <input
+                        value={form.emailSettings?.fromName ?? ""}
+                        onChange={(e) => setEmailField("fromName", e.target.value)}
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="From Email">
+                      <input
+                        type="email"
+                        value={form.emailSettings?.fromEmail ?? ""}
+                        onChange={(e) => setEmailField("fromEmail", e.target.value)}
+                        placeholder="noreply@yourdomain.com"
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
 
-            {activeProvider.key !== "none" && (
-              <>
-                <div className="flex gap-3">
-                  <Field label="From Name">
-                    <input
-                      value={form.emailSettings?.fromName ?? ""}
-                      onChange={(e) => setEmailField("fromName", e.target.value)}
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="From Email">
+                  {activeProvider.fields.map((f) => {
+                    const secretId = `${activeProvider.key}.${f.key}`;
+                    const revealed = !!showSecret[secretId];
+                    return (
+                      <Field key={f.key} label={`${activeProvider.label} ${f.label}`}>
+                        <div className="relative">
+                          <input
+                            type={revealed ? "text" : "password"}
+                            value={form.emailSettings?.[activeProvider.key]?.[f.key] ?? ""}
+                            onChange={(e) => setEmailProviderField(activeProvider.key, f.key, e.target.value)}
+                            placeholder="Paste API key here"
+                            className={`${inputClass} w-full pr-9`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSecret((s) => ({ ...s, [secretId]: !s[secretId] }))}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
+                          >
+                            {revealed ? <ViewOffIcon size={15} strokeWidth={1.8} /> : <ViewIcon size={15} strokeWidth={1.8} />}
+                          </button>
+                        </div>
+                      </Field>
+                    );
+                  })}
+                </>
+              )}
+
+              {activeProvider.key !== "none" && (
+                <div className="rounded-lg border border-(--color-border) p-3">
+                  <div className="text-xs font-medium text-(--color-text-muted)">Send a test email</div>
+                  <div className="mt-2 flex items-center gap-2">
                     <input
                       type="email"
-                      value={form.emailSettings?.fromEmail ?? ""}
-                      onChange={(e) => setEmailField("fromEmail", e.target.value)}
-                      placeholder="noreply@yourdomain.com"
-                      className={inputClass}
+                      value={testEmailTo}
+                      onChange={(e) => setTestEmailTo(e.target.value)}
+                      placeholder="you@example.com"
+                      className={`${inputClass} flex-1`}
                     />
-                  </Field>
+                    <button
+                      type="button"
+                      onClick={handleSendTestEmail}
+                      disabled={testingEmail}
+                      className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+                    >
+                      <MailSend02Icon size={14} strokeWidth={1.8} />
+                      {testingEmail ? "Sending…" : "Send Test"}
+                    </button>
+                  </div>
+                  {testEmailStatus && (
+                    <div className={`mt-2 text-xs ${testEmailStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                      {testEmailStatus.message}
+                    </div>
+                  )}
+                  <p className="mt-2 text-[11px] text-(--color-text-muted)">
+                    Save your API key above first — the test uses whatever is currently saved, not the unsaved form.
+                  </p>
                 </div>
+              )}
+            </div>
+          )}
 
-                {activeProvider.fields.map((f) => {
-                  const secretId = `${activeProvider.key}.${f.key}`;
+          {tab === "sms" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Text customers automatically when their order is ready or their bill is paid — sent from whichever
+                cafe's order it is, using whatever phone number is on the customer record.
+              </p>
+
+              <Field label="Provider">
+                <select
+                  value={form.smsSettings?.provider ?? "none"}
+                  onChange={(e) => setSmsField("provider", e.target.value)}
+                  className={`${inputClass} w-56`}
+                >
+                  {SMS_PROVIDERS.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              {activeSmsProvider.key !== "none" &&
+                activeSmsProvider.fields.map((f) => {
+                  const secretId = `sms.${activeSmsProvider.key}.${f.key}`;
                   const revealed = !!showSecret[secretId];
                   return (
-                    <Field key={f.key} label={`${activeProvider.label} ${f.label}`}>
+                    <Field key={f.key} label={`${activeSmsProvider.label} ${f.label}`}>
                       <div className="relative">
                         <input
                           type={revealed ? "text" : "password"}
-                          value={form.emailSettings?.[activeProvider.key]?.[f.key] ?? ""}
-                          onChange={(e) => setEmailProviderField(activeProvider.key, f.key, e.target.value)}
-                          placeholder="Paste API key here"
+                          value={form.smsSettings?.[activeSmsProvider.key]?.[f.key] ?? ""}
+                          onChange={(e) => setSmsProviderField(activeSmsProvider.key, f.key, e.target.value)}
+                          placeholder="Paste value here"
                           className={`${inputClass} w-full pr-9`}
                         />
                         <button
@@ -288,187 +408,98 @@ export default function SuperAdminSettingsPage() {
                     </Field>
                   );
                 })}
-              </>
-            )}
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white"
-          >
-            Save Changes
-          </button>
-          {saved && (
-            <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-              <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
-              Saved
-            </span>
-          )}
-        </div>
-
-        {activeProvider.key !== "none" && (
-          <div className="rounded-lg border border-(--color-border) p-3">
-            <div className="text-xs font-medium text-(--color-text-muted)">Send a test email</div>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="email"
-                value={testEmailTo}
-                onChange={(e) => setTestEmailTo(e.target.value)}
-                placeholder="you@example.com"
-                className={`${inputClass} flex-1`}
-              />
-              <button
-                type="button"
-                onClick={handleSendTestEmail}
-                disabled={testingEmail}
-                className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
-              >
-                <MailSend02Icon size={14} strokeWidth={1.8} />
-                {testingEmail ? "Sending…" : "Send Test"}
-              </button>
-            </div>
-            {testEmailStatus && (
-              <div className={`mt-2 text-xs ${testEmailStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-                {testEmailStatus.message}
-              </div>
-            )}
-            <p className="mt-2 text-[11px] text-(--color-text-muted)">
-              Save your API key above first — the test uses whatever is currently saved, not the unsaved form.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-2 border-t border-(--color-border) pt-6">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-            <SmartPhone01Icon size={15} strokeWidth={1.8} />
-            SMS / WhatsApp
-          </h2>
-          <p className="mt-1 text-xs text-(--color-text-muted)">
-            Text customers automatically when their order is ready or their bill is paid — sent from whichever cafe's
-            order it is, using whatever phone number is on the customer record.
-          </p>
-
-          <div className="mt-4 flex flex-col gap-3">
-            <Field label="Provider">
-              <select
-                value={form.smsSettings?.provider ?? "none"}
-                onChange={(e) => setSmsField("provider", e.target.value)}
-                className={`${inputClass} w-56`}
-              >
-                {SMS_PROVIDERS.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            {activeSmsProvider.key !== "none" &&
-              activeSmsProvider.fields.map((f) => {
-                const secretId = `sms.${activeSmsProvider.key}.${f.key}`;
-                const revealed = !!showSecret[secretId];
-                return (
-                  <Field key={f.key} label={`${activeSmsProvider.label} ${f.label}`}>
-                    <div className="relative">
-                      <input
-                        type={revealed ? "text" : "password"}
-                        value={form.smsSettings?.[activeSmsProvider.key]?.[f.key] ?? ""}
-                        onChange={(e) => setSmsProviderField(activeSmsProvider.key, f.key, e.target.value)}
-                        placeholder="Paste value here"
-                        className={`${inputClass} w-full pr-9`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSecret((s) => ({ ...s, [secretId]: !s[secretId] }))}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
-                      >
-                        {revealed ? <ViewOffIcon size={15} strokeWidth={1.8} /> : <ViewIcon size={15} strokeWidth={1.8} />}
-                      </button>
+              {activeSmsProvider.key !== "none" && (
+                <div className="rounded-lg border border-(--color-border) p-3">
+                  <div className="text-xs font-medium text-(--color-text-muted)">Send a test SMS</div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      value={testSmsTo}
+                      onChange={(e) => setTestSmsTo(e.target.value)}
+                      placeholder="+919876543210"
+                      className={`${inputClass} flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendTestSms}
+                      disabled={testingSms}
+                      className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+                    >
+                      <SmartPhone01Icon size={14} strokeWidth={1.8} />
+                      {testingSms ? "Sending…" : "Send Test"}
+                    </button>
+                  </div>
+                  {testSmsStatus && (
+                    <div className={`mt-2 text-xs ${testSmsStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                      {testSmsStatus.message}
                     </div>
-                  </Field>
-                );
-              })}
-          </div>
-        </div>
-
-        {activeSmsProvider.key !== "none" && (
-          <div className="rounded-lg border border-(--color-border) p-3">
-            <div className="text-xs font-medium text-(--color-text-muted)">Send a test SMS</div>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                value={testSmsTo}
-                onChange={(e) => setTestSmsTo(e.target.value)}
-                placeholder="+919876543210"
-                className={`${inputClass} flex-1`}
-              />
-              <button
-                type="button"
-                onClick={handleSendTestSms}
-                disabled={testingSms}
-                className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
-              >
-                <SmartPhone01Icon size={14} strokeWidth={1.8} />
-                {testingSms ? "Sending…" : "Send Test"}
-              </button>
+                  )}
+                  <p className="mt-2 text-[11px] text-(--color-text-muted)">
+                    Save your provider credentials above first — the test uses whatever is currently saved.
+                  </p>
+                </div>
+              )}
             </div>
-            {testSmsStatus && (
-              <div className={`mt-2 text-xs ${testSmsStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-                {testSmsStatus.message}
+          )}
+
+          {tab === "account" && (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-(--color-text-muted)">Change the password for your own Super Admin login.</p>
+              <Field label="Current Password">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="New Password">
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputClass} />
+              </Field>
+              <Field label="Confirm New Password">
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              {passwordError && <div className="text-xs text-red-500">{passwordError}</div>}
+              <div className="mt-1 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleChangePassword}
+                  className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white"
+                >
+                  Update Password
+                </button>
+                {passwordSaved && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                    <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
+                    Password updated
+                  </span>
+                )}
               </div>
-            )}
-            <p className="mt-2 text-[11px] text-(--color-text-muted)">
-              Save your provider credentials above first — the test uses whatever is currently saved.
-            </p>
-          </div>
-        )}
+            </div>
+          )}
 
-        <div className="mt-2 border-t border-(--color-border) pt-6">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-            <SquareLock02Icon size={15} strokeWidth={1.8} />
-            My Account
-          </h2>
-          <p className="mt-1 text-xs text-(--color-text-muted)">Change the password for your own Super Admin login.</p>
-
-          <div className="mt-4 flex flex-col gap-3">
-            <Field label="Current Password">
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="New Password">
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputClass} />
-            </Field>
-            <Field label="Confirm New Password">
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-            {passwordError && <div className="text-xs text-red-500">{passwordError}</div>}
-            <div className="mt-1 flex items-center gap-3">
+          {tab !== "account" && (
+            <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"
-                onClick={handleChangePassword}
+                onClick={handleSave}
                 className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white"
               >
-                Update Password
+                Save Changes
               </button>
-              {passwordSaved && (
+              {saved && (
                 <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
                   <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
-                  Password updated
+                  Saved
                 </span>
               )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
