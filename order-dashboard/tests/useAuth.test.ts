@@ -10,6 +10,7 @@ import {
   exitImpersonation,
   login,
   signup,
+  completeTwoFactorLogin,
   type Session,
 } from "../lib/useAuth";
 
@@ -123,7 +124,7 @@ describe("login()", () => {
       })
     );
 
-    const session = await login("staff@example.test", "password123");
+    const session: any = await login("staff@example.test", "password123");
     expect(session.role).toBe("cafe");
     expect(getSession()?.token).toBe("abc");
   });
@@ -137,7 +138,7 @@ describe("login()", () => {
       })
     );
 
-    const session = await login("owner@example.test", "password123");
+    const session: any = await login("owner@example.test", "password123");
     expect(session.role).toBe("super-admin");
   });
 
@@ -148,6 +149,44 @@ describe("login()", () => {
     );
 
     await expect(login("wrong@example.test", "bad")).rejects.toThrow("Invalid credentials");
+    expect(getSession()).toBeNull();
+  });
+});
+
+describe("login() with 2FA", () => {
+  it("returns a requires2FA result instead of a session, and doesn't store one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ requires2FA: true, mfaToken: "mfa-abc" }) })
+    );
+
+    const result = await login("staff@example.test", "password123");
+    expect(result).toEqual({ requires2FA: true, mfaToken: "mfa-abc" });
+    expect(getSession()).toBeNull();
+  });
+});
+
+describe("completeTwoFactorLogin()", () => {
+  it("stores a session on a valid code", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          token: "real-token",
+          user: { name: "Cafe Admin", email: "staff@example.test", role: "ADMIN", tenantId: "tenant-1" },
+        }),
+      })
+    );
+
+    const session = await completeTwoFactorLogin("mfa-abc", "123456");
+    expect(session.token).toBe("real-token");
+    expect(getSession()?.token).toBe("real-token");
+  });
+
+  it("throws and doesn't store a session on an invalid code", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: "Invalid verification code" }) }));
+    await expect(completeTwoFactorLogin("mfa-abc", "000000")).rejects.toThrow("Invalid verification code");
     expect(getSession()).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import {
   Store01Icon,
   PercentIcon,
@@ -21,6 +22,10 @@ import {
   getCoupons,
   createCoupon,
   setCouponActive,
+  getTwoFactorStatus,
+  startTwoFactorSetup,
+  enableTwoFactor,
+  disableTwoFactor,
 } from "../lib/api";
 
 const TABS = [
@@ -151,6 +156,45 @@ export default function CafeSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [passwordSaved, setPasswordSaved] = useState(false);
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorSetup, setTwoFactorSetup] = useState(null); // { secret, otpauthUrl, qrDataUrl }
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorError, setTwoFactorError] = useState("");
+
+  useEffect(() => {
+    if (tab === "account") getTwoFactorStatus().then((s) => setTwoFactorEnabled(s.enabled));
+  }, [tab]);
+
+  async function handleStartTwoFactorSetup() {
+    setTwoFactorError("");
+    const setup = await startTwoFactorSetup();
+    const qrDataUrl = await QRCode.toDataURL(setup.otpauthUrl, { width: 200, margin: 1 });
+    setTwoFactorSetup({ ...setup, qrDataUrl });
+  }
+
+  async function handleEnableTwoFactor() {
+    setTwoFactorError("");
+    try {
+      await enableTwoFactor(twoFactorCode.trim());
+      setTwoFactorEnabled(true);
+      setTwoFactorSetup(null);
+      setTwoFactorCode("");
+    } catch (err) {
+      setTwoFactorError(err instanceof Error ? err.message : "Invalid code");
+    }
+  }
+
+  async function handleDisableTwoFactor() {
+    setTwoFactorError("");
+    try {
+      await disableTwoFactor(twoFactorCode.trim());
+      setTwoFactorEnabled(false);
+      setTwoFactorCode("");
+    } catch (err) {
+      setTwoFactorError(err instanceof Error ? err.message : "Invalid code");
+    }
+  }
 
   useEffect(() => {
     if (!passwordSaved) return;
@@ -553,6 +597,73 @@ export default function CafeSettingsPage() {
                     <CheckmarkCircle02Icon size={14} strokeWidth={1.8} />
                     Password updated
                   </span>
+                )}
+              </div>
+
+              <div className="mt-4 border-t border-(--color-border) pt-4">
+                <div className="text-sm font-medium">Two-Factor Authentication</div>
+                <p className="mt-1 text-xs text-(--color-text-muted)">
+                  Require a 6-digit code from an authenticator app (Google Authenticator, Authy, etc.) at login.
+                </p>
+
+                {twoFactorError && <p className="mt-2 text-xs text-red-500">{twoFactorError}</p>}
+
+                {twoFactorEnabled ? (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <span className="flex w-fit items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+                      <CheckmarkCircle02Icon size={11} strokeWidth={1.8} />
+                      Enabled
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        value={twoFactorCode}
+                        onChange={(e) => setTwoFactorCode(e.target.value)}
+                        placeholder="Enter code to disable"
+                        maxLength={6}
+                        className="w-40 rounded-md border border-(--color-border) bg-transparent px-2 py-1.5 text-sm outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleDisableTwoFactor}
+                        disabled={twoFactorCode.length !== 6}
+                        className="rounded-md border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-500 disabled:opacity-40"
+                      >
+                        Disable
+                      </button>
+                    </div>
+                  </div>
+                ) : twoFactorSetup ? (
+                  <div className="mt-3 flex flex-col items-start gap-2">
+                    <img src={twoFactorSetup.qrDataUrl} alt="2FA setup QR code" className="rounded-md" />
+                    <p className="text-xs text-(--color-text-muted)">
+                      Scan with your authenticator app, then enter the code it shows.
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        value={twoFactorCode}
+                        onChange={(e) => setTwoFactorCode(e.target.value)}
+                        placeholder="123456"
+                        maxLength={6}
+                        className="w-32 rounded-md border border-(--color-border) bg-transparent px-2 py-1.5 text-sm outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleEnableTwoFactor}
+                        disabled={twoFactorCode.length !== 6}
+                        className="rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                      >
+                        Confirm & Enable
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStartTwoFactorSetup}
+                    className="mt-3 rounded-md border border-(--color-border) px-3 py-1.5 text-xs font-medium"
+                  >
+                    Set up 2FA
+                  </button>
                 )}
               </div>
             </div>

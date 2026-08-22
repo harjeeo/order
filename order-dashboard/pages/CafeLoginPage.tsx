@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { RestaurantIcon, Mail01Icon, LockPasswordIcon, ViewIcon, ViewOffIcon } from "hugeicons-react";
-import { login, homePathForRole } from "../lib/useAuth";
+import { RestaurantIcon, Mail01Icon, LockPasswordIcon, ViewIcon, ViewOffIcon, ShieldKeyIcon } from "hugeicons-react";
+import { login, completeTwoFactorLogin, homePathForRole } from "../lib/useAuth";
 
 export default function CafeLoginPage() {
   const navigate = useNavigate();
@@ -13,6 +13,8 @@ export default function CafeLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mfaToken, setMfaToken] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,17 +25,72 @@ export default function CafeLoginPage() {
     setError("");
     setLoading(true);
     try {
-      const session = await login(email.trim(), password);
-      if (session.role !== "cafe") {
+      const result = await login(email.trim(), password);
+      if ("requires2FA" in result) {
+        setMfaToken(result.mfaToken);
+        return;
+      }
+      if (result.role !== "cafe") {
         setError("This account isn't a Cafe Staff account. Use the Super Admin login instead.");
         return;
       }
-      navigate(from ?? homePathForRole(session.role), { replace: true });
+      navigate(from ?? homePathForRole(result.role), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleVerify2FA(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const session = await completeTwoFactorLogin(mfaToken, twoFactorCode.trim());
+      navigate(from ?? homePathForRole(session.role), { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (mfaToken) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-(--color-canvas) px-4 text-(--color-text)">
+        <div className="w-full max-w-sm">
+          <div className="flex flex-col items-center text-center">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-(--color-accent)/10 text-(--color-accent)">
+              <ShieldKeyIcon size={20} strokeWidth={1.8} />
+            </span>
+            <h1 className="mt-3 text-xl font-semibold">Two-Factor Verification</h1>
+            <p className="mt-1 text-sm text-(--color-text-muted)">Enter the 6-digit code from your authenticator app.</p>
+          </div>
+          <form onSubmit={handleVerify2FA} className="mt-6 flex flex-col gap-3">
+            <input
+              value={twoFactorCode}
+              onChange={(e) => setTwoFactorCode(e.target.value)}
+              placeholder="123456"
+              maxLength={6}
+              autoFocus
+              className="w-full rounded-md border border-(--color-border) bg-transparent py-2 px-3 text-center text-lg tracking-widest outline-none focus:border-(--color-accent)"
+            />
+            {error && <div className="text-xs text-red-500">{error}</div>}
+            <button
+              type="submit"
+              disabled={loading || twoFactorCode.length !== 6}
+              className="mt-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {loading ? "Verifying…" : "Verify"}
+            </button>
+            <button type="button" onClick={() => setMfaToken("")} className="text-xs text-(--color-text-muted)">
+              Back to login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   return (

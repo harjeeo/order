@@ -685,6 +685,24 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return post("/auth/change-password", { currentPassword, newPassword });
 }
 
+// --- Two-factor authentication (TOTP) -------------------------------------
+
+export async function getTwoFactorStatus() {
+  return get("/auth/2fa/status");
+}
+
+export async function startTwoFactorSetup() {
+  return post("/auth/2fa/setup");
+}
+
+export async function enableTwoFactor(code: string) {
+  return post("/auth/2fa/enable", { code });
+}
+
+export async function disableTwoFactor(code: string) {
+  return post("/auth/2fa/disable", { code });
+}
+
 // --- Super Admin: Tenant management -------------------------------------
 
 export const TENANT_PLANS = ["Free", "Basic", "Pro"];

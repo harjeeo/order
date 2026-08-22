@@ -39,13 +39,30 @@ export function signToken(user: AuthUser) {
   return jwt.sign(user, JWT_SECRET, { expiresIn: "7d" });
 }
 
+// Issued instead of a real session token when a user has 2FA enabled and
+// has only passed the password check so far — scoped narrowly (10 min,
+// carries no role/tenantId) so it can't be used against any tenant route
+// even if it leaked; it's only good for POST /auth/login/2fa.
+export function signMfaToken(userId: string) {
+  return jwt.sign({ id: userId, purpose: "mfa" }, JWT_SECRET, { expiresIn: "10m" });
+}
+
+export function verifyMfaToken(token: string): string {
+  const payload = jwt.verify(token, JWT_SECRET) as any;
+  if (payload.purpose !== "mfa") throw new Error("Not an MFA token");
+  return payload.id;
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: "Not authenticated" });
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthUser;
+    const payload = jwt.verify(token, JWT_SECRET) as AuthUser & { purpose?: string };
+    // A pending-MFA token has no role/tenantId — it's only valid at the
+    // /auth/login/2fa endpoint, never as a real session.
+    if (payload.purpose === "mfa") return res.status(401).json({ error: "2FA verification required" });
     req.user = payload;
     next();
   } catch {

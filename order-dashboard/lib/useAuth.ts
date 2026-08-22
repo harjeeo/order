@@ -89,7 +89,9 @@ function backendRoleToAppRole(role: string): Role {
 }
 
 // Calls the real backend. Throws with the server's error message on failure.
-export async function login(email: string, password: string): Promise<Session> {
+export type LoginResult = Session | { requires2FA: true; mfaToken: string };
+
+export async function login(email: string, password: string): Promise<LoginResult> {
   const base = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
   const res = await fetch(`${base}/api/auth/login`, {
     method: "POST",
@@ -98,6 +100,31 @@ export async function login(email: string, password: string): Promise<Session> {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "Login failed");
+
+  if (data.requires2FA) return { requires2FA: true, mfaToken: data.mfaToken };
+
+  const session: Session = {
+    name: data.user.name,
+    email: data.user.email,
+    role: backendRoleToAppRole(data.user.role),
+    token: data.token,
+    tenantId: data.user.tenantId,
+  };
+  setSession(session);
+  return session;
+}
+
+// Completes login after a password check that required 2FA — exchanges the
+// short-lived mfaToken + a 6-digit authenticator code for a real session.
+export async function completeTwoFactorLogin(mfaToken: string, code: string): Promise<Session> {
+  const base = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+  const res = await fetch(`${base}/api/auth/login/2fa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mfaToken, code }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Verification failed");
 
   const session: Session = {
     name: data.user.name,

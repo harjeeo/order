@@ -2,8 +2,9 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
+import { authenticator } from "otplib";
 import { prisma } from "../prisma";
-import { requireAuth, signToken } from "../middleware/auth";
+import { requireAuth, signToken, signMfaToken, verifyMfaToken } from "../middleware/auth";
 import { logAudit } from "../lib/auditLog";
 
 export const authRouter = Router();
@@ -57,11 +58,97 @@ authRouter.post("/login", authLimiter, async (req, res) => {
     }
   }
 
+  if (user.twoFactorEnabled) {
+    return res.json({ requires2FA: true, mfaToken: signMfaToken(user.id) });
+  }
+
   const token = signToken({ id: user.id, role: user.role, tenantId: user.tenantId, email: user.email });
   res.json({
     token,
     user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
   });
+});
+
+const mfaLoginSchema = z.object({
+  mfaToken: z.string().min(1),
+  code: z.string().min(6).max(6),
+});
+
+authRouter.post("/login/2fa", authLimiter, async (req, res) => {
+  const parsed = mfaLoginSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid input" });
+
+  let userId: string;
+  try {
+    userId = verifyMfaToken(parsed.data.mfaToken);
+  } catch {
+    return res.status(401).json({ error: "That verification session has expired. Log in again." });
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) return res.status(401).json({ error: "Invalid session" });
+
+  if (!authenticator.check(parsed.data.code, user.twoFactorSecret)) {
+    return res.status(401).json({ error: "Invalid verification code" });
+  }
+
+  const token = signToken({ id: user.id, role: user.role, tenantId: user.tenantId, email: user.email });
+  res.json({
+    token,
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
+  });
+});
+
+// --- Two-factor authentication setup (requires an active session) --------
+
+authRouter.post("/2fa/setup", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  // Generates a new secret and stores it, but twoFactorEnabled stays false
+  // until /2fa/enable confirms the user actually scanned it correctly —
+  // otherwise a user could lock themselves out with a secret they never
+  // saved.
+  const secret = authenticator.generateSecret();
+  await prisma.user.update({ where: { id: user.id }, data: { twoFactorSecret: secret } });
+
+  const otpauthUrl = authenticator.keyuri(user.email, "Cafe POS", secret);
+  res.json({ secret, otpauthUrl });
+});
+
+const twoFactorCodeSchema = z.object({ code: z.string().min(6).max(6) });
+
+authRouter.post("/2fa/enable", requireAuth, async (req, res) => {
+  const parsed = twoFactorCodeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Enter the 6-digit code from your authenticator app" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user?.twoFactorSecret) return res.status(400).json({ error: "Start setup first" });
+  if (!authenticator.check(parsed.data.code, user.twoFactorSecret)) {
+    return res.status(400).json({ error: "Invalid code" });
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: true } });
+  res.json({ ok: true });
+});
+
+authRouter.post("/2fa/disable", requireAuth, async (req, res) => {
+  const parsed = twoFactorCodeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Enter the 6-digit code from your authenticator app" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user?.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ error: "2FA is not enabled" });
+  if (!authenticator.check(parsed.data.code, user.twoFactorSecret)) {
+    return res.status(400).json({ error: "Invalid code" });
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: false, twoFactorSecret: null } });
+  res.json({ ok: true });
+});
+
+authRouter.get("/2fa/status", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  res.json({ enabled: user?.twoFactorEnabled ?? false });
 });
 
 // Staff accounts under an existing tenant are created via the

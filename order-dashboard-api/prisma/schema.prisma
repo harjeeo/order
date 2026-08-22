@@ -119,6 +119,8 @@ model User {
   permissions      Json      @default("{}")
   monthlySalary    Int       @default(0)
   lastSalaryPaidAt DateTime?
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean   @default(false)
   createdAt        DateTime  @default(now())
 
   shifts Shift[]

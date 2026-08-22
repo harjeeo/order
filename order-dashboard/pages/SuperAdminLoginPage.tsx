@@ -24,6 +24,10 @@ export default function SuperAdminLoginPage() {
     setLoading(true);
     try {
       const session = await login(email.trim(), password);
+      if ("requires2FA" in session) {
+        setError("Two-factor accounts aren't supported on the Super Admin login yet.");
+        return;
+      }
       if (session.role !== "super-admin") {
         setError("This account isn't a Super Admin account. Use the Cafe Staff login instead.");
         return;
