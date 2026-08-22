@@ -678,13 +678,17 @@ export async function deleteExpense(expenseId: string) {
 
 export const REPORT_RANGES = ["daily", "weekly", "monthly", "custom"];
 
-export async function getReportsSummary(_opts: { range?: string } = {}) {
-  return get("/reports");
+export async function getReportsSummary({ allOutlets = false }: { range?: string; allOutlets?: boolean } = {}) {
+  return get(`/reports${qs({ allOutlets: allOutlets ? "true" : undefined })}`);
 }
 
-export async function exportGstReportCsv({ from, to }: { from?: string; to?: string } = {}) {
-  const res = await fetch(`${BASE_URL}/api/reports/gst-export${qs({ from, to })}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+export async function exportGstReportCsv({ from, to, allOutlets = false }: { from?: string; to?: string; allOutlets?: boolean } = {}) {
+  const outletId = getCurrentOutletId();
+  const res = await fetch(`${BASE_URL}/api/reports/gst-export${qs({ from, to, allOutlets: allOutlets ? "true" : undefined })}`, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      ...(outletId ? { "X-Outlet-Id": outletId } : {}),
+    },
   });
   if (!res.ok) throw new Error("Could not export GST report");
   return res.blob();

@@ -5,14 +5,30 @@ import { requireAuth, requireTenant } from "../middleware/auth";
 export const reportsRouter = Router();
 reportsRouter.use(requireAuth, requireTenant);
 
-async function loadReportData(tenantId: string) {
+// Every other outlet-scoped page (Orders, Menu, Billing, Expenses) filters
+// to whichever outlet is selected in the sidebar. Reports supports that same
+// per-outlet view, but an owner with multiple outlets also needs a combined
+// total across all of them — passing ?allOutlets=true skips the outlet
+// filter entirely instead of resolving one from the X-Outlet-Id header.
+async function resolveOutletId(req: any): Promise<string | null> {
+  if (req.query.allOutlets === "true") return null;
+  const tenantId = req.user!.tenantId!;
+  const requested = req.headers["x-outlet-id"];
+  const requestedId = typeof requested === "string" ? requested : undefined;
+  const outlet = requestedId
+    ? await prisma.outlet.findFirst({ where: { id: requestedId, tenantId } })
+    : await prisma.outlet.findFirst({ where: { tenantId }, orderBy: { isDefault: "desc" } });
+  return outlet?.id ?? null;
+}
+
+async function loadReportData(tenantId: string, outletId: string | null) {
   const [orders, invoices, ingredients, movements, expenses, menuItems] = await Promise.all([
-    prisma.order.findMany({ where: { tenantId }, include: { items: true } }),
-    prisma.invoice.findMany({ where: { tenantId }, include: { order: true } }),
-    prisma.ingredient.findMany({ where: { tenantId } }),
-    prisma.stockMovement.findMany({ where: { tenantId, type: "wastage" } }),
-    prisma.expense.findMany({ where: { tenantId } }),
-    prisma.menuItem.findMany({ where: { tenantId }, include: { category: true } }),
+    prisma.order.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) }, include: { items: true } }),
+    prisma.invoice.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) }, include: { order: true } }),
+    prisma.ingredient.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) } }),
+    prisma.stockMovement.findMany({ where: { tenantId, type: "wastage", ...(outletId ? { ingredient: { outletId } } : {}) } }),
+    prisma.expense.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) } }),
+    prisma.menuItem.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) }, include: { category: true } }),
   ]);
   return { orders, invoices, ingredients, movements, expenses, menuItems };
 }
@@ -34,7 +50,8 @@ function bestSellersFrom(orders: Awaited<ReturnType<typeof loadReportData>>["ord
 
 reportsRouter.get("/", async (req, res) => {
   const tenantId = req.user!.tenantId!;
-  const { orders, invoices, ingredients, movements, expenses, menuItems } = await loadReportData(tenantId);
+  const outletId = await resolveOutletId(req);
+  const { orders, invoices, ingredients, movements, expenses, menuItems } = await loadReportData(tenantId, outletId);
 
   const nonCancelled = orders.filter((o) => o.status !== "cancelled");
   const completed = orders.filter((o) => o.status === "completed");
@@ -126,12 +143,13 @@ reportsRouter.get("/", async (req, res) => {
 // Today's-overview stats for the Cafe dashboard landing page.
 reportsRouter.get("/dashboard", async (req, res) => {
   const tenantId = req.user!.tenantId!;
+  const outletId = await resolveOutletId(req);
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
   const [todayOrders, ingredients] = await Promise.all([
-    prisma.order.findMany({ where: { tenantId, createdAt: { gte: startOfDay } }, include: { items: true } }),
-    prisma.ingredient.findMany({ where: { tenantId } }),
+    prisma.order.findMany({ where: { tenantId, createdAt: { gte: startOfDay }, ...(outletId ? { outletId } : {}) }, include: { items: true } }),
+    prisma.ingredient.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) } }),
   ]);
 
   const nonCancelled = todayOrders.filter((o) => o.status !== "cancelled");
@@ -171,6 +189,7 @@ reportsRouter.get("/dashboard", async (req, res) => {
 // not a Tally-specific import format.
 reportsRouter.get("/gst-export", async (req, res) => {
   const tenantId = req.user!.tenantId!;
+  const outletId = await resolveOutletId(req);
   const from = req.query.from ? new Date(String(req.query.from)) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const to = req.query.to ? new Date(String(req.query.to)) : new Date();
   to.setHours(23, 59, 59, 999);
@@ -178,7 +197,7 @@ reportsRouter.get("/gst-export", async (req, res) => {
   const [settings, invoices] = await Promise.all([
     prisma.settings.findUnique({ where: { tenantId } }),
     prisma.invoice.findMany({
-      where: { tenantId, refunded: false, createdAt: { gte: from, lte: to } },
+      where: { tenantId, refunded: false, createdAt: { gte: from, lte: to }, ...(outletId ? { outletId } : {}) },
       orderBy: { createdAt: "asc" },
     }),
   ]);

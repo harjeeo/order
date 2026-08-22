@@ -9,7 +9,7 @@ import {
   Medal01Icon,
   Download04Icon,
 } from "hugeicons-react";
-import { getReportsSummary, exportGstReportCsv, REPORT_RANGES } from "../lib/api";
+import { getReportsSummary, exportGstReportCsv, getOutlets, REPORT_RANGES } from "../lib/api";
 
 function formatCurrency(n) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -28,15 +28,21 @@ export default function CafeReportsPage() {
   const [range, setRange] = useState("daily");
   const [report, setReport] = useState<any>(null);
   const [exporting, setExporting] = useState(false);
+  const [multiOutlet, setMultiOutlet] = useState(false);
+  const [allOutlets, setAllOutlets] = useState(false);
 
   useEffect(() => {
-    getReportsSummary({ range }).then(setReport);
-  }, [range]);
+    getOutlets().then((list) => setMultiOutlet(list.length > 1));
+  }, []);
+
+  useEffect(() => {
+    getReportsSummary({ range, allOutlets }).then(setReport);
+  }, [range, allOutlets]);
 
   async function handleExportGst() {
     setExporting(true);
     try {
-      const blob = await exportGstReportCsv();
+      const blob = await exportGstReportCsv({ allOutlets });
       downloadBlob(blob, `gst-sales-register-${new Date().toISOString().slice(0, 10)}.csv`);
     } finally {
       setExporting(false);
@@ -57,19 +63,40 @@ export default function CafeReportsPage() {
           <h1 className="text-2xl font-semibold">Reports</h1>
           <p className="mt-1 text-sm text-(--color-text-muted)">Sales, orders, products, payments, inventory and expenses.</p>
         </div>
-        <div className="flex gap-1 rounded-md border border-(--color-border) p-0.5">
-          {REPORT_RANGES.map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRange(r)}
-              className={`rounded px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                range === r ? "bg-(--color-accent) text-white" : "text-(--color-text-muted)"
-              }`}
-            >
-              {r}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          {multiOutlet && (
+            <div className="flex gap-1 rounded-md border border-(--color-border) p-0.5">
+              {[
+                { key: false, label: "This Outlet" },
+                { key: true, label: "All Outlets" },
+              ].map((o) => (
+                <button
+                  key={String(o.key)}
+                  type="button"
+                  onClick={() => setAllOutlets(o.key)}
+                  className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                    allOutlets === o.key ? "bg-(--color-accent) text-white" : "text-(--color-text-muted)"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-1 rounded-md border border-(--color-border) p-0.5">
+            {REPORT_RANGES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRange(r)}
+                className={`rounded px-3 py-1 text-xs font-medium capitalize transition-colors ${
+                  range === r ? "bg-(--color-accent) text-white" : "text-(--color-text-muted)"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
