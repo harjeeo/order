@@ -849,6 +849,44 @@ export async function createOutlet(data: { name: string; address?: string }) {
   return mapOutlet(outlet);
 }
 
+// --- Table reservations --------------------------------------------------
+
+function mapReservation(r: any) {
+  return {
+    _id: r.id,
+    customerName: r.customerName,
+    phone: r.phone,
+    partySize: r.partySize,
+    reservedFor: r.reservedFor,
+    status: r.status,
+    notes: r.notes,
+    tableId: r.tableId,
+    table: r.table?.number ?? null,
+  };
+}
+
+export async function getReservations({ status = "all" }: { status?: string } = {}) {
+  const reservations = await get(`/reservations${qs({ status: status !== "all" ? status : undefined })}`);
+  return reservations.map(mapReservation);
+}
+
+export async function createReservation(data: {
+  customerName: string;
+  phone?: string;
+  partySize: number;
+  reservedFor: string;
+  tableId?: string | null;
+  notes?: string;
+}) {
+  const reservation = await post("/reservations", data);
+  return mapReservation(reservation);
+}
+
+export async function setReservationStatus(id: string, status: string) {
+  const reservation = await patch(`/reservations/${id}/status`, { status });
+  return mapReservation(reservation);
+}
+
 // --- Coupons / promo codes ------------------------------------------------
 
 function mapCoupon(c: any) {

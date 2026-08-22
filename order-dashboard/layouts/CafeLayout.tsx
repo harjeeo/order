@@ -26,6 +26,7 @@ import {
   MoneySend01Icon,
   Building02Icon,
   WifiError01Icon,
+  CalendarAdd01Icon,
 } from "hugeicons-react";
 
 function OfflineBanner() {
@@ -121,6 +122,7 @@ const navLinks = [
   { to: "/cafe/pos", label: "POS / New Order", icon: ShoppingCart01Icon },
   { to: "/cafe/orders", label: "Orders", icon: Invoice01Icon },
   { to: "/cafe/tables", label: "Tables", icon: RestaurantTableIcon },
+  { to: "/cafe/reservations", label: "Reservations", icon: CalendarAdd01Icon },
   { to: "/cafe/kitchen", label: "Kitchen", icon: KitchenUtensilsIcon },
   { to: "/cafe/menu", label: "Menu", icon: MenuRestaurantIcon },
   { to: "/cafe/billing", label: "Billing", icon: CreditCardIcon },
