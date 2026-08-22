@@ -161,6 +161,26 @@ export async function updateMenuItem(itemId: string, data: any) {
   return mapMenuItem(item);
 }
 
+// --- Menu icon library (Super-Admin-curated, searchable by cafe staff) --
+
+function mapMenuIcon(i: any) {
+  return { _id: i.id, name: i.name, image: i.image };
+}
+
+export async function getMenuIcons(search = "") {
+  const icons = await get(`/menu-icons${qs({ search })}`);
+  return icons.map(mapMenuIcon);
+}
+
+export async function createMenuIcon(data: { name: string; image: string }) {
+  const icon = await post("/menu-icons", data);
+  return mapMenuIcon(icon);
+}
+
+export async function deleteMenuIcon(id: string) {
+  return del(`/menu-icons/${id}`);
+}
+
 export async function deleteMenuItem(itemId: string) {
   return del(`/menu/items/${itemId}`);
 }

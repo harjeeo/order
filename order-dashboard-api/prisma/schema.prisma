@@ -100,6 +100,20 @@ model PlatformSettings {
   smsSettings Json @default("{\"provider\":\"none\",\"twilio\":{\"accountSid\":\"\",\"authToken\":\"\",\"fromNumber\":\"\"}}")
 }
 
+// --- Menu icon library ----------------------------------------------------
+
+// A platform-level, Super-Admin-curated set of icons cafe owners pick from
+// when adding a menu item, instead of uploading their own photo — keeps
+// every cafe's menu grid visually consistent instead of a mix of stretched
+// or mismatched images. Not tenant-scoped: one shared library for everyone,
+// managed centrally.
+model MenuIcon {
+  id        String   @id @default(cuid())
+  name      String
+  image     String
+  createdAt DateTime @default(now())
+}
+
 // --- Users / staff / roles ------------------------------------------------
 
 enum Role {

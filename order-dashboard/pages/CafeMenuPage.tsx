@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PlusSignIcon, Edit02Icon, Delete02Icon, Cancel01Icon } from "hugeicons-react";
+import { PlusSignIcon, Edit02Icon, Delete02Icon, Cancel01Icon, Image01Icon } from "hugeicons-react";
 import {
   getMenuCategories,
   addMenuCategory,
@@ -9,7 +9,64 @@ import {
   updateMenuItem,
   deleteMenuItem,
   toggleMenuItemAvailability,
+  getMenuIcons,
 } from "../lib/api";
+
+// A search-enabled grid of the Super-Admin-curated icon library — lets a
+// cafe owner pick a consistent icon instead of uploading their own photo
+// (which is how menu grids end up with a mix of stretched/mismatched
+// images across items).
+function IconPickerModal({ onSelect, onClose }) {
+  const [search, setSearch] = useState("");
+  const [icons, setIcons] = useState([]);
+
+  useEffect(() => {
+    const t = setTimeout(() => getMenuIcons(search).then(setIcons), 200);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl bg-(--color-canvas) p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Select Icon</h3>
+          <button type="button" onClick={onClose} className="text-(--color-text-muted)">
+            <Cancel01Icon size={18} strokeWidth={1.8} />
+          </button>
+        </div>
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search icons…"
+          className="mt-3 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+        />
+        <div className="mt-3 grid flex-1 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-5">
+          {icons.map((icon: any) => (
+            <button
+              key={icon._id}
+              type="button"
+              onClick={() => onSelect(icon.image)}
+              title={icon.name}
+              className="flex flex-col items-center gap-1 rounded-lg border border-(--color-border) p-2 hover:border-(--color-accent)"
+            >
+              <img src={icon.image} alt={icon.name} className="h-9 w-9 object-contain" />
+              <span className="truncate text-center text-[10px] text-(--color-text-muted)">{icon.name}</span>
+            </button>
+          ))}
+          {icons.length === 0 && (
+            <p className="col-span-full py-8 text-center text-sm text-(--color-text-muted)">
+              No icons found. Ask your Super Admin to add some in the Icon Library.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function emptyForm() {
   return {
@@ -45,6 +102,7 @@ export default function CafeMenuPage() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState("");
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   async function refreshCategories() {
     setCategories(await getMenuCategories());
@@ -357,9 +415,20 @@ export default function CafeMenuPage() {
                 maxLength={2}
                 className="mt-2 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
+              <button
+                type="button"
+                onClick={() => setShowIconPicker(true)}
+                className="mt-2 flex items-center gap-1.5 rounded-md border border-(--color-border) px-2.5 py-1.5 text-xs font-medium"
+              >
+                <Image01Icon size={13} strokeWidth={1.8} />
+                Select Icon
+              </button>
             </div>
           </div>
-          <p className="mt-1.5 text-[11px] text-(--color-text-muted)">Click the photo box to upload an image, or use the emoji field.</p>
+          <p className="mt-1.5 text-[11px] text-(--color-text-muted)">
+            Click the photo box to upload your own image, use the emoji field, or pick a consistent icon from the
+            library.
+          </p>
 
           <select
             value={form.category}
@@ -485,6 +554,16 @@ export default function CafeMenuPage() {
             {editingId === "new" ? "Add Item" : "Save Changes"}
           </button>
         </div>
+      )}
+
+      {showIconPicker && (
+        <IconPickerModal
+          onSelect={(image) => {
+            setForm((f) => ({ ...f, image }));
+            setShowIconPicker(false);
+          }}
+          onClose={() => setShowIconPicker(false)}
+        />
       )}
     </div>
   );
