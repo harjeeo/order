@@ -44,7 +44,7 @@ const PLANS = [
 
 export default function Pricing() {
   return (
-    <section id="pricing" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+    <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-2xl text-center">
         <span className="text-xs font-medium uppercase tracking-wider text-(--color-accent)">Pricing</span>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-(--color-text) sm:text-4xl">
@@ -59,7 +59,7 @@ export default function Pricing() {
             key={plan.name}
             className={`relative flex flex-col rounded-2xl border p-6 ${
               plan.highlighted
-                ? "border-(--color-accent) bg-(--color-accent)/5 shadow-lg shadow-(--color-accent)/10"
+                ? "border-zinc-900 bg-zinc-900 text-white shadow-xl shadow-zinc-900/20 lg:-translate-y-3"
                 : "border-(--color-border) bg-(--color-canvas)"
             }`}
           >
@@ -70,17 +70,32 @@ export default function Pricing() {
               </span>
             )}
 
-            <h3 className="text-sm font-semibold text-(--color-text)">{plan.name}</h3>
+            <h3 className={`text-sm font-semibold ${plan.highlighted ? "text-white" : "text-(--color-text)"}`}>
+              {plan.name}
+            </h3>
             <div className="mt-3 flex items-baseline gap-1">
-              <span className="text-3xl font-semibold text-(--color-text)">{plan.price}</span>
-              <span className="text-sm text-(--color-text-muted)">{plan.period}</span>
+              <span className={`text-3xl font-semibold ${plan.highlighted ? "text-white" : "text-(--color-text)"}`}>
+                {plan.price}
+              </span>
+              <span className={`text-sm ${plan.highlighted ? "text-white/60" : "text-(--color-text-muted)"}`}>
+                {plan.period}
+              </span>
             </div>
-            <p className="mt-2 text-sm text-(--color-text-muted)">{plan.desc}</p>
+            <p className={`mt-2 text-sm ${plan.highlighted ? "text-white/70" : "text-(--color-text-muted)"}`}>
+              {plan.desc}
+            </p>
 
             <ul className="mt-6 flex flex-1 flex-col gap-2.5">
               {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-(--color-text)">
-                  <CheckmarkCircle02Icon size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-(--color-accent)" />
+                <li
+                  key={f}
+                  className={`flex items-start gap-2 text-sm ${plan.highlighted ? "text-white/90" : "text-(--color-text)"}`}
+                >
+                  <CheckmarkCircle02Icon
+                    size={16}
+                    strokeWidth={1.8}
+                    className={`mt-0.5 shrink-0 ${plan.highlighted ? "text-emerald-400" : "text-(--color-accent)"}`}
+                  />
                   {f}
                 </li>
               ))}
@@ -90,7 +105,7 @@ export default function Pricing() {
               href="#get-started"
               className={`mt-6 rounded-md py-2.5 text-center text-sm font-medium transition-opacity hover:opacity-90 ${
                 plan.highlighted
-                  ? "bg-(--color-accent) text-white"
+                  ? "bg-white text-zinc-900"
                   : "border border-(--color-border) text-(--color-text)"
               }`}
             >

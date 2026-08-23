@@ -25,7 +25,7 @@ const REVIEWS = [
 export default function Reviews() {
   return (
     <section className="border-y border-(--color-border) bg-(--color-sidebar)">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-xs font-medium uppercase tracking-wider text-(--color-accent)">Reviews</span>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-(--color-text) sm:text-4xl">

@@ -21,7 +21,7 @@ export default function Navbar() {
       id="top"
       className="sticky top-0 z-40 border-b border-(--color-border) bg-(--color-canvas)/80 backdrop-blur"
     >
-      <div className="mx-auto grid h-16 max-w-6xl grid-cols-2 items-center px-4 sm:px-6 lg:grid-cols-3">
+      <div className="mx-auto grid h-16 max-w-7xl grid-cols-2 items-center px-4 sm:px-6 lg:grid-cols-3 xl:px-10">
         <nav className="hidden items-center gap-6 lg:flex">
           {LEFT_LINKS.map((l) => (
             <a

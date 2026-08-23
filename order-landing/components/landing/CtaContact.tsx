@@ -2,7 +2,7 @@ import { RocketIcon, Mail01Icon, ArrowRight01Icon } from "hugeicons-react";
 
 export default function CtaContact() {
   return (
-    <section id="get-started" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+    <section id="get-started" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex flex-col justify-between rounded-2xl bg-(--color-accent) p-8 text-white sm:p-10">
           <div>

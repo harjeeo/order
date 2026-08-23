@@ -6,6 +6,7 @@ import Trusted from "./components/landing/Trusted";
 import Pricing from "./components/landing/Pricing";
 import CtaContact from "./components/landing/CtaContact";
 import Reviews from "./components/landing/Reviews";
+import Faq from "./components/landing/Faq";
 import Footer from "./components/landing/Footer";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Pricing />
         <CtaContact />
         <Reviews />
+        <Faq />
       </main>
       <Footer />
     </div>

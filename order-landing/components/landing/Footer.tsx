@@ -1,4 +1,5 @@
-import { Mail01Icon, Call02Icon, MapPinIcon } from "hugeicons-react";
+import { useState } from "react";
+import { Mail01Icon, Call02Icon, MapPinIcon, SentIcon } from "hugeicons-react";
 import Logo from "./Logo";
 
 const COLUMNS = [
@@ -21,9 +22,48 @@ const COLUMNS = [
 ];
 
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubscribed(true);
+    setEmail("");
+  }
+
   return (
     <footer className="border-t border-(--color-border) bg-(--color-sidebar)">
-      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <div className="border-b border-white/10 bg-zinc-900">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-5 px-4 py-10 sm:flex-row sm:items-center sm:px-6 xl:px-10">
+          <div>
+            <h3 className="text-xl font-semibold tracking-tight text-white">
+              Subscribe to our newsletter to get our latest updates
+            </h3>
+            <p className="mt-1 text-sm text-white/60">Product news and cafe operations tips, once or twice a month.</p>
+          </div>
+
+          <form onSubmit={handleSubscribe} className="flex w-full max-w-sm shrink-0 items-center gap-2">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email address"
+              className="w-full rounded-md border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-(--color-accent)"
+            />
+            <button
+              type="submit"
+              className="flex shrink-0 items-center gap-1.5 rounded-md bg-(--color-accent) px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            >
+              {subscribed ? "Subscribed" : "Subscribe"}
+              <SentIcon size={14} strokeWidth={1.8} />
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 sm:col-span-3 lg:col-span-2">
             <Logo />

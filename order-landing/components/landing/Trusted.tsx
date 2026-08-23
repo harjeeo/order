@@ -11,7 +11,7 @@ const INDUSTRIES = [
 
 export default function Trusted() {
   return (
-    <section id="trusted" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <section id="trusted" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
       <p className="text-center text-xs font-medium uppercase tracking-wider text-(--color-text-muted)">
         Built for every kind of counter
       </p>

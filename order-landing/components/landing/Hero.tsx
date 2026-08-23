@@ -4,11 +4,13 @@ export default function Hero() {
   return (
     <section className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-32 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-(--color-accent)/10 blur-3xl" />
-        <div className="absolute top-40 left-10 h-56 w-56 rounded-full bg-(--color-accent)/5 blur-2xl" />
+        <div className="absolute -top-32 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-(--color-accent)/15 blur-3xl" />
+        <div className="absolute top-24 left-6 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="absolute top-56 right-6 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-(--color-accent)/30 to-transparent" />
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
         <div className="flex flex-col items-center text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-(--color-border) bg-(--color-sidebar) px-3 py-1 text-xs font-medium text-(--color-text-muted)">
             <SparklesIcon size={13} strokeWidth={1.8} className="text-(--color-accent)" />
@@ -16,7 +18,10 @@ export default function Hero() {
           </span>
 
           <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-(--color-text) sm:text-5xl lg:text-6xl">
-            Run your cafe like it's <span className="text-(--color-accent)">wired for it.</span>
+            Run your cafe like it's{" "}
+            <span className="whitespace-nowrap bg-gradient-to-r from-(--color-accent) to-emerald-500 bg-clip-text text-transparent">
+              wired for it.
+            </span>
           </h1>
 
           <p className="mt-5 max-w-xl text-base text-(--color-text-muted) sm:text-lg">
