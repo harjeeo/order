@@ -57,42 +57,19 @@ export default function Hero() {
         </div>
 
         <div className="relative mt-16 rounded-2xl border border-(--color-border) bg-(--color-sidebar) p-2 shadow-2xl shadow-black/5">
-          <div className="rounded-xl border border-(--color-border) bg-(--color-canvas) p-4 sm:p-6">
-            <div className="flex items-center gap-1.5">
+          <div className="overflow-hidden rounded-xl border border-(--color-border) bg-(--color-canvas)">
+            <div className="flex items-center gap-1.5 border-b border-(--color-border) px-4 py-3 sm:px-6">
               <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
               <span className="ml-3 text-xs text-(--color-text-muted)">orderdashboard.app/cafe</span>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { label: "Today's Sales", value: "₹48,290", trend: "+12.4%" },
-                { label: "Open Orders", value: "14", trend: "3 in kitchen" },
-                { label: "Tables Occupied", value: "9 / 16", trend: "56%" },
-                { label: "Low Stock", value: "3 items", trend: "review" },
-              ].map((s) => (
-                <div key={s.label} className="rounded-lg border border-(--color-border) p-3 text-left">
-                  <div className="text-[11px] text-(--color-text-muted)">{s.label}</div>
-                  <div className="mt-1 text-lg font-semibold text-(--color-text)">{s.value}</div>
-                  <div className="mt-0.5 text-[11px] text-(--color-accent)">{s.trend}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 hidden gap-3 sm:grid sm:grid-cols-3">
-              {["Cheese Burger ×2", "Cold Coffee ×1", "Paneer Tikka ×1"].map((item, i) => (
-                <div
-                  key={item}
-                  className="flex items-center justify-between rounded-lg border border-(--color-border) px-3 py-2 text-xs text-(--color-text-muted)"
-                >
-                  <span className="text-(--color-text)">{item}</span>
-                  <span className="rounded-full bg-(--color-accent)/10 px-2 py-0.5 text-(--color-accent)">
-                    {i === 0 ? "Preparing" : i === 1 ? "Ready" : "Pending"}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <img
+              src="/dashboard-screenshot.png"
+              alt="Cafe Dashboard screen showing today's sales, orders, sales trend and order type summary"
+              className="w-full"
+            />
           </div>
         </div>
       </div>
