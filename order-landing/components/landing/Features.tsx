@@ -42,14 +42,14 @@ const FEATURES = [
 
 export default function Features() {
   return (
-    <section id="features" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section id="features" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 xl:px-10">
       <div className="mx-auto max-w-2xl text-center">
-        <span className="text-xs font-medium uppercase tracking-wider text-(--color-accent)">Features</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-(--color-accent)">Capabilities</span>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-(--color-text) sm:text-4xl">
-          Everything a busy counter actually needs
+          We Make Work Feel Effortless
         </h2>
         <p className="mt-3 text-(--color-text-muted)">
-          No bloat, no ten-tab setup wizard. Just the tools your floor and kitchen use every single shift.
+          Automation stripped down to the fundamentals, remembers and does every to-do task for you.
         </p>
       </div>
 

@@ -10,8 +10,9 @@ describe("Pricing", () => {
     expect(screen.getByText("Pro")).toBeInTheDocument();
   });
 
-  it("marks Basic as the highlighted plan", () => {
+  it("renders a monthly/yearly billing toggle", () => {
     render(<Pricing />);
-    expect(screen.getByText(/most popular/i)).toBeInTheDocument();
+    expect(screen.getByText("Monthly")).toBeInTheDocument();
+    expect(screen.getByText("Yearly")).toBeInTheDocument();
   });
 });

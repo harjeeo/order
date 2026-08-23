@@ -3,46 +3,35 @@ import { ArrowRight01Icon, PlayIcon, SparklesIcon, CheckmarkCircle02Icon } from 
 export default function Hero() {
   return (
     <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-32 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-(--color-accent)/15 blur-3xl" />
-        <div className="absolute top-24 left-6 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl" />
-        <div className="absolute top-56 right-6 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-(--color-accent)/30 to-transparent" />
-      </div>
-
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
         <div className="flex flex-col items-center text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-(--color-border) bg-(--color-sidebar) px-3 py-1 text-xs font-medium text-(--color-text-muted)">
             <SparklesIcon size={13} strokeWidth={1.8} className="text-(--color-accent)" />
-            One dashboard for every counter, table and kitchen ticket
+            Join 500+ growing cafes and restaurants
           </span>
 
-          <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-(--color-text) sm:text-5xl lg:text-6xl">
-            Run your cafe like it's{" "}
-            <span className="whitespace-nowrap bg-gradient-to-r from-(--color-accent) to-emerald-500 bg-clip-text text-transparent">
-              wired for it.
-            </span>
+          <h1 className="mt-6 max-w-2xl text-4xl font-semibold tracking-tight text-(--color-text) sm:text-5xl">
+            Smarter Tools for Better Cafe Outcomes
           </h1>
 
           <p className="mt-5 max-w-xl text-base text-(--color-text-muted) sm:text-lg">
-            POS, KOT, billing, inventory and staff — one clean workspace for every cafe or restaurant on your account,
-            each with its own menu, tables and team.
+            The smarter way to run a cafe starts with using tools that streamline every step of the process.
           </p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
             <a
               href="#get-started"
-              className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
             >
-              Get started free
+              Get Started for Free
               <ArrowRight01Icon size={16} strokeWidth={1.8} />
             </a>
             <a
-              href="#apps"
-              className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-5 py-2.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+              href="#showcase"
+              className="flex items-center gap-1.5 rounded-full border border-(--color-border) px-5 py-2.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 dark:hover:bg-white/10"
             >
               <PlayIcon size={14} strokeWidth={1.8} />
-              See it in action
+              Book a Free Demo
             </a>
           </div>
 

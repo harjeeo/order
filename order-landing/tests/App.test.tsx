@@ -8,22 +8,23 @@ describe("Landing page App", () => {
 
     // Nav + hero
     expect(screen.getAllByText(/OrderDashboard/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: /run your cafe like it's/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /smarter tools for better cafe outcomes/i })).toBeInTheDocument();
 
     // Section headings
-    expect(screen.getByRole("heading", { name: /everything a busy counter actually needs/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /twelve apps, one login/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /simple pricing, per outlet/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /loved by the counter/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /work smarter, grow faster/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /simple tools\. powerful results/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /we make work feel effortless/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /why businesses choose us/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /our simple pricing plan/i })).toBeInTheDocument();
 
     // CTA + footer
-    expect(screen.getByText(/create free account/i)).toBeInTheDocument();
+    expect(screen.getByText(/get up and running in just a few minutes/i)).toBeInTheDocument();
     expect(screen.getByText(/all rights reserved/i)).toBeInTheDocument();
   });
 
-  it("nav has Login and Sign up actions", () => {
+  it("nav has Log In and Contact Us actions", () => {
     render(<App />);
-    expect(screen.getByText(/^login$/i)).toBeInTheDocument();
-    expect(screen.getByText(/^sign up$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^log in$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^contact us$/i)).toBeInTheDocument();
   });
 });
