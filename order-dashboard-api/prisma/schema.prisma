@@ -87,7 +87,7 @@ model PlatformSettings {
   platformName    String  @default("Order Dashboard")
   supportEmail    String  @default("")
   billingEmail    String  @default("")
-  planPricing     Json    @default("{\"Free\":0,\"Basic\":999,\"Pro\":2499}")
+  planPricing     Json    @default("{\"Free\":0,\"Basic\":499,\"Pro\":1999}")
   trialDays       Int     @default(14)
   allowSelfSignup Boolean @default(true)
 

@@ -6,7 +6,7 @@ const PLANS = [
     name: "Free",
     sub: "For cafes getting started",
     monthly: 0,
-    yearly: 0,
+    yearlyTotal: 0,
     features: ["1 outlet", "POS + Orders + KOT", "Up to 2 staff logins", "Basic sales reports"],
     cta: "Get Started Now",
     highlighted: false,
@@ -14,8 +14,8 @@ const PLANS = [
   {
     name: "Basic",
     sub: "For cafes running full daily ops",
-    monthly: 999,
-    yearly: 799,
+    monthly: 499,
+    yearlyTotal: 3999,
     features: [
       "1 outlet",
       "Everything in Free",
@@ -29,8 +29,8 @@ const PLANS = [
   {
     name: "Pro",
     sub: "For multi-outlet brands",
-    monthly: 2499,
-    yearly: 1999,
+    monthly: 1999,
+    yearlyTotal: 14999,
     features: [
       "Unlimited outlets",
       "Everything in Basic",
@@ -88,10 +88,15 @@ export default function Pricing() {
             <p className="mt-1 text-xs text-(--color-text-muted)">{plan.sub}</p>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-3xl font-semibold text-(--color-text)">
-                ₹{(yearly ? plan.yearly : plan.monthly).toLocaleString("en-IN")}
+                ₹{(yearly ? plan.yearlyTotal : plan.monthly).toLocaleString("en-IN")}
               </span>
-              <span className="text-sm text-(--color-text-muted)">/ {yearly ? "yearly" : "monthly"}</span>
+              <span className="text-sm text-(--color-text-muted)">/ {yearly ? "year" : "month"}</span>
             </div>
+            {yearly && plan.monthly > 0 && (
+              <p className="mt-1 text-xs text-(--color-text-muted)">
+                Billed annually — {Math.round((1 - plan.yearlyTotal / (plan.monthly * 12)) * 100)}% off the monthly rate
+              </p>
+            )}
 
             <a
               href="#get-started"
