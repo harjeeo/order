@@ -153,9 +153,11 @@ export default function CafeLoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-(--color-text-muted)">
-          Demo login: staff@tanvirscafe.example / password123
-        </p>
+        {import.meta.env.DEV && (
+          <p className="mt-4 text-center text-xs text-(--color-text-muted)">
+            Demo login: staff@tanvirscafe.example / password123
+          </p>
+        )}
         <p className="mt-2 text-center text-xs text-(--color-text-muted)">
           New cafe?{" "}
           <Link to="/signup" className="text-(--color-accent)">

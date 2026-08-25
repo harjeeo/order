@@ -100,9 +100,11 @@ export default function SuperAdminLoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-(--color-text-muted)">
-          Demo login: owner@orderdashboard.example / password123
-        </p>
+        {import.meta.env.DEV && (
+          <p className="mt-4 text-center text-xs text-(--color-text-muted)">
+            Demo login: owner@orderdashboard.example / password123
+          </p>
+        )}
         <p className="mt-2 text-center text-xs text-(--color-text-muted)">
           Cafe staff?{" "}
           <Link to="/login/cafe" className="text-(--color-accent)">
