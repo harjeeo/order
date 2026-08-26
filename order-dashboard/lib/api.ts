@@ -199,6 +199,11 @@ export async function getTables() {
   return tables.map(mapTable);
 }
 
+export async function createTable(number: string, capacity: number) {
+  const table = await post("/tables", { number, capacity });
+  return mapTable(table);
+}
+
 export async function setTableStatus(tableId: string, status: string) {
   const table = await patch(`/tables/${tableId}/status`, { status });
   return mapTable(table);

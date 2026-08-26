@@ -11,8 +11,9 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
   QrCodeIcon,
+  PlusSignIcon,
 } from "hugeicons-react";
-import { getTables, setTableStatus, transferTable, mergeTables } from "../lib/api";
+import { getTables, createTable, setTableStatus, transferTable, mergeTables } from "../lib/api";
 import { getSession } from "../lib/useAuth";
 
 function TableQrModal({ table, onClose }) {
@@ -55,6 +56,83 @@ function TableQrModal({ table, onClose }) {
   );
 }
 
+function AddTableModal({ onClose, onCreated }) {
+  const [number, setNumber] = useState("");
+  const [capacity, setCapacity] = useState("4");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleCreate() {
+    setError("");
+    if (!number.trim()) {
+      setError("Enter a table number/name.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createTable(number.trim(), Number(capacity) || 1);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create table");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-xs rounded-xl bg-(--color-canvas) p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold">Add Table</h3>
+
+        <label className="mt-4 flex flex-col gap-1">
+          <span className="text-xs text-(--color-text-muted)">Table number / name</span>
+          <input
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="e.g. T1"
+            autoFocus
+            className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+          />
+        </label>
+
+        <label className="mt-3 flex flex-col gap-1">
+          <span className="text-xs text-(--color-text-muted)">Seats</span>
+          <input
+            type="number"
+            min={1}
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+          />
+        </label>
+
+        {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-md border border-(--color-border) py-2 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={saving}
+            className="flex-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {saving ? "Adding…" : "Add Table"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STATUS_META = {
   available: { label: "Available", dot: "bg-emerald-500", card: "border-(--color-border)" },
   occupied: { label: "Occupied", dot: "bg-red-500", card: "border-red-500/40 bg-red-500/5" },
@@ -69,6 +147,7 @@ export default function CafeTablesPage() {
   const [mergeSelection, setMergeSelection] = useState([]);
   const [status, setStatus] = useState("");
   const [qrTable, setQrTable] = useState(null);
+  const [showAddTable, setShowAddTable] = useState(false);
 
   async function refresh() {
     const data = await getTables();
@@ -136,13 +215,23 @@ export default function CafeTablesPage() {
             </h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Floor plan and live table status.</p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-(--color-text-muted)">
-            {Object.entries(STATUS_META).map(([key, meta]) => (
-              <span key={key} className="flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-                {meta.label}
-              </span>
-            ))}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 text-xs text-(--color-text-muted)">
+              {Object.entries(STATUS_META).map(([key, meta]) => (
+                <span key={key} className="flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                  {meta.label}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddTable(true)}
+              className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
+            >
+              <PlusSignIcon size={14} strokeWidth={1.8} />
+              Add Table
+            </button>
           </div>
         </div>
 
@@ -204,6 +293,11 @@ export default function CafeTablesPage() {
               </button>
             );
           })}
+          {tables.length === 0 && (
+            <p className="col-span-full py-10 text-center text-sm text-(--color-text-muted)">
+              No tables yet — click "Add Table" to create your first one.
+            </p>
+          )}
         </div>
       </div>
 
@@ -314,6 +408,15 @@ export default function CafeTablesPage() {
       </div>
 
       {qrTable && <TableQrModal table={qrTable} onClose={() => setQrTable(null)} />}
+      {showAddTable && (
+        <AddTableModal
+          onClose={() => setShowAddTable(false)}
+          onCreated={() => {
+            setShowAddTable(false);
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
