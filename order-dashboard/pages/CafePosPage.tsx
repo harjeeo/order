@@ -15,12 +15,14 @@ import {
   PrinterIcon,
   CreditCardIcon,
   Cancel01Icon,
+  PlusSignIcon,
 } from "hugeicons-react";
 import {
   getMenuCategories,
   getMenuItems,
   getTables,
   getCustomersList,
+  createCustomer,
   submitOrder,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
@@ -60,6 +62,33 @@ export default function CafePosPage() {
   const [cart, setCart] = useState([]);
   const [configuring, setConfiguring] = useState(null);
   const [status, setStatus] = useState("");
+
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [addCustomerError, setAddCustomerError] = useState("");
+  const [addingCustomer, setAddingCustomer] = useState(false);
+
+  async function handleAddCustomer() {
+    setAddCustomerError("");
+    if (!newCustomerPhone.trim()) {
+      setAddCustomerError("Enter a phone number.");
+      return;
+    }
+    setAddingCustomer(true);
+    try {
+      const customer = await createCustomer({ phone: newCustomerPhone.trim(), name: newCustomerName.trim() || "Guest" });
+      setCustomers((prev) => [...prev, customer]);
+      setCustomerId(customer._id);
+      setShowAddCustomer(false);
+      setNewCustomerPhone("");
+      setNewCustomerName("");
+    } catch (err) {
+      setAddCustomerError(err instanceof Error ? err.message : "Could not add customer");
+    } finally {
+      setAddingCustomer(false);
+    }
+  }
 
   useEffect(() => {
     getMenuCategories().then(setCategories);
@@ -434,22 +463,69 @@ export default function CafePosPage() {
             )}
 
             <div className="mt-4">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-muted)">
-                <UserIcon size={14} strokeWidth={1.8} />
-                Customer
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-(--color-text-muted)">
+                  <UserIcon size={14} strokeWidth={1.8} />
+                  Customer
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomer((v) => !v)}
+                  className="flex items-center gap-1 text-xs font-medium text-(--color-accent)"
+                >
+                  <PlusSignIcon size={12} strokeWidth={1.8} />
+                  Add Customer
+                </button>
               </div>
-              <select
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className="mt-2 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
-              >
-                <option value="">Walk-in Customer</option>
-                {customers.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+
+              {showAddCustomer ? (
+                <div className="mt-2 flex flex-col gap-2 rounded-md border border-(--color-border) p-2.5">
+                  <input
+                    value={newCustomerPhone}
+                    onChange={(e) => setNewCustomerPhone(e.target.value)}
+                    placeholder="Phone number"
+                    autoFocus
+                    className="w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                  />
+                  <input
+                    value={newCustomerName}
+                    onChange={(e) => setNewCustomerName(e.target.value)}
+                    placeholder="Name (optional)"
+                    className="w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                  />
+                  {addCustomerError && <p className="text-xs text-red-500">{addCustomerError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCustomer(false)}
+                      className="flex-1 rounded-md border border-(--color-border) py-1.5 text-xs"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddCustomer}
+                      disabled={addingCustomer}
+                      className="flex-1 rounded-md bg-(--color-accent) py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    >
+                      {addingCustomer ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <select
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  className="mt-2 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                >
+                  <option value="">Walk-in Customer</option>
+                  {customers.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="mt-5 flex-1">
