@@ -24,7 +24,17 @@ menuRouter.post("/categories", async (req, res) => {
 });
 
 menuRouter.delete("/categories/:name", async (req, res) => {
-  await prisma.menuCategory.deleteMany({ where: { outletId: req.outletId!, name: req.params.name } });
+  const category = await prisma.menuCategory.findUnique({
+    where: { outletId_name: { outletId: req.outletId!, name: req.params.name } },
+  });
+  if (!category) return res.json({ ok: true });
+
+  const itemCount = await prisma.menuItem.count({ where: { categoryId: category.id } });
+  if (itemCount > 0) {
+    return res.status(409).json({ error: `Move or delete the ${itemCount} item(s) in this category first.` });
+  }
+
+  await prisma.menuCategory.delete({ where: { id: category.id } });
   res.json({ ok: true });
 });
 

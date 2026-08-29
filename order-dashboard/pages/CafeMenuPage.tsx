@@ -102,6 +102,7 @@ export default function CafeMenuPage() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
   const [showIconPicker, setShowIconPicker] = useState(false);
 
   async function refreshCategories() {
@@ -128,10 +129,15 @@ export default function CafeMenuPage() {
   }
 
   async function handleDeleteCategory(name) {
-    await removeMenuCategory(name);
-    if (activeCategory === name) setActiveCategory("All");
-    refreshCategories();
-    refreshItems();
+    setCategoryError("");
+    try {
+      await removeMenuCategory(name);
+      if (activeCategory === name) setActiveCategory("All");
+      refreshCategories();
+      refreshItems();
+    } catch (err) {
+      setCategoryError(err instanceof Error ? err.message : "Could not delete category");
+    }
   }
 
   function startCreate() {
@@ -309,6 +315,7 @@ export default function CafeMenuPage() {
             </button>
           </div>
         </div>
+        {categoryError && <div className="mt-2 text-xs text-red-500">{categoryError}</div>}
 
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => (
