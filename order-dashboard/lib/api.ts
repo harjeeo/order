@@ -1022,7 +1022,7 @@ export async function getPublicTable(tenantId: string, tableId: string) {
 
 export async function placePublicOrder(
   tenantId: string,
-  payload: { tableId: string; customerName?: string; notes?: string; items: any[]; amount: number }
+  payload: { tableId: string; customerName: string; customerPhone: string; notes?: string; items: any[]; amount: number }
 ) {
   return publicRequest(`/${tenantId}/orders`, { method: "POST", body: JSON.stringify(payload) });
 }

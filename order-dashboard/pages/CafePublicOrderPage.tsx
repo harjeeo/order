@@ -23,6 +23,7 @@ export default function CafePublicOrderPage() {
   const [cart, setCart] = useState<Record<string, { item: any; qty: number }>>({});
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
   const [placedOrderNumber, setPlacedOrderNumber] = useState("");
@@ -69,12 +70,17 @@ export default function CafePublicOrderPage() {
   }
 
   async function handlePlaceOrder() {
-    setPlacing(true);
     setError("");
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setError("Enter your name and phone number to place the order.");
+      return;
+    }
+    setPlacing(true);
     try {
       const res = await placePublicOrder(tenantId, {
         tableId,
-        customerName: customerName.trim() || "Walk-in Customer",
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
         items: cartLines.map((l) => ({ menuItemId: l.item._id, name: l.item.name, qty: l.qty, unitPrice: l.item.price })),
         amount: cartTotal,
       });
@@ -224,12 +230,20 @@ export default function CafePublicOrderPage() {
               <span className="tabular-nums">{formatCurrency(cartTotal)}</span>
             </div>
 
+            <p className="mt-4 text-xs text-(--color-text-muted)">Enter your details to place the order.</p>
             <input
               type="text"
-              placeholder="Your name (optional)"
+              placeholder="Your name"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="mt-4 w-full rounded-md border border-(--color-border) bg-transparent px-3 py-2 text-sm outline-none focus:border-(--color-accent)"
+              className="mt-2 w-full rounded-md border border-(--color-border) bg-transparent px-3 py-2 text-sm outline-none focus:border-(--color-accent)"
+            />
+            <input
+              type="tel"
+              placeholder="Phone number"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              className="mt-2 w-full rounded-md border border-(--color-border) bg-transparent px-3 py-2 text-sm outline-none focus:border-(--color-accent)"
             />
 
             {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
@@ -237,7 +251,7 @@ export default function CafePublicOrderPage() {
             <button
               type="button"
               onClick={handlePlaceOrder}
-              disabled={placing}
+              disabled={placing || !customerName.trim() || !customerPhone.trim()}
               className="mt-4 w-full rounded-md bg-(--color-accent) py-3 text-sm font-medium text-white disabled:opacity-50"
             >
               {placing ? "Placing order…" : `Place order · ${formatCurrency(cartTotal)}`}

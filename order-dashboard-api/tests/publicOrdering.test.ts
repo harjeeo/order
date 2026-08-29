@@ -67,6 +67,7 @@ describe("public QR ordering", () => {
       .send({
         tableId,
         customerName: "QR Guest",
+        customerPhone: "9876543210",
         items: [{ menuItemId, name: "Cold Coffee", qty: 2, unitPrice: 150 }],
         amount: 300,
       });
@@ -84,11 +85,38 @@ describe("public QR ordering", () => {
     expect(kot).not.toBeNull();
   });
 
+  it("rejects a public order with no customer name or phone", async () => {
+    const res = await request(app)
+      .post(`/api/public/${tenantId}/orders`)
+      .send({ tableId, items: [{ menuItemId, name: "Cold Coffee", qty: 1, unitPrice: 150 }], amount: 150 });
+    expect(res.status).toBe(400);
+  });
+
+  it("reuses an existing customer record by phone across repeat orders", async () => {
+    const body = {
+      tableId,
+      customerName: "Repeat Guest",
+      customerPhone: "9998887770",
+      items: [{ menuItemId, name: "Cold Coffee", qty: 1, unitPrice: 150 }],
+      amount: 150,
+    };
+    const first = await request(app).post(`/api/public/${tenantId}/orders`).send(body);
+    const second = await request(app).post(`/api/public/${tenantId}/orders`).send(body);
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+
+    const customers = await prisma.customer.findMany({ where: { tenantId, phone: "9998887770" } });
+    expect(customers).toHaveLength(1);
+
+    const orders = await prisma.order.findMany({ where: { tenantId, customerId: customers[0].id } });
+    expect(orders).toHaveLength(2);
+  });
+
   it("rejects a public order for a table that doesn't belong to the tenant", async () => {
     const other = await createTenantWithAdmin("Other Cafe 2");
     const res = await request(app)
       .post(`/api/public/${other.tenant.id}/orders`)
-      .send({ tableId, items: [{ name: "X", qty: 1 }], amount: 10 });
+      .send({ tableId, customerName: "X", customerPhone: "9876543210", items: [{ name: "X", qty: 1 }], amount: 10 });
     expect(res.status).toBe(404);
     await deleteTenant(other.tenant.id);
   });

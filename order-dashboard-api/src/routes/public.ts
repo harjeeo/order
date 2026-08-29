@@ -65,7 +65,8 @@ const orderItemSchema = z.object({
 
 const publicOrderSchema = z.object({
   tableId: z.string(),
-  customerName: z.string().default("Walk-in Customer"),
+  customerName: z.string().trim().min(1, "Enter your name"),
+  customerPhone: z.string().trim().min(7, "Enter a valid phone number"),
   notes: z.string().default(""),
   items: z.array(orderItemSchema).min(1),
   amount: z.number().nonnegative(),
@@ -82,10 +83,19 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
   const table = await prisma.table.findFirst({ where: { id: parsed.data.tableId, tenantId } });
   if (!table) return res.status(404).json({ error: "Table not found" });
 
-  const { items, tableId, ...rest } = parsed.data;
+  const { items, tableId, customerPhone, ...rest } = parsed.data;
+
+  // Same phone ordering again (a repeat visit, or a second round at the
+  // same table) reuses their existing profile instead of creating
+  // duplicates — this is also what feeds the Customers list for marketing.
+  let customer = await prisma.customer.findFirst({ where: { tenantId, phone: customerPhone } });
+  if (!customer) {
+    customer = await prisma.customer.create({ data: { tenantId, name: rest.customerName, phone: customerPhone } });
+  }
+
   const order = await createOrderWithNumber(
     tenantId,
-    { ...rest, orderType: "dine_in", tableId, outletId: table.outletId, source: "customer" },
+    { ...rest, orderType: "dine_in", tableId, outletId: table.outletId, source: "customer", customerId: customer.id },
     items
   );
   await deductStockForOrder(tenantId, order.orderNumber, items);
