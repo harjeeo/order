@@ -33,6 +33,7 @@ import SuperAdminLoginPage from "./pages/SuperAdminLoginPage";
 import CafeLoginPage from "./pages/CafeLoginPage";
 import CafeSignupPage from "./pages/CafeSignupPage";
 import CafePublicOrderPage from "./pages/CafePublicOrderPage";
+import CafePublicMenuPage from "./pages/CafePublicMenuPage";
 import RequireAuth from "./components/RequireAuth";
 
 const router = createBrowserRouter([
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
   { path: "/login/cafe", element: <CafeLoginPage /> },
   { path: "/signup", element: <CafeSignupPage /> },
   { path: "/order/:tenantId/:tableId", element: <CafePublicOrderPage /> },
+  { path: "/menu/:slug", element: <CafePublicMenuPage /> },
   {
     path: "/cafe/kitchen/display",
     element: (

@@ -6,7 +6,7 @@ import { prisma } from "../src/prisma";
 export async function createTenantWithAdmin(namePrefix: string, password = "password123") {
   const suffix = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
   const tenant = await prisma.tenant.create({
-    data: { name: `${namePrefix} ${suffix}`, ownerName: "Test Owner" },
+    data: { name: `${namePrefix} ${suffix}`, slug: `${namePrefix.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${suffix}`, ownerName: "Test Owner" },
   });
   const outlet = await prisma.outlet.create({ data: { tenantId: tenant.id, name: "Main Outlet", isDefault: true } });
   const email = `admin-${suffix}@example.test`;

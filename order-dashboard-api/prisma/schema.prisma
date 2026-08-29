@@ -27,6 +27,7 @@ enum TenantPlan {
 model Tenant {
   id          String       @id @default(cuid())
   name        String
+  slug        String       @unique
   ownerName   String
   phone       String       @default("")
   email       String       @default("")

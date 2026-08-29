@@ -7,6 +7,7 @@ import { prisma } from "../prisma";
 import { requireAuth, signToken, signMfaToken, verifyMfaToken } from "../middleware/auth";
 import { logAudit } from "../lib/auditLog";
 import { PLATFORM_SETTINGS_SINGLETON_ID } from "../lib/platformSettingsId";
+import { generateUniqueSlug } from "../lib/slug";
 
 export const authRouter = Router();
 
@@ -182,9 +183,11 @@ authRouter.post("/signup", authLimiter, async (req, res) => {
   if (existing) return res.status(409).json({ error: "That email already has a login on this platform" });
 
   const trialDays = settings?.trialDays ?? 14;
+  const slug = await generateUniqueSlug(cafeName);
   const tenant = await prisma.tenant.create({
     data: {
       name: cafeName,
+      slug,
       ownerName,
       email,
       phone: phone ?? "",
@@ -216,7 +219,15 @@ authRouter.post("/signup", authLimiter, async (req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(404).json({ error: "User not found" });
-  res.json({ id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId });
+  const tenant = user.tenantId ? await prisma.tenant.findUnique({ where: { id: user.tenantId } }) : null;
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    tenantId: user.tenantId,
+    tenantSlug: tenant?.slug ?? null,
+  });
 });
 
 const changePasswordSchema = z.object({

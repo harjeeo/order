@@ -714,6 +714,10 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return post("/auth/change-password", { currentPassword, newPassword });
 }
 
+export async function getMyProfile() {
+  return get("/auth/me");
+}
+
 // --- Two-factor authentication (TOTP) -------------------------------------
 
 export async function getTwoFactorStatus() {
@@ -740,6 +744,7 @@ function mapTenant(t: any) {
   return {
     _id: t.id,
     name: t.name,
+    slug: t.slug,
     ownerName: t.ownerName,
     phone: t.phone,
     email: t.email,
@@ -1025,4 +1030,24 @@ export async function placePublicOrder(
   payload: { tableId: string; customerName: string; customerPhone: string; notes?: string; items: any[]; amount: number }
 ) {
   return publicRequest(`/${tenantId}/orders`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+// --- Slug-based public storefront (Instagram-bio link, no table) --------
+
+export async function getPublicMenuBySlug(slug: string) {
+  const data = await publicRequest(`/menu/${slug}`);
+  return {
+    tenantName: data.tenantName,
+    logo: data.logo,
+    about: data.about,
+    categories: data.categories,
+    items: data.items.map(mapMenuItem),
+  };
+}
+
+export async function placePublicMenuOrder(
+  slug: string,
+  payload: { customerName: string; customerPhone: string; notes?: string; items: any[]; amount: number }
+) {
+  return publicRequest(`/menu/${slug}/orders`, { method: "POST", body: JSON.stringify(payload) });
 }

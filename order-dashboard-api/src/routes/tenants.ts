@@ -6,6 +6,7 @@ import { prisma } from "../prisma";
 import { requireAuth, requireRole, signToken } from "../middleware/auth";
 import { sendEmail, credentialsEmailHtml } from "../lib/email";
 import { logAudit } from "../lib/auditLog";
+import { generateUniqueSlug } from "../lib/slug";
 
 function generateTempPassword() {
   // 10 random chars, easy to read/type out loud to a client over the phone.
@@ -134,9 +135,11 @@ tenantsRouter.post("/", async (req, res) => {
   const existingUser = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existingUser) return res.status(409).json({ error: "That email already has a login on this platform" });
 
+  const slug = await generateUniqueSlug(parsed.data.name);
   const tenant = await prisma.tenant.create({
     data: {
       ...parsed.data,
+      slug,
       planExpiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     },
   });

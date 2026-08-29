@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { generateUniqueSlug } from "../src/lib/slug";
 
 const prisma = new PrismaClient();
 
@@ -51,6 +52,7 @@ async function main() {
     tenant = await prisma.tenant.create({
       data: {
         name: "Tanvir's Cafe",
+        slug: await generateUniqueSlug("Tanvir's Cafe"),
         ownerName: "Tanvir Singh",
         phone: "9876500000",
         email: "hello@tanvirscafe.example",

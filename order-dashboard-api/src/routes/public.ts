@@ -63,6 +63,79 @@ const orderItemSchema = z.object({
   notes: z.string().default(""),
 });
 
+// --- Slug-based public storefront (no table/QR code needed) --------------
+// A standing link (pos.getojar.com/menu/:slug) a cafe can put in their
+// Instagram bio or anywhere on social — same public menu/ordering
+// experience as the table QR flow, minus the table context, so orders
+// come in as takeaway.
+
+publicRouter.get("/menu/:slug", async (req, res) => {
+  const { slug } = req.params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug } });
+  if (!tenant || tenant.status !== "active") return res.status(404).json({ error: "Not found" });
+
+  const outlet = await prisma.outlet.findFirst({ where: { tenantId: tenant.id }, orderBy: { isDefault: "desc" } });
+  if (!outlet) return res.status(404).json({ error: "Not found" });
+
+  const settings = await prisma.settings.findUnique({ where: { tenantId: tenant.id } });
+  const restaurant = (settings?.restaurant as any) ?? {};
+
+  const [categories, items] = await Promise.all([
+    prisma.menuCategory.findMany({ where: { outletId: outlet.id } }),
+    prisma.menuItem.findMany({
+      where: { outletId: outlet.id, available: true },
+      include: { category: true, variants: true, addons: true },
+    }),
+  ]);
+
+  res.json({
+    tenantName: tenant.name,
+    logo: restaurant.logo ?? "",
+    about: restaurant.about ?? "",
+    categories: categories.map((c) => c.name),
+    items,
+  });
+});
+
+const publicMenuOrderSchema = z.object({
+  customerName: z.string().trim().min(1, "Enter your name"),
+  customerPhone: z.string().trim().min(7, "Enter a valid phone number"),
+  notes: z.string().default(""),
+  items: z.array(orderItemSchema).min(1),
+  amount: z.number().nonnegative(),
+});
+
+publicRouter.post("/menu/:slug/orders", async (req, res) => {
+  const { slug } = req.params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug } });
+  if (!tenant || tenant.status !== "active") return res.status(404).json({ error: "Not found" });
+
+  const outlet = await prisma.outlet.findFirst({ where: { tenantId: tenant.id }, orderBy: { isDefault: "desc" } });
+  if (!outlet) return res.status(404).json({ error: "Not found" });
+
+  const parsed = publicMenuOrderSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const { items, customerPhone, ...rest } = parsed.data;
+
+  let customer = await prisma.customer.findFirst({ where: { tenantId: tenant.id, phone: customerPhone } });
+  if (!customer) {
+    customer = await prisma.customer.create({ data: { tenantId: tenant.id, name: rest.customerName, phone: customerPhone } });
+  }
+
+  const order = await createOrderWithNumber(
+    tenant.id,
+    { ...rest, orderType: "takeaway", outletId: outlet.id, source: "customer", customerId: customer.id },
+    items
+  );
+  await deductStockForOrder(tenant.id, order.orderNumber, items);
+  await prisma.kitchenTicket.create({ data: { tenantId: tenant.id, orderId: order.id, orderNumber: order.orderNumber } });
+  notifyOutlet(outlet.id, "orders:changed");
+  notifyOutlet(outlet.id, "kitchen:changed");
+
+  res.status(201).json({ orderNumber: order.orderNumber });
+});
+
 const publicOrderSchema = z.object({
   tableId: z.string(),
   customerName: z.string().trim().min(1, "Enter your name"),

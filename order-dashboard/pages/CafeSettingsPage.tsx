@@ -29,6 +29,7 @@ import {
   startTwoFactorSetup,
   enableTwoFactor,
   disableTwoFactor,
+  getMyProfile,
 } from "../lib/api";
 import { useTranslation } from "../lib/i18n";
 import { useTheme } from "../lib/useTheme";
@@ -63,6 +64,7 @@ export default function CafeSettingsPage() {
   const [tab, setTab] = useState("restaurant");
   const [draft, setDraft] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [tenantSlug, setTenantSlug] = useState("");
 
   async function refresh() {
     const data = await getSettings();
@@ -71,7 +73,10 @@ export default function CafeSettingsPage() {
 
   useEffect(() => {
     refresh();
+    getMyProfile().then((me: any) => setTenantSlug(me.tenantSlug ?? ""));
   }, []);
+
+  const publicMenuUrl = tenantSlug ? `${window.location.origin}/menu/${tenantSlug}` : "";
 
   useEffect(() => {
     if (settings) setDraft(settings[tab]);
@@ -289,6 +294,37 @@ export default function CafeSettingsPage() {
                   className={`${inputClass} resize-none`}
                 />
               </Field>
+              <Field label="About (shown on your public menu page)">
+                <textarea
+                  value={draft.about ?? ""}
+                  onChange={(e) => set("about", e.target.value)}
+                  rows={2}
+                  placeholder="A short line about your cafe — cuisine, vibe, specialty."
+                  className={`${inputClass} resize-none`}
+                />
+              </Field>
+
+              {tenantSlug && (
+                <div className="mt-2 rounded-md border border-(--color-border) p-3">
+                  <div className="text-xs font-medium text-(--color-text-muted)">Your public menu link</div>
+                  <p className="mt-1 text-xs text-(--color-text-muted)">
+                    Share this in your Instagram bio or anywhere on social — anyone can browse your menu and order
+                    without scanning a table QR code.
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="flex-1 truncate rounded-md bg-black/5 px-2 py-1.5 text-xs dark:bg-white/10">
+                      {publicMenuUrl}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(publicMenuUrl)}
+                      className="shrink-0 rounded-md border border-(--color-border) px-2.5 py-1.5 text-xs font-medium"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
