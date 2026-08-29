@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import ThemeToggle from "../components/ThemeToggle";
 import ImpersonationBanner from "../components/ImpersonationBanner";
 import { logout, getImpersonation, exitImpersonation } from "../lib/useAuth";
 import { getOutlets, getCurrentOutletId, setCurrentOutletId, flushOfflineQueue } from "../lib/api";
@@ -156,22 +155,6 @@ function CafeLink({ to, label, icon: Icon, end = false }) {
   );
 }
 
-function LanguageToggle() {
-  const { lang, setLanguage } = useTranslation();
-  return (
-    <button
-      type="button"
-      onClick={() => setLanguage(lang === "en" ? "hi" : "en")}
-      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
-    >
-      <span className="flex h-[18px] w-[18px] items-center justify-center text-xs font-semibold">
-        {lang === "en" ? "अ" : "A"}
-      </span>
-      <span>{lang === "en" ? "हिन्दी" : "English"}</span>
-    </button>
-  );
-}
-
 export default function CafeLayout() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -190,26 +173,26 @@ export default function CafeLayout() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-(--color-canvas) text-(--color-text)">
-      <aside className="flex h-full w-60 shrink-0 flex-col border-r border-(--color-border) bg-(--color-sidebar) px-3 py-3">
-        <div className="flex items-center gap-2 px-2 py-1.5">
+      <aside className="flex h-full w-60 shrink-0 flex-col border-r border-(--color-border) bg-(--color-sidebar) py-3">
+        <div className="flex items-center gap-2 px-5 py-1.5">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-accent)/10 text-(--color-accent)">
             <RestaurantIcon size={16} strokeWidth={1.8} />
           </span>
           <span className="text-sm font-semibold">Cafe POS</span>
         </div>
 
-        <OutletSwitcher />
+        <div className="px-3">
+          <OutletSwitcher />
+        </div>
 
-        <nav className="mt-4 flex flex-col gap-0.5">
+        <nav className="mt-4 flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
           {navLinks.map((link) => (
             <CafeLink key={link.to} to={link.to} icon={link.icon} end={link.end} label={t(link.labelKey)} />
           ))}
           <CafeLink to="/cafe/settings" label={t("nav.settings")} icon={Settings02Icon} />
         </nav>
 
-        <div className="mt-auto flex flex-col gap-0.5">
-          <LanguageToggle />
-          <ThemeToggle />
+        <div className="flex flex-col gap-0.5 border-t border-(--color-border) px-3 pt-2">
           <button
             type="button"
             onClick={handleLogout}

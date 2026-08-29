@@ -11,6 +11,9 @@ import {
   CheckmarkCircle02Icon,
   Building02Icon,
   CouponPercentIcon,
+  LanguageCircleIcon,
+  Sun03Icon,
+  Moon02Icon,
 } from "hugeicons-react";
 import {
   getSettings,
@@ -27,6 +30,8 @@ import {
   enableTwoFactor,
   disableTwoFactor,
 } from "../lib/api";
+import { useTranslation } from "../lib/i18n";
+import { useTheme } from "../lib/useTheme";
 
 const TABS = [
   { key: "restaurant", label: "Restaurant Profile", icon: Store01Icon },
@@ -37,6 +42,7 @@ const TABS = [
   { key: "paymentMethods", label: "Payment Methods", icon: CreditCardIcon },
   { key: "coupons", label: "Coupons", icon: CouponPercentIcon },
   { key: "outlets", label: "Outlets (Pro)", icon: Building02Icon },
+  { key: "language", label: "Language", icon: LanguageCircleIcon },
   { key: "account", label: "Change Password", icon: SquareLock02Icon },
 ];
 
@@ -223,8 +229,11 @@ export default function CafeSettingsPage() {
     }
   }
 
+  const { lang, setLanguage } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
+
   if (!settings) return null;
-  if (tab !== "account" && tab !== "outlets" && tab !== "coupons" && !draft) return null;
+  if (tab !== "account" && tab !== "outlets" && tab !== "coupons" && tab !== "language" && !draft) return null;
 
   return (
     <div className="flex h-full">
@@ -557,6 +566,47 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
+          {tab === "language" && (
+            <div className="flex flex-col gap-6">
+              <div>
+                <div className="text-sm font-medium">Language</div>
+                <p className="mt-1 text-xs text-(--color-text-muted)">Choose the language for the dashboard.</p>
+                <div className="mt-3 flex gap-2">
+                  {[
+                    { key: "en" as const, label: "English" },
+                    { key: "hi" as const, label: "हिन्दी" },
+                  ].map((l) => (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setLanguage(l.key)}
+                      className={`rounded-md border px-4 py-2 text-sm font-medium ${
+                        lang === l.key
+                          ? "border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)"
+                          : "border-(--color-border) text-(--color-text)"
+                      }`}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium">Appearance</div>
+                <p className="mt-1 text-xs text-(--color-text-muted)">Switch between light and dark mode.</p>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="mt-3 flex items-center gap-2 rounded-md border border-(--color-border) px-4 py-2 text-sm font-medium"
+                >
+                  {theme === "dark" ? <Sun03Icon size={16} strokeWidth={1.8} /> : <Moon02Icon size={16} strokeWidth={1.8} />}
+                  {theme === "dark" ? "Switch to Light mode" : "Switch to Dark mode"}
+                </button>
+              </div>
+            </div>
+          )}
+
           {tab === "account" && (
             <div className="flex flex-col gap-3">
               <Field label="Current Password">
@@ -669,7 +719,7 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
-          {tab !== "account" && tab !== "outlets" && tab !== "coupons" && (
+          {tab !== "account" && tab !== "outlets" && tab !== "coupons" && tab !== "language" && (
             <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"
