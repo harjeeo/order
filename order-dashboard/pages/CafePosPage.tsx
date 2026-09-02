@@ -301,28 +301,28 @@ export default function CafePosPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => (
               <button
                 key={item._id}
                 type="button"
                 disabled={!item.available}
                 onClick={() => openConfigure(item)}
-                className={`overflow-hidden rounded-xl border text-left transition-colors ${
+                className={`flex gap-3 rounded-xl border p-3 text-left transition-colors ${
                   item.available
                     ? "border-(--color-border) hover:border-(--color-accent)"
                     : "cursor-not-allowed border-(--color-border) opacity-50"
                 }`}
               >
                 {isPhotoUrl(item.image) ? (
-                  <img src={item.image} alt={item.name} className="h-28 w-full object-cover" />
+                  <img src={item.image} alt={item.name} className="h-28 w-28 shrink-0 rounded-md object-cover" />
                 ) : (
-                  <span className="flex h-28 w-full items-center justify-center bg-black/5 text-5xl dark:bg-white/10">
+                  <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md bg-black/5 text-5xl dark:bg-white/10">
                     {item.image}
                   </span>
                 )}
-                <div className="p-3">
-                  <div className="text-base font-medium">{item.name}</div>
+                <div className="flex min-w-0 flex-1 flex-col justify-center">
+                  <div className="truncate text-base font-medium">{item.name}</div>
                   <div className="mt-1 text-xs text-(--color-text-muted)">
                     {item.variants.length > 0
                       ? `From ${formatCurrency(Math.min(...item.variants.map((v) => v.price)))}`
