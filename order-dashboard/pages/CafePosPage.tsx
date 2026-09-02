@@ -38,6 +38,10 @@ function formatCurrency(n) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
+function isPhotoUrl(value) {
+  return typeof value === "string" && value.startsWith("data:image");
+}
+
 function lineTotal(line) {
   const addonsTotal = line.addons.reduce((s, a) => s + a.price, 0);
   return (line.unitPrice + addonsTotal) * line.qty;
@@ -304,21 +308,30 @@ export default function CafePosPage() {
                 type="button"
                 disabled={!item.available}
                 onClick={() => openConfigure(item)}
-                className={`rounded-xl border p-3 text-left transition-colors ${
+                className={`overflow-hidden rounded-xl border text-left transition-colors ${
                   item.available
                     ? "border-(--color-border) hover:border-(--color-accent)"
                     : "cursor-not-allowed border-(--color-border) opacity-50"
                 }`}
               >
-                <div className="text-sm font-medium">{item.name}</div>
-                <div className="mt-1 text-xs text-(--color-text-muted)">
-                  {item.variants.length > 0
-                    ? `From ${formatCurrency(Math.min(...item.variants.map((v) => v.price)))}`
-                    : formatCurrency(item.price)}
-                </div>
-                {!item.available && (
-                  <div className="mt-1 text-[10px] font-medium text-red-500">Out of Stock</div>
+                {isPhotoUrl(item.image) ? (
+                  <img src={item.image} alt={item.name} className="h-28 w-full object-cover" />
+                ) : (
+                  <span className="flex h-28 w-full items-center justify-center bg-black/5 text-5xl dark:bg-white/10">
+                    {item.image}
+                  </span>
                 )}
+                <div className="p-3">
+                  <div className="text-base font-medium">{item.name}</div>
+                  <div className="mt-1 text-xs text-(--color-text-muted)">
+                    {item.variants.length > 0
+                      ? `From ${formatCurrency(Math.min(...item.variants.map((v) => v.price)))}`
+                      : formatCurrency(item.price)}
+                  </div>
+                  {!item.available && (
+                    <div className="mt-1 text-[10px] font-medium text-red-500">Out of Stock</div>
+                  )}
+                </div>
               </button>
             ))}
             {items.length === 0 && (

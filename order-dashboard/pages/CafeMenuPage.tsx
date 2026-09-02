@@ -323,12 +323,14 @@ export default function CafeMenuPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   {isPhotoUrl(item.image) ? (
-                    <img src={item.image} alt={item.name} className="h-9 w-9 rounded-md object-cover" />
+                    <img src={item.image} alt={item.name} className="h-28 w-28 shrink-0 rounded-md object-cover" />
                   ) : (
-                    <span className="text-2xl">{item.image}</span>
+                    <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md bg-black/5 text-5xl dark:bg-white/10">
+                      {item.image}
+                    </span>
                   )}
                   <div>
-                    <div className="text-sm font-medium">{item.name}</div>
+                    <div className="text-base font-medium">{item.name}</div>
                     <div className="text-xs text-(--color-text-muted)">{item.category}</div>
                   </div>
                 </div>
