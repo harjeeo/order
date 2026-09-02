@@ -319,69 +319,70 @@ export default function CafeMenuPage() {
 
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => (
-            <div key={item._id} className="rounded-xl border border-(--color-border) p-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  {isPhotoUrl(item.image) ? (
-                    <img src={item.image} alt={item.name} className="h-28 w-28 shrink-0 rounded-md object-cover" />
-                  ) : (
-                    <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md bg-black/5 text-5xl dark:bg-white/10">
-                      {item.image}
-                    </span>
-                  )}
-                  <div>
-                    <div className="text-base font-medium">{item.name}</div>
+            <div key={item._id} className="flex gap-3 rounded-xl border border-(--color-border) p-3">
+              {isPhotoUrl(item.image) ? (
+                <img src={item.image} alt={item.name} className="h-28 w-28 shrink-0 rounded-md object-cover" />
+              ) : (
+                <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md bg-black/5 text-5xl dark:bg-white/10">
+                  {item.image}
+                </span>
+              )}
+
+              <div className="flex min-w-0 flex-1 flex-col justify-between">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-base font-medium">{item.name}</div>
                     <div className="text-xs text-(--color-text-muted)">{item.category}</div>
                   </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(item)}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    >
+                      <Edit02Icon size={14} strokeWidth={1.8} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item)}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                    >
+                      <Delete02Icon size={14} strokeWidth={1.8} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+
+                {item.variants.length > 0 ? (
+                  <ul className="space-y-0.5 text-xs text-(--color-text-muted)">
+                    {item.variants.map((v) => (
+                      <li key={v.name} className="flex justify-between">
+                        <span>{v.name}</span>
+                        <span className="tabular-nums">{formatCurrency(v.price)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-sm tabular-nums">{formatCurrency(item.price)}</div>
+                )}
+
+                {item.addons.length > 0 && (
+                  <div className="text-[11px] text-(--color-text-muted)">
+                    Add-ons: {item.addons.map((a) => a.name).join(", ")}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-[11px] text-(--color-text-muted)">
+                  <span>Tax {item.tax}%</span>
                   <button
                     type="button"
-                    onClick={() => startEdit(item)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    onClick={() => handleToggleAvailability(item)}
+                    className={`rounded-full px-2 py-0.5 font-medium ${
+                      item.available ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-500"
+                    }`}
                   >
-                    <Edit02Icon size={14} strokeWidth={1.8} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
-                  >
-                    <Delete02Icon size={14} strokeWidth={1.8} />
+                    {item.available ? "Available" : "Out of Stock"}
                   </button>
                 </div>
-              </div>
-
-              {item.variants.length > 0 ? (
-                <ul className="mt-2 space-y-0.5 text-xs text-(--color-text-muted)">
-                  {item.variants.map((v) => (
-                    <li key={v.name} className="flex justify-between">
-                      <span>{v.name}</span>
-                      <span className="tabular-nums">{formatCurrency(v.price)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="mt-2 text-sm tabular-nums">{formatCurrency(item.price)}</div>
-              )}
-
-              {item.addons.length > 0 && (
-                <div className="mt-1.5 text-[11px] text-(--color-text-muted)">
-                  Add-ons: {item.addons.map((a) => a.name).join(", ")}
-                </div>
-              )}
-
-              <div className="mt-2 flex items-center justify-between text-[11px] text-(--color-text-muted)">
-                <span>Tax {item.tax}%</span>
-                <button
-                  type="button"
-                  onClick={() => handleToggleAvailability(item)}
-                  className={`rounded-full px-2 py-0.5 font-medium ${
-                    item.available ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-500"
-                  }`}
-                >
-                  {item.available ? "Available" : "Out of Stock"}
-                </button>
               </div>
             </div>
           ))}
