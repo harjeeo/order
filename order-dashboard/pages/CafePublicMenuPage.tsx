@@ -24,6 +24,10 @@ function formatCurrency(n) {
   return `₹${Number(n).toLocaleString("en-IN")}`;
 }
 
+function hasOptions(item) {
+  return item.variants.length > 0 || item.addons.length > 0;
+}
+
 export default function CafePublicMenuPage() {
   const { slug } = useParams();
   const [tenantName, setTenantName] = useState("");
@@ -33,7 +37,12 @@ export default function CafePublicMenuPage() {
   const [categories, setCategories] = useState(["All"]);
   const [activeCategory, setActiveCategory] = useState("All");
   const [items, setItems] = useState([]);
-  const [cart, setCart] = useState<Record<string, { item: any; qty: number }>>({});
+  const [cart, setCart] = useState<
+    { id: string; itemId: string; name: string; unitPrice: number; qty: number; simple: boolean }[]
+  >([]);
+  const [configuring, setConfiguring] = useState<{ item: any; variant: any; addons: any[]; qty: number } | null>(
+    null
+  );
   const [showCart, setShowCart] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -60,28 +69,51 @@ export default function CafePublicMenuPage() {
     [items, activeCategory]
   );
 
-  const cartLines = Object.values(cart);
-  const cartTotal = cartLines.reduce((s, l) => s + l.item.price * l.qty, 0);
-  const cartCount = cartLines.reduce((s, l) => s + l.qty, 0);
+  const cartTotal = cart.reduce((s, l) => s + l.unitPrice * l.qty, 0);
+  const cartCount = cart.reduce((s, l) => s + l.qty, 0);
 
-  function addToCart(item) {
-    setCart((c) => {
-      const existing = c[item._id];
-      return { ...c, [item._id]: { item, qty: (existing?.qty ?? 0) + 1 } };
+  function addSimpleToCart(item) {
+    setCart((prev) => {
+      const idx = prev.findIndex((l) => l.itemId === item._id && l.simple);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
+        return next;
+      }
+      return [...prev, { id: item._id, itemId: item._id, name: item.name, unitPrice: item.price, qty: 1, simple: true }];
     });
   }
 
-  function removeFromCart(item) {
-    setCart((c) => {
-      const existing = c[item._id];
-      if (!existing) return c;
-      if (existing.qty <= 1) {
-        const next = { ...c };
-        delete next[item._id];
-        return next;
-      }
-      return { ...c, [item._id]: { ...existing, qty: existing.qty - 1 } };
+  function removeSimpleFromCart(item) {
+    setCart((prev) => {
+      const idx = prev.findIndex((l) => l.itemId === item._id && l.simple);
+      if (idx < 0) return prev;
+      const line = prev[idx];
+      if (line.qty <= 1) return prev.filter((_, i) => i !== idx);
+      const next = [...prev];
+      next[idx] = { ...line, qty: line.qty - 1 };
+      return next;
     });
+  }
+
+  function openConfigure(item) {
+    setConfiguring({ item, variant: item.variants[0] ?? null, addons: [], qty: 1 });
+  }
+
+  function toggleConfiguredAddon(addon) {
+    setConfiguring((c) => {
+      const exists = c.addons.some((a) => a.name === addon.name);
+      return { ...c, addons: exists ? c.addons.filter((a) => a.name !== addon.name) : [...c.addons, addon] };
+    });
+  }
+
+  function confirmConfigured() {
+    if (!configuring) return;
+    const { item, variant, addons, qty } = configuring;
+    const unitPrice = (variant ? variant.price : item.price) + addons.reduce((s, a) => s + a.price, 0);
+    const name = item.name + (variant ? ` (${variant.name})` : "") + (addons.length ? ` + ${addons.map((a) => a.name).join(", ")}` : "");
+    setCart((prev) => [...prev, { id: `${item._id}-${Date.now()}`, itemId: item._id, name, unitPrice, qty, simple: false }]);
+    setConfiguring(null);
   }
 
   async function handlePlaceOrder() {
@@ -95,11 +127,11 @@ export default function CafePublicMenuPage() {
       const res = await placePublicMenuOrder(slug, {
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        items: cartLines.map((l) => ({ menuItemId: l.item._id, name: l.item.name, qty: l.qty, unitPrice: l.item.price })),
+        items: cart.map((l) => ({ menuItemId: l.itemId, name: l.name, qty: l.qty, unitPrice: l.unitPrice })),
         amount: cartTotal,
       });
       setPlacedOrderNumber(res.orderNumber);
-      setCart({});
+      setCart([]);
       setShowCart(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not place order");
@@ -187,7 +219,8 @@ export default function CafePublicMenuPage() {
 
       <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
         {visibleItems.map((item) => {
-          const qty = cart[item._id]?.qty ?? 0;
+          const withOptions = hasOptions(item);
+          const qty = cart.find((l) => l.itemId === item._id && l.simple)?.qty ?? 0;
           return (
             <div key={item._id} className="overflow-hidden rounded-xl border border-(--color-border)">
               {item.image?.startsWith("data:") ? (
@@ -203,12 +236,22 @@ export default function CafePublicMenuPage() {
               )}
               <div className="p-2.5">
                 <div className="truncate text-sm font-medium">{item.name}</div>
-                <div className="mt-0.5 text-xs text-(--color-text-muted)">{formatCurrency(item.price)}</div>
+                <div className="mt-0.5 text-xs text-(--color-text-muted)">
+                  {withOptions ? `From ${formatCurrency(item.price)}` : formatCurrency(item.price)}
+                </div>
 
-                {qty === 0 ? (
+                {withOptions ? (
                   <button
                     type="button"
-                    onClick={() => addToCart(item)}
+                    onClick={() => openConfigure(item)}
+                    className="mt-2 w-full rounded-md bg-(--color-accent) py-1.5 text-xs font-medium text-white"
+                  >
+                    Add to Cart
+                  </button>
+                ) : qty === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => addSimpleToCart(item)}
                     className="mt-2 w-full rounded-md bg-(--color-accent) py-1.5 text-xs font-medium text-white"
                   >
                     Add to Cart
@@ -217,7 +260,7 @@ export default function CafePublicMenuPage() {
                   <div className="mt-2 flex items-center justify-between">
                     <button
                       type="button"
-                      onClick={() => removeFromCart(item)}
+                      onClick={() => removeSimpleFromCart(item)}
                       className="flex h-7 w-7 items-center justify-center rounded-full border border-(--color-border)"
                     >
                       <MinusSignIcon size={12} strokeWidth={2} />
@@ -225,7 +268,7 @@ export default function CafePublicMenuPage() {
                     <span className="text-center text-sm tabular-nums">{qty}</span>
                     <button
                       type="button"
-                      onClick={() => addToCart(item)}
+                      onClick={() => addSimpleToCart(item)}
                       className="flex h-7 w-7 items-center justify-center rounded-full bg-(--color-accent) text-white"
                     >
                       <Add01Icon size={12} strokeWidth={2} />
@@ -241,7 +284,7 @@ export default function CafePublicMenuPage() {
         )}
       </div>
 
-      {cartCount > 0 && !showCart && (
+      {cartCount > 0 && !showCart && !configuring && (
         <button
           type="button"
           onClick={() => setShowCart(true)}
@@ -255,6 +298,93 @@ export default function CafePublicMenuPage() {
         </button>
       )}
 
+      {configuring && (
+        <div className="fixed inset-0 z-30 flex items-end bg-black/40" onClick={() => setConfiguring(null)}>
+          <div
+            className="max-h-[85vh] w-full overflow-y-auto rounded-t-2xl bg-(--color-canvas) p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold">{configuring.item.name}</h2>
+
+            {configuring.item.variants.length > 0 && (
+              <div className="mt-4">
+                <div className="text-xs font-medium text-(--color-text-muted)">Variant</div>
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {configuring.item.variants.map((v) => (
+                    <button
+                      key={v.name}
+                      type="button"
+                      onClick={() => setConfiguring((c) => ({ ...c, variant: v }))}
+                      className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${
+                        configuring.variant?.name === v.name
+                          ? "border-(--color-accent) bg-(--color-accent)/10"
+                          : "border-(--color-border)"
+                      }`}
+                    >
+                      <span>{v.name}</span>
+                      <span className="tabular-nums text-(--color-text-muted)">{formatCurrency(v.price)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {configuring.item.addons.length > 0 && (
+              <div className="mt-4">
+                <div className="text-xs font-medium text-(--color-text-muted)">Add-ons</div>
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {configuring.item.addons.map((a) => {
+                    const active = configuring.addons.some((x) => x.name === a.name);
+                    return (
+                      <button
+                        key={a.name}
+                        type="button"
+                        onClick={() => toggleConfiguredAddon(a)}
+                        className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${
+                          active ? "border-(--color-accent) bg-(--color-accent)/10" : "border-(--color-border)"
+                        }`}
+                      >
+                        <span>{a.name}</span>
+                        <span className="tabular-nums text-(--color-text-muted)">+{formatCurrency(a.price)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <div className="text-xs font-medium text-(--color-text-muted)">Quantity</div>
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfiguring((c) => ({ ...c, qty: Math.max(1, c.qty - 1) }))}
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-(--color-border)"
+                >
+                  <MinusSignIcon size={14} strokeWidth={1.8} />
+                </button>
+                <span className="w-6 text-center tabular-nums">{configuring.qty}</span>
+                <button
+                  type="button"
+                  onClick={() => setConfiguring((c) => ({ ...c, qty: c.qty + 1 }))}
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-(--color-border)"
+                >
+                  <Add01Icon size={14} strokeWidth={1.8} />
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={confirmConfigured}
+              className="mt-5 w-full rounded-md bg-(--color-accent) py-3 text-sm font-medium text-white"
+            >
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      )}
+
       {showCart && (
         <div className="fixed inset-0 z-20 flex items-end bg-black/40" onClick={() => setShowCart(false)}>
           <div
@@ -263,12 +393,12 @@ export default function CafePublicMenuPage() {
           >
             <h2 className="text-lg font-semibold">Your order</h2>
             <div className="mt-3 flex flex-col gap-2">
-              {cartLines.map((l) => (
-                <div key={l.item._id} className="flex items-center justify-between text-sm">
+              {cart.map((l) => (
+                <div key={l.id} className="flex items-center justify-between text-sm">
                   <span>
-                    {l.qty} × {l.item.name}
+                    {l.qty} × {l.name}
                   </span>
-                  <span className="tabular-nums">{formatCurrency(l.item.price * l.qty)}</span>
+                  <span className="tabular-nums">{formatCurrency(l.unitPrice * l.qty)}</span>
                 </div>
               ))}
             </div>
