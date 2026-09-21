@@ -14,6 +14,10 @@ import {
   LanguageCircleIcon,
   Sun03Icon,
   Moon02Icon,
+  Facebook01Icon,
+  InstagramIcon,
+  SnapchatIcon,
+  YoutubeIcon,
 } from "hugeicons-react";
 import {
   getSettings,
@@ -45,6 +49,13 @@ const TABS = [
   { key: "outlets", label: "Outlets (Pro)", icon: Building02Icon },
   { key: "language", label: "Language", icon: LanguageCircleIcon },
   { key: "account", label: "Change Password", icon: SquareLock02Icon },
+];
+
+const SOCIAL_PLATFORMS = [
+  { key: "facebook", label: "Facebook", icon: Facebook01Icon, placeholder: "https://facebook.com/yourcafe" },
+  { key: "instagram", label: "Instagram", icon: InstagramIcon, placeholder: "https://instagram.com/yourcafe" },
+  { key: "snapchat", label: "Snapchat", icon: SnapchatIcon, placeholder: "https://snapchat.com/add/yourcafe" },
+  { key: "youtube", label: "YouTube", icon: YoutubeIcon, placeholder: "https://youtube.com/@yourcafe" },
 ];
 
 function Field({ label, children }) {
@@ -90,6 +101,16 @@ export default function CafeSettingsPage() {
 
   function set(field, value) {
     setDraft((d) => ({ ...d, [field]: value }));
+  }
+
+  function setSocial(platform, field, value) {
+    setDraft((d) => ({
+      ...d,
+      social: {
+        ...d.social,
+        [platform]: { ...(d.social?.[platform] ?? { url: "", enabled: false }), [field]: value },
+      },
+    }));
   }
 
   async function handleSave() {
@@ -303,6 +324,39 @@ export default function CafeSettingsPage() {
                   className={`${inputClass} resize-none`}
                 />
               </Field>
+
+              <div className="mt-2">
+                <div className="text-xs font-medium text-(--color-text-muted)">
+                  Social links (shown on your public menu page)
+                </div>
+                <div className="mt-2 flex flex-col gap-2">
+                  {SOCIAL_PLATFORMS.map((p) => {
+                    const value = draft.social?.[p.key] ?? { url: "", enabled: false };
+                    return (
+                      <div key={p.key} className="flex items-center gap-2">
+                        <span className="w-20 shrink-0 text-xs text-(--color-text-muted)">{p.label}</span>
+                        <input
+                          value={value.url}
+                          onChange={(e) => setSocial(p.key, "url", e.target.value)}
+                          placeholder={p.placeholder}
+                          className={`${inputClass} flex-1`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSocial(p.key, "enabled", !value.enabled)}
+                          className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+                            value.enabled
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : "bg-black/5 text-(--color-text-muted) dark:bg-white/10"
+                          }`}
+                        >
+                          {value.enabled ? "Enabled" : "Disabled"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
               {tenantSlug && (
                 <div className="mt-2 rounded-md border border-(--color-border) p-3">

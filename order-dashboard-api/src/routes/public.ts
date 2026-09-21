@@ -92,6 +92,7 @@ publicRouter.get("/menu/:slug", async (req, res) => {
     tenantName: tenant.name,
     logo: restaurant.logo ?? "",
     about: restaurant.about ?? "",
+    social: restaurant.social ?? {},
     categories: categories.map((c) => c.name),
     items,
   });

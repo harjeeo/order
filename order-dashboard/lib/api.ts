@@ -1040,6 +1040,7 @@ export async function getPublicMenuBySlug(slug: string) {
     tenantName: data.tenantName,
     logo: data.logo,
     about: data.about,
+    social: data.social ?? {},
     categories: data.categories,
     items: data.items.map(mapMenuItem),
   };

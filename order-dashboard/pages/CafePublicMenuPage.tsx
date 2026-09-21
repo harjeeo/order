@@ -6,8 +6,19 @@ import {
   MinusSignIcon,
   ShoppingCart01Icon,
   CheckmarkCircle02Icon,
+  Facebook01Icon,
+  InstagramIcon,
+  SnapchatIcon,
+  YoutubeIcon,
 } from "hugeicons-react";
 import { getPublicMenuBySlug, placePublicMenuOrder } from "../lib/api";
+
+const SOCIAL_ICONS = {
+  facebook: Facebook01Icon,
+  instagram: InstagramIcon,
+  snapchat: SnapchatIcon,
+  youtube: YoutubeIcon,
+};
 
 function formatCurrency(n) {
   return `₹${Number(n).toLocaleString("en-IN")}`;
@@ -18,6 +29,7 @@ export default function CafePublicMenuPage() {
   const [tenantName, setTenantName] = useState("");
   const [logo, setLogo] = useState("");
   const [about, setAbout] = useState("");
+  const [social, setSocial] = useState<Record<string, { url: string; enabled: boolean }>>({});
   const [categories, setCategories] = useState(["All"]);
   const [activeCategory, setActiveCategory] = useState("All");
   const [items, setItems] = useState([]);
@@ -36,6 +48,7 @@ export default function CafePublicMenuPage() {
         setTenantName(menu.tenantName);
         setLogo(menu.logo);
         setAbout(menu.about);
+        setSocial(menu.social ?? {});
         setCategories(["All", ...menu.categories]);
         setItems(menu.items.filter((i) => i.available));
       })
@@ -124,14 +137,36 @@ export default function CafePublicMenuPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas) pb-24 text-(--color-text)">
-      <header className="sticky top-0 z-10 border-b border-(--color-border) bg-(--color-canvas) px-4 py-3">
-        <div className="flex items-center gap-2">
-          {logo ? <span className="text-2xl leading-none">{logo}</span> : <RestaurantIcon size={20} strokeWidth={1.8} />}
-          <div>
-            <div className="text-sm font-semibold">{tenantName}</div>
-            {about && <div className="text-xs text-(--color-text-muted)">{about}</div>}
+      <header className="sticky top-0 z-10 border-b border-(--color-border) bg-(--color-canvas) px-4 py-4">
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/5 text-3xl dark:bg-white/10">
+            {logo ? logo : <RestaurantIcon size={26} strokeWidth={1.8} />}
           </div>
+          <div className="mt-2 text-base font-semibold">{tenantName}</div>
+          {about && <p className="mt-0.5 max-w-xs text-xs text-(--color-text-muted)">{about}</p>}
+
+          {Object.entries(social).some(([, v]: any) => v?.enabled && v?.url) && (
+            <div className="mt-2 flex items-center gap-3">
+              {Object.entries(social).map(([key, v]: any) => {
+                if (!v?.enabled || !v?.url) return null;
+                const Icon = SOCIAL_ICONS[key];
+                if (!Icon) return null;
+                return (
+                  <a
+                    key={key}
+                    href={v.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 text-(--color-text-muted) transition-colors hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20"
+                  >
+                    <Icon size={16} strokeWidth={1.8} />
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
+
         <div className="mt-3 flex gap-2 overflow-x-auto">
           {categories.map((c) => (
             <button
@@ -150,43 +185,50 @@ export default function CafePublicMenuPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
         {visibleItems.map((item) => {
           const qty = cart[item._id]?.qty ?? 0;
           return (
-            <div key={item._id} className="flex items-center gap-3 rounded-xl border border-(--color-border) p-3">
-              <span className="text-2xl">{item.image?.startsWith("data:") ? "" : item.image}</span>
-              <div className="flex-1">
-                <div className="text-sm font-medium">{item.name}</div>
-                <div className="text-xs text-(--color-text-muted)">{formatCurrency(item.price)}</div>
-              </div>
-              {qty === 0 ? (
-                <button
-                  type="button"
-                  onClick={() => addToCart(item)}
-                  className="rounded-md bg-(--color-accent) px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Add
-                </button>
+            <div key={item._id} className="overflow-hidden rounded-xl border border-(--color-border)">
+              {item.image?.startsWith("data:") ? (
+                <img src={item.image} alt={item.name} className="h-28 w-full object-cover" />
               ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => removeFromCart(item)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-(--color-border)"
-                  >
-                    <MinusSignIcon size={12} strokeWidth={2} />
-                  </button>
-                  <span className="w-4 text-center text-sm tabular-nums">{qty}</span>
+                <div className="flex h-28 w-full items-center justify-center bg-black/5 text-4xl dark:bg-white/10">
+                  {item.image}
+                </div>
+              )}
+              <div className="p-2.5">
+                <div className="truncate text-sm font-medium">{item.name}</div>
+                <div className="mt-0.5 text-xs text-(--color-text-muted)">{formatCurrency(item.price)}</div>
+
+                {qty === 0 ? (
                   <button
                     type="button"
                     onClick={() => addToCart(item)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-(--color-accent) text-white"
+                    className="mt-2 w-full rounded-md bg-(--color-accent) py-1.5 text-xs font-medium text-white"
                   >
-                    <Add01Icon size={12} strokeWidth={2} />
+                    Add to Cart
                   </button>
-                </div>
-              )}
+                ) : (
+                  <div className="mt-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-(--color-border)"
+                    >
+                      <MinusSignIcon size={12} strokeWidth={2} />
+                    </button>
+                    <span className="text-center text-sm tabular-nums">{qty}</span>
+                    <button
+                      type="button"
+                      onClick={() => addToCart(item)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-(--color-accent) text-white"
+                    >
+                      <Add01Icon size={12} strokeWidth={2} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
