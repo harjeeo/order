@@ -191,7 +191,11 @@ export default function CafePublicMenuPage() {
           return (
             <div key={item._id} className="overflow-hidden rounded-xl border border-(--color-border)">
               {item.image?.startsWith("data:") ? (
-                <img src={item.image} alt={item.name} className="h-28 w-full object-cover" />
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="h-28 w-full bg-black/5 object-contain dark:bg-white/10"
+                />
               ) : (
                 <div className="flex h-28 w-full items-center justify-center bg-black/5 text-4xl dark:bg-white/10">
                   {item.image}
