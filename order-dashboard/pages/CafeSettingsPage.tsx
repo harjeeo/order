@@ -18,6 +18,7 @@ import {
   InstagramIcon,
   SnapchatIcon,
   YoutubeIcon,
+  Image01Icon,
 } from "hugeicons-react";
 import {
   getSettings,
@@ -58,6 +59,18 @@ const SOCIAL_PLATFORMS = [
   { key: "youtube", label: "YouTube", icon: YoutubeIcon, placeholder: "https://youtube.com/@yourcafe" },
 ];
 
+// Mirrors the backend's decoded-size cap (validateImage in imageValidation.ts).
+const MAX_LOGO_BYTES = 1.5 * 1024 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function Field({ label, children }) {
   return (
     <label className="flex flex-col gap-1">
@@ -75,6 +88,7 @@ export default function CafeSettingsPage() {
   const [tab, setTab] = useState("restaurant");
   const [draft, setDraft] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [logoError, setLogoError] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
 
   async function refresh() {
@@ -101,6 +115,17 @@ export default function CafeSettingsPage() {
 
   function set(field, value) {
     setDraft((d) => ({ ...d, [field]: value }));
+  }
+
+  async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    setLogoError("");
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError(`Image is too large — must be under ${MAX_LOGO_BYTES / (1024 * 1024)}MB.`);
+      return;
+    }
+    set("logo", await readFileAsDataUrl(file));
   }
 
   function setSocial(platform, field, value) {
@@ -289,18 +314,29 @@ export default function CafeSettingsPage() {
           {tab === "restaurant" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-end gap-3">
-                <Field label="Logo (emoji)">
-                  <input
-                    value={draft.logo}
-                    onChange={(e) => set("logo", e.target.value)}
-                    maxLength={2}
-                    className={`${inputClass} w-16 text-center text-xl`}
-                  />
+                <Field label="Logo">
+                  <label className="relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-(--color-border) bg-black/5 dark:bg-white/5">
+                    {draft.logo ? (
+                      <img src={draft.logo} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <Image01Icon size={22} strokeWidth={1.8} className="text-(--color-text-muted)" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleLogoFile}
+                      className="hidden"
+                    />
+                  </label>
                 </Field>
                 <Field label="Restaurant Name">
                   <input value={draft.name} onChange={(e) => set("name", e.target.value)} className={`${inputClass} w-64`} />
                 </Field>
               </div>
+              {logoError && <p className="text-xs text-red-500">{logoError}</p>}
+              <p className="-mt-2 text-[11px] text-(--color-text-muted)">
+                Click the box to upload a logo (PNG, JPEG, WebP, GIF — under 1.5MB). Shown on your public menu page.
+              </p>
               <Field label="Phone">
                 <input value={draft.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass} />
               </Field>

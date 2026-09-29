@@ -171,8 +171,14 @@ export default function CafePublicMenuPage() {
     <div className="min-h-screen bg-(--color-canvas) pb-24 text-(--color-text)">
       <header className="sticky top-0 z-10 border-b border-(--color-border) bg-(--color-canvas) px-4 py-4">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/5 text-3xl dark:bg-white/10">
-            {logo ? logo : <RestaurantIcon size={26} strokeWidth={1.8} />}
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-black/5 text-3xl dark:bg-white/10">
+            {logo?.startsWith("data:image") ? (
+              <img src={logo} alt="" className="h-full w-full object-cover" />
+            ) : logo ? (
+              logo
+            ) : (
+              <RestaurantIcon size={26} strokeWidth={1.8} />
+            )}
           </div>
           <div className="mt-2 text-base font-semibold">{tenantName}</div>
           {about && <p className="mt-0.5 max-w-xs text-xs text-(--color-text-muted)">{about}</p>}

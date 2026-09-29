@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant } from "../middleware/auth";
+import { validateImage } from "../lib/imageValidation";
 
 export const settingsRouter = Router();
 settingsRouter.use(requireAuth, requireTenant);
@@ -19,6 +20,11 @@ const SECTIONS = ["restaurant", "tax", "invoice", "kot", "printer", "paymentMeth
 settingsRouter.patch("/:section", async (req, res) => {
   const { section } = req.params;
   if (!SECTIONS.includes(section)) return res.status(400).json({ error: "Unknown settings section" });
+
+  if (section === "restaurant" && typeof req.body.logo === "string" && req.body.logo) {
+    const imageError = validateImage(req.body.logo);
+    if (imageError) return res.status(400).json({ error: imageError });
+  }
 
   const existing = await prisma.settings.upsert({
     where: { tenantId: req.user!.tenantId! },
