@@ -51,10 +51,12 @@ function IconPickerModal({ onSelect, onClose }) {
               type="button"
               onClick={() => onSelect(icon.image)}
               title={icon.name}
-              className="flex flex-col items-center gap-1 rounded-lg border border-(--color-border) p-2 hover:border-(--color-accent)"
+              className="flex min-w-0 flex-col items-center gap-1 rounded-lg border border-(--color-border) p-2 hover:border-(--color-accent)"
             >
-              <img src={icon.image} alt={icon.name} className="h-9 w-9 object-contain" />
-              <span className="truncate text-center text-[10px] text-(--color-text-muted)">{icon.name}</span>
+              <img src={icon.image} alt={icon.name} className="h-9 w-9 shrink-0 object-contain" />
+              <span className="line-clamp-2 w-full break-words text-center text-[10px] leading-tight text-(--color-text-muted)">
+                {icon.name}
+              </span>
             </button>
           ))}
           {icons.length === 0 && (
