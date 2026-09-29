@@ -79,7 +79,7 @@ export default function SuperAdminIconLibraryPage() {
             <Image01Icon size={20} strokeWidth={1.8} />
             Menu Icon Library
           </h1>
-          <p className="mt-1 text-sm text-(--color-text-muted)">
+          <p className="mt-1 max-w-2xl text-sm text-(--color-text-muted)">
             Upload icons here for cafe owners to pick from when adding a menu item — keeps every cafe's menu grid
             visually consistent instead of a mix of stretched or mismatched photos. Name each one clearly (e.g.
             "Cheese Burger", "Iced Latte") so it's easy to find in search.
@@ -124,7 +124,7 @@ export default function SuperAdminIconLibraryPage() {
             {icons.map((icon: any) => (
               <tr key={icon._id} className="border-b border-(--color-border) last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
                 <td className="px-3 py-2">
-                  <img src={icon.image} alt={icon.name} className="h-9 w-9 object-contain" />
+                  <img src={icon.image} alt={icon.name} className="h-9 w-9 rounded-md object-contain" />
                 </td>
                 <td className="px-3 py-2 font-medium">{icon.name}</td>
                 <td className="px-3 py-2">
