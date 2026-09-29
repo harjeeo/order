@@ -47,8 +47,11 @@ customersRouter.get("/:id", async (req, res) => {
 });
 
 customersRouter.get("/:id/orders", async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const customer = await prisma.customer.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!customer) return res.status(404).json({ error: "Customer not found" });
   const orders = await prisma.order.findMany({
-    where: { customerId: req.params.id },
+    where: { customerId: req.params.id, tenantId },
     include: { items: true },
     orderBy: { createdAt: "desc" },
   });
@@ -62,11 +65,14 @@ customersRouter.post("/", async (req, res) => {
 });
 
 customersRouter.patch("/:id", async (req, res) => {
-  const customer = await prisma.customer.update({ where: { id: req.params.id }, data: req.body });
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.customer.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Customer not found" });
+  const customer = await prisma.customer.update({ where: { id: existing.id }, data: req.body });
   res.json(customer);
 });
 
 customersRouter.delete("/:id", async (req, res) => {
-  await prisma.customer.delete({ where: { id: req.params.id } });
+  await prisma.customer.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
   res.json({ ok: true });
 });

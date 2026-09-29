@@ -130,18 +130,25 @@ ordersRouter.post("/", async (req, res) => {
 });
 
 ordersRouter.patch("/:id/status", async (req, res) => {
-  const order = await prisma.order.update({ where: { id: req.params.id }, data: { status: req.body.status } });
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.order.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Order not found" });
+  const order = await prisma.order.update({ where: { id: existing.id }, data: { status: req.body.status } });
   notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });
 
 ordersRouter.patch("/:id", async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.order.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Order not found" });
+
   const { items, ...data } = req.body;
   if (items) {
-    await prisma.orderItem.deleteMany({ where: { orderId: req.params.id } });
+    await prisma.orderItem.deleteMany({ where: { orderId: existing.id } });
   }
   const order = await prisma.order.update({
-    where: { id: req.params.id },
+    where: { id: existing.id },
     data: { ...data, ...(items ? { items: { create: items } } : {}) },
     include: { items: true },
   });
@@ -150,13 +157,19 @@ ordersRouter.patch("/:id", async (req, res) => {
 });
 
 ordersRouter.post("/:id/cancel", async (req, res) => {
-  const order = await prisma.order.update({ where: { id: req.params.id }, data: { status: "cancelled" } });
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.order.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Order not found" });
+  const order = await prisma.order.update({ where: { id: existing.id }, data: { status: "cancelled" } });
   notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });
 
 ordersRouter.post("/:id/refund", async (req, res) => {
-  const order = await prisma.order.update({ where: { id: req.params.id }, data: { paymentStatus: "refunded" } });
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.order.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Order not found" });
+  const order = await prisma.order.update({ where: { id: existing.id }, data: { paymentStatus: "refunded" } });
   notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
 });

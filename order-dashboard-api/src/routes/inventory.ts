@@ -27,7 +27,8 @@ inventoryRouter.post("/ingredients", async (req, res) => {
 inventoryRouter.post("/ingredients/:id/movements", async (req, res) => {
   const { type, note = "" } = req.body as { type: "in" | "out" | "adjustment" | "wastage"; note?: string };
   const qty = Number(req.body.qty) || 0;
-  const ingredient = await prisma.ingredient.findUnique({ where: { id: req.params.id } });
+  const tenantId = req.user!.tenantId!;
+  const ingredient = await prisma.ingredient.findFirst({ where: { id: req.params.id, tenantId } });
   if (!ingredient) return res.status(404).json({ error: "Not found" });
 
   let newStock = ingredient.stock;
@@ -35,9 +36,9 @@ inventoryRouter.post("/ingredients/:id/movements", async (req, res) => {
   else if (type === "out" || type === "wastage") newStock = Math.max(0, newStock - qty);
   else if (type === "adjustment") newStock = qty;
 
-  const updated = await prisma.ingredient.update({ where: { id: req.params.id }, data: { stock: newStock } });
+  const updated = await prisma.ingredient.update({ where: { id: ingredient.id }, data: { stock: newStock } });
   await prisma.stockMovement.create({
-    data: { tenantId: req.user!.tenantId!, ingredientId: req.params.id, type, qty, note },
+    data: { tenantId, ingredientId: ingredient.id, type, qty, note },
   });
 
   res.json({ ...updated, status: statusFor(updated.stock, updated.minimum) });

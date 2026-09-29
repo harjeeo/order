@@ -240,9 +240,23 @@ tenantsRouter.post("/:id/impersonate", async (req, res) => {
   });
 });
 
+const updateTenantSchema = z.object({
+  name: z.string().min(1).optional(),
+  ownerName: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  address: z.string().optional(),
+  status: z.enum(["active", "suspended"]).optional(),
+  plan: z.enum(["Free", "Monthly", "Yearly"]).optional(),
+  planExpiry: z.coerce.date().optional(),
+});
+
 tenantsRouter.patch("/:id", async (req, res) => {
-  const tenant = await prisma.tenant.update({ where: { id: req.params.id }, data: req.body });
-  await logAudit(req.user!, "tenant.update", "tenant", req.params.id, req.body);
+  const parsed = updateTenantSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const tenant = await prisma.tenant.update({ where: { id: req.params.id }, data: parsed.data });
+  await logAudit(req.user!, "tenant.update", "tenant", req.params.id, parsed.data);
   res.json(tenant);
 });
 

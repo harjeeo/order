@@ -36,6 +36,11 @@ staffRouter.get("/", async (req, res) => {
 // support) can add staff and set a temporary password for them.
 staffRouter.post("/", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
   const { name, email, password, role, phone } = req.body;
+  // A Manager can staff up their own team but shouldn't be able to create
+  // a peer/superior Admin account — only an Admin (or Super Admin) can.
+  if (req.user!.role === "MANAGER" && role === "ADMIN") {
+    return res.status(403).json({ error: "Only an Admin can create another Admin account" });
+  }
   const passwordHash = await bcrypt.hash(password ?? "changeme123", 10);
   const user = await prisma.user.create({
     data: {
@@ -51,23 +56,41 @@ staffRouter.post("/", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req
   res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role });
 });
 
-staffRouter.patch("/:id", async (req, res) => {
-  const { password, ...rest } = req.body;
+// Managing staff (edit/deactivate/delete) is restricted to admins/managers
+// on the tenant — every handler also re-verifies the target user belongs
+// to the caller's own tenant so one cafe's staff can never reach another
+// cafe's accounts by guessing a user id (Prisma's `update`/`delete` by
+// bare id alone would happily cross tenant boundaries otherwise).
+staffRouter.patch("/:id", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.user.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Staff member not found" });
+
+  const { password, role, permissions, ...rest } = req.body;
   const data: any = { ...rest };
   if (password) data.passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.update({ where: { id: req.params.id }, data });
+  // Only an Admin (or Super Admin) can change what a staff member is
+  // allowed to do — a Manager editing another account (or their own)
+  // can't grant themselves Admin/permissions this way.
+  if (req.user!.role === "ADMIN" || req.user!.role === "SUPER_ADMIN") {
+    if (role !== undefined) data.role = role;
+    if (permissions !== undefined) data.permissions = permissions;
+  }
+
+  const user = await prisma.user.update({ where: { id: existing.id }, data });
   res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
 });
 
-staffRouter.post("/:id/toggle-active", async (req, res) => {
-  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+staffRouter.post("/:id/toggle-active", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const user = await prisma.user.findFirst({ where: { id: req.params.id, tenantId } });
   if (!user) return res.status(404).json({ error: "Not found" });
-  const updated = await prisma.user.update({ where: { id: req.params.id }, data: { active: !user.active } });
+  const updated = await prisma.user.update({ where: { id: user.id }, data: { active: !user.active } });
   res.json({ id: updated.id, active: updated.active });
 });
 
-staffRouter.delete("/:id", async (req, res) => {
-  await prisma.user.delete({ where: { id: req.params.id } });
+staffRouter.delete("/:id", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
+  await prisma.user.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
   res.json({ ok: true });
 });
 

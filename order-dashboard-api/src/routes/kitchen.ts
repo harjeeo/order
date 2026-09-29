@@ -17,8 +17,12 @@ kitchenRouter.get("/", async (req, res) => {
 });
 
 kitchenRouter.patch("/:id/status", async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.kitchenTicket.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Not found" });
+
   const ticket = await prisma.kitchenTicket.update({
-    where: { id: req.params.id },
+    where: { id: existing.id },
     data: { status: req.body.status },
     include: { order: true },
   });
@@ -37,9 +41,9 @@ kitchenRouter.patch("/:id/status", async (req, res) => {
 });
 
 kitchenRouter.post("/:id/toggle-priority", async (req, res) => {
-  const ticket = await prisma.kitchenTicket.findUnique({ where: { id: req.params.id } });
+  const ticket = await prisma.kitchenTicket.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
   if (!ticket) return res.status(404).json({ error: "Not found" });
-  const updated = await prisma.kitchenTicket.update({ where: { id: req.params.id }, data: { priority: !ticket.priority } });
+  const updated = await prisma.kitchenTicket.update({ where: { id: ticket.id }, data: { priority: !ticket.priority } });
   notifyOutlet(req.outletId!, "kitchen:changed");
   res.json(updated);
 });

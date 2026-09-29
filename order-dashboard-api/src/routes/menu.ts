@@ -83,19 +83,23 @@ menuRouter.post("/items", async (req, res) => {
 });
 
 menuRouter.patch("/items/:id", async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.menuItem.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Not found" });
+
   const { variants, addons, ...data } = req.body;
   if (typeof data.image === "string") {
     const imageError = validateImage(data.image);
     if (imageError) return res.status(400).json({ error: imageError });
   }
   if (variants) {
-    await prisma.menuVariant.deleteMany({ where: { menuItemId: req.params.id } });
+    await prisma.menuVariant.deleteMany({ where: { menuItemId: existing.id } });
   }
   if (addons) {
-    await prisma.menuAddon.deleteMany({ where: { menuItemId: req.params.id } });
+    await prisma.menuAddon.deleteMany({ where: { menuItemId: existing.id } });
   }
   const item = await prisma.menuItem.update({
-    where: { id: req.params.id },
+    where: { id: existing.id },
     data: {
       ...data,
       ...(variants ? { variants: { create: variants } } : {}),
@@ -107,13 +111,13 @@ menuRouter.patch("/items/:id", async (req, res) => {
 });
 
 menuRouter.post("/items/:id/toggle-availability", async (req, res) => {
-  const item = await prisma.menuItem.findUnique({ where: { id: req.params.id } });
+  const item = await prisma.menuItem.findFirst({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
   if (!item) return res.status(404).json({ error: "Not found" });
-  const updated = await prisma.menuItem.update({ where: { id: req.params.id }, data: { available: !item.available } });
+  const updated = await prisma.menuItem.update({ where: { id: item.id }, data: { available: !item.available } });
   res.json(updated);
 });
 
 menuRouter.delete("/items/:id", async (req, res) => {
-  await prisma.menuItem.delete({ where: { id: req.params.id } });
+  await prisma.menuItem.deleteMany({ where: { id: req.params.id, tenantId: req.user!.tenantId! } });
   res.json({ ok: true });
 });

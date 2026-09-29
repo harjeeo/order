@@ -17,26 +17,35 @@ tablesRouter.post("/", async (req, res) => {
 });
 
 tablesRouter.patch("/:id/status", async (req, res) => {
-  const table = await prisma.table.update({ where: { id: req.params.id }, data: { status: req.body.status } });
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.table.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Not found" });
+  const table = await prisma.table.update({ where: { id: existing.id }, data: { status: req.body.status } });
   res.json(table);
 });
 
 // Moves the "active" state of one table onto another (transfer an order
 // mid-service), freeing the source table.
 tablesRouter.post("/:id/transfer/:toId", async (req, res) => {
-  const from = await prisma.table.findUnique({ where: { id: req.params.id } });
+  const tenantId = req.user!.tenantId!;
+  const from = await prisma.table.findFirst({ where: { id: req.params.id, tenantId } });
   if (!from) return res.status(404).json({ error: "Not found" });
-  await prisma.table.update({ where: { id: req.params.toId }, data: { status: from.status } });
-  await prisma.table.update({ where: { id: req.params.id }, data: { status: "available" } });
+  const to = await prisma.table.findFirst({ where: { id: req.params.toId, tenantId } });
+  if (!to) return res.status(404).json({ error: "Not found" });
+  await prisma.table.update({ where: { id: to.id }, data: { status: from.status } });
+  await prisma.table.update({ where: { id: from.id }, data: { status: "available" } });
   const tables = await prisma.table.findMany({ where: { outletId: req.outletId! } });
   res.json(tables);
 });
 
 tablesRouter.post("/merge", async (req, res) => {
   const { sourceIds, targetId } = req.body as { sourceIds: string[]; targetId: string };
-  await prisma.table.update({ where: { id: targetId }, data: { status: "occupied" } });
+  const tenantId = req.user!.tenantId!;
+  const target = await prisma.table.findFirst({ where: { id: targetId, tenantId } });
+  if (!target) return res.status(404).json({ error: "Not found" });
+  await prisma.table.update({ where: { id: target.id }, data: { status: "occupied" } });
   await prisma.table.updateMany({
-    where: { id: { in: sourceIds.filter((id) => id !== targetId) } },
+    where: { id: { in: sourceIds.filter((id) => id !== targetId) }, tenantId },
     data: { status: "available" },
   });
   const tables = await prisma.table.findMany({ where: { outletId: req.outletId! } });
