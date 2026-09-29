@@ -24,6 +24,7 @@ import {
   getCustomersList,
   createCustomer,
   submitOrder,
+  getSettings,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import { useTranslation } from "../lib/i18n";
@@ -72,6 +73,8 @@ export default function CafePosPage() {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [addCustomerError, setAddCustomerError] = useState("");
   const [addingCustomer, setAddingCustomer] = useState(false);
+  const [restaurantName, setRestaurantName] = useState("");
+  const [fssai, setFssai] = useState("");
 
   async function handleAddCustomer() {
     setAddCustomerError("");
@@ -98,6 +101,10 @@ export default function CafePosPage() {
     getMenuCategories().then(setCategories);
     getTables().then(setTables);
     getCustomersList().then(setCustomers);
+    getSettings().then((s: any) => {
+      setRestaurantName(s.restaurant?.name ?? "");
+      setFssai(s.invoice?.fssai ?? "");
+    });
   }, []);
 
   useEffect(() => {
@@ -210,6 +217,8 @@ export default function CafePosPage() {
     if (action === "bill") {
       printHtml(
         buildInvoiceHtml({
+          restaurantName,
+          fssai,
           invoiceNumber: `Bill-${Date.now().toString().slice(-6)}`,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,

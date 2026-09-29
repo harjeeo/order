@@ -22,6 +22,7 @@ interface KotReceipt {
 
 interface InvoiceReceipt {
   restaurantName?: string;
+  fssai?: string;
   invoiceNumber: string;
   orderNumber?: string;
   customer?: string;
@@ -97,6 +98,7 @@ export function buildInvoiceHtml(r: InvoiceReceipt) {
       .join("") ?? "";
   return wrapDocument(r.invoiceNumber, `
     <h1>${escapeHtml(r.restaurantName ?? "Order Dashboard")}</h1>
+    ${r.fssai ? `<div class="meta">FSSAI Lic. No. ${escapeHtml(r.fssai)}</div>` : ""}
     <div class="meta">Invoice ${escapeHtml(r.invoiceNumber)}${r.orderNumber ? ` &middot; ${escapeHtml(r.orderNumber)}` : ""}</div>
     ${r.customer ? `<div class="meta">${escapeHtml(r.customer)}</div>` : ""}
     <div class="meta">${new Date().toLocaleString()}</div>
@@ -150,6 +152,10 @@ export async function downloadInvoicePdf(r: InvoiceReceipt, filename: string) {
 
   doc.setFont("courier", "normal");
   doc.setFontSize(9);
+  if (r.fssai) {
+    doc.text(`FSSAI Lic. No. ${r.fssai}`, 113.5, y, { align: "center" });
+    y += 12;
+  }
   const meta = `Invoice ${r.invoiceNumber}${r.orderNumber ? ` · ${r.orderNumber}` : ""}`;
   doc.text(meta, 113.5, y, { align: "center" });
   y += 12;

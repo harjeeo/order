@@ -54,12 +54,14 @@ export default function CafeBillingPage() {
   const [couponError, setCouponError] = useState("");
   const [upiId, setUpiId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
+  const [fssai, setFssai] = useState("");
   const [upiQrDataUrl, setUpiQrDataUrl] = useState("");
 
   useEffect(() => {
     getSettings().then((s: any) => {
       setUpiId(s.tax?.upiId ?? "");
       setRestaurantName(s.restaurant?.name ?? "");
+      setFssai(s.invoice?.fssai ?? "");
     });
   }, []);
   const [toast, setToast] = useState("");
@@ -187,6 +189,8 @@ export default function CafeBillingPage() {
 
   function invoiceReceipt(invoice) {
     return {
+      restaurantName,
+      fssai,
       invoiceNumber: invoice.invoiceNumber,
       orderNumber: invoice.orderNumber,
       customer: invoice.customer,

@@ -433,18 +433,36 @@ export default function CafeSettingsPage() {
           )}
 
           {tab === "invoice" && (
-            <div className="flex flex-col gap-3">
-              <Field label="Invoice Number Prefix">
-                <input value={draft.prefix} onChange={(e) => set("prefix", e.target.value)} className={`${inputClass} w-32`} />
+            <div className="flex flex-col gap-4">
+              <Field label="FSSAI License Number">
+                <input
+                  value={draft.fssai ?? ""}
+                  onChange={(e) => set("fssai", e.target.value)}
+                  placeholder="14-digit FSSAI license number"
+                  maxLength={14}
+                  className={`${inputClass} w-56`}
+                />
+                <p className="mt-1 text-[11px] text-(--color-text-muted)">
+                  Printed on every bill — required by law for food businesses in India.
+                </p>
               </Field>
+
+              <div className="border-t border-(--color-border) pt-4">
+                <Field label="Invoice Number Prefix">
+                  <input value={draft.prefix} onChange={(e) => set("prefix", e.target.value)} className={`${inputClass} w-32`} />
+                </Field>
+              </div>
+
               <Field label="Footer Note">
                 <textarea
                   value={draft.footerNote}
                   onChange={(e) => set("footerNote", e.target.value)}
                   rows={2}
+                  placeholder="e.g. Thank you for visiting!"
                   className={`${inputClass} resize-none`}
                 />
               </Field>
+
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={draft.showLogo} onChange={(e) => set("showLogo", e.target.checked)} />
                 Show logo on printed invoice
