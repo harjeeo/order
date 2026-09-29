@@ -57,7 +57,7 @@ async function main() {
         phone: "9876500000",
         email: "hello@tanvirscafe.example",
         address: "12 MG Road, Pune",
-        plan: "Pro",
+        plan: "Yearly",
         planExpiry: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
       },
     });

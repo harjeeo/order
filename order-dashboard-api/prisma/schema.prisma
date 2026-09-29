@@ -20,8 +20,8 @@ enum TenantStatus {
 
 enum TenantPlan {
   Free
-  Basic
-  Pro
+  Monthly
+  Yearly
 }
 
 model Tenant {

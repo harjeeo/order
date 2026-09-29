@@ -20,6 +20,7 @@ import {
   ShieldUserIcon as StaffIcon,
   Wallet01Icon,
   Analytics01Icon,
+  CrownIcon,
   Settings02Icon,
   Logout01Icon,
   Clock01Icon,
@@ -134,6 +135,7 @@ const navLinks = [
   { to: "/cafe/payroll", labelKey: "nav.payroll", icon: MoneySend01Icon },
   { to: "/cafe/expenses", labelKey: "nav.expenses", icon: Wallet01Icon },
   { to: "/cafe/reports", labelKey: "nav.reports", icon: Analytics01Icon },
+  { to: "/cafe/subscription", labelKey: "nav.subscription", icon: CrownIcon },
 ];
 
 function CafeLink({ to, label, icon: Icon, end = false }) {

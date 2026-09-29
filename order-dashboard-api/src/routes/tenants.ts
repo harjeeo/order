@@ -94,7 +94,7 @@ tenantsRouter.get("/export", async (req, res) => {
 const bulkActionSchema = z.object({
   ids: z.array(z.string().min(1)).min(1),
   action: z.enum(["suspend", "activate", "delete", "plan"]),
-  plan: z.enum(["Free", "Basic", "Pro"]).optional(),
+  plan: z.enum(["Free", "Monthly", "Yearly"]).optional(),
 });
 
 // Applies one action to many tenants at once (row-selection bulk actions
@@ -125,7 +125,7 @@ const createTenantSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email("A valid owner email is required so they can log in"),
   address: z.string().optional(),
-  plan: z.enum(["Free", "Basic", "Pro"]).default("Free"),
+  plan: z.enum(["Free", "Monthly", "Yearly"]).default("Free"),
 });
 
 tenantsRouter.post("/", async (req, res) => {

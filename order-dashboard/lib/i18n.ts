@@ -37,6 +37,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.payroll": "Payroll",
     "nav.expenses": "Expenses",
     "nav.reports": "Reports",
+    "nav.subscription": "Subscription",
     "nav.settings": "Settings",
     "nav.logout": "Logout",
 
@@ -97,6 +98,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.payroll": "वेतन",
     "nav.expenses": "खर्च",
     "nav.reports": "रिपोर्ट",
+    "nav.subscription": "सदस्यता",
     "nav.settings": "सेटिंग्स",
     "nav.logout": "लॉगआउट",
 

@@ -72,11 +72,11 @@ describe("tenants: pagination, bulk actions, impersonation, export", () => {
     const res = await request(app)
       .post("/api/tenants/bulk")
       .set("Authorization", `Bearer ${token}`)
-      .send({ ids: tenantIds, action: "plan", plan: "Pro" });
+      .send({ ids: tenantIds, action: "plan", plan: "Yearly" });
 
     expect(res.status).toBe(200);
     const tenants = await prisma.tenant.findMany({ where: { id: { in: tenantIds } } });
-    expect(tenants.every((t) => t.plan === "Pro")).toBe(true);
+    expect(tenants.every((t) => t.plan === "Yearly")).toBe(true);
   });
 
   it("issues an impersonation token scoped to the tenant's admin", async () => {

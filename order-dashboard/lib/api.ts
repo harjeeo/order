@@ -738,7 +738,7 @@ export async function disableTwoFactor(code: string) {
 
 // --- Super Admin: Tenant management -------------------------------------
 
-export const TENANT_PLANS = ["Free", "Basic", "Pro"];
+export const TENANT_PLANS = ["Free", "Monthly", "Yearly"];
 
 function mapTenant(t: any) {
   return {

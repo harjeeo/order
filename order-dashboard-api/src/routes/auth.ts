@@ -220,6 +220,8 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user) return res.status(404).json({ error: "User not found" });
   const tenant = user.tenantId ? await prisma.tenant.findUnique({ where: { id: user.tenantId } }) : null;
+  const platformSettings = tenant ? await prisma.platformSettings.findFirst() : null;
+  const planPricing = (platformSettings?.planPricing as Record<string, number> | undefined) ?? {};
   res.json({
     id: user.id,
     name: user.name,
@@ -227,6 +229,9 @@ authRouter.get("/me", requireAuth, async (req, res) => {
     role: user.role,
     tenantId: user.tenantId,
     tenantSlug: tenant?.slug ?? null,
+    plan: tenant?.plan ?? null,
+    planExpiry: tenant?.planExpiry ?? null,
+    planPrice: tenant ? planPricing[tenant.plan] ?? 0 : null,
   });
 });
 

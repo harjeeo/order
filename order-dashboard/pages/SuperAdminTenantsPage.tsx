@@ -25,6 +25,7 @@ import {
   impersonateTenant,
   exportTenantsCsv,
   TENANT_PLANS,
+  getPlatformSettings,
 } from "../lib/api";
 import { startImpersonation } from "../lib/useAuth";
 import Pagination from "../components/Pagination";
@@ -70,6 +71,17 @@ export default function SuperAdminTenantsPage() {
   const [formError, setFormError] = useState("");
   const [newCredentials, setNewCredentials] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [planPricing, setPlanPricing] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    getPlatformSettings().then((s: any) => setPlanPricing(s.planPricing ?? {}));
+  }, []);
+
+  function planLabel(plan: string) {
+    if (plan === "Free") return "Free";
+    const price = planPricing[plan];
+    return price != null ? `${plan} Plan ₹${price.toLocaleString("en-IN")}` : plan;
+  }
 
   async function refresh() {
     const result = await getTenants({ search, status, page, pageSize: PAGE_SIZE });
@@ -252,7 +264,7 @@ export default function SuperAdminTenantsPage() {
               >
                 {TENANT_PLANS.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {planLabel(p)}
                   </option>
                 ))}
               </select>
@@ -416,7 +428,7 @@ export default function SuperAdminTenantsPage() {
             >
               {TENANT_PLANS.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {planLabel(p)}
                 </option>
               ))}
             </select>
@@ -517,7 +529,7 @@ export default function SuperAdminTenantsPage() {
               >
                 {TENANT_PLANS.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {planLabel(p)}
                   </option>
                 ))}
               </select>

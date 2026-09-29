@@ -116,7 +116,7 @@ async function buildReport(expiringDays: number, growthMonths: number) {
     })
   );
 
-  const revenueByPlan = ["Free", "Basic", "Pro"].map((plan) => {
+  const revenueByPlan = ["Free", "Monthly", "Yearly"].map((plan) => {
     const rows = revenueByOrders.filter((r) => r.tenant.plan === plan);
     return { plan, revenue: rows.reduce((s, r) => s + r.revenue, 0), count: rows.length };
   });

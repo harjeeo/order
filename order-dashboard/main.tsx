@@ -21,6 +21,7 @@ import CafeAttendancePage from "./pages/CafeAttendancePage";
 import CafePayrollPage from "./pages/CafePayrollPage";
 import CafeExpensesPage from "./pages/CafeExpensesPage";
 import CafeReportsPage from "./pages/CafeReportsPage";
+import CafeSubscriptionPage from "./pages/CafeSubscriptionPage";
 import CafeSettingsPage from "./pages/CafeSettingsPage";
 import SuperAdminLayout from "./layouts/SuperAdminLayout";
 import SuperAdminDashboardPage from "./pages/SuperAdminDashboardPage";
@@ -92,6 +93,7 @@ const router = createBrowserRouter([
       { path: "expenses", element: <CafeExpensesPage /> },
       { path: "reports", element: <CafeReportsPage /> },
       { path: "settings", element: <CafeSettingsPage /> },
+      { path: "subscription", element: <CafeSubscriptionPage /> },
     ],
   },
 ]);
