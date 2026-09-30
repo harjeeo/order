@@ -25,6 +25,7 @@ import {
   createCustomer,
   submitOrder,
   getSettings,
+  completePayment,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import { useTranslation } from "../lib/i18n";
@@ -33,6 +34,14 @@ const ORDER_TYPES = [
   { key: "dine-in", labelKey: "pos.dineIn", icon: Store01Icon },
   { key: "takeaway", labelKey: "pos.takeaway", icon: ShoppingBag01Icon },
   { key: "delivery", labelKey: "pos.delivery", icon: TruckDeliveryIcon },
+];
+
+const SETTLE_METHODS = [
+  { key: "cash", label: "Cash" },
+  { key: "card", label: "Card" },
+  { key: "upi", label: "UPI" },
+  { key: "due", label: "Due" },
+  { key: "other", label: "Other" },
 ];
 
 function formatCurrency(n) {
@@ -67,6 +76,12 @@ export default function CafePosPage() {
   const [cart, setCart] = useState([]);
   const [configuring, setConfiguring] = useState(null);
   const [status, setStatus] = useState("");
+
+  const [showSettle, setShowSettle] = useState(false);
+  const [settleMethod, setSettleMethod] = useState("cash");
+  const [customerPaid, setCustomerPaid] = useState("");
+  const [settleTip, setSettleTip] = useState("0");
+  const [settling, setSettling] = useState(false);
 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
@@ -191,15 +206,20 @@ export default function CafePosPage() {
     };
   }
 
-  async function handleAction(action) {
+  function canCheckout() {
     if (cart.length === 0) {
       setStatus("Add at least one item to the cart first.");
-      return;
+      return false;
     }
     if (orderType === "dine-in" && !tableId) {
       setStatus("Select a table for a dine-in order.");
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function handleAction(action) {
+    if (!canCheckout()) return;
     await submitOrder(buildOrderPayload({ action }));
 
     if (action === "kitchen" || action === "kot") {
@@ -235,15 +255,55 @@ export default function CafePosPage() {
       kitchen: "Order sent to kitchen.",
       kot: "KOT printed.",
       bill: "Bill printed.",
-      payment: "Payment completed.",
     };
     setStatus(messages[action] ?? "Done.");
-    if (action === "payment") {
+  }
+
+  function openSettle() {
+    if (!canCheckout()) return;
+    setSettleMethod("cash");
+    setCustomerPaid("");
+    setSettleTip("0");
+    setShowSettle(true);
+  }
+
+  async function handleSettle() {
+    setSettling(true);
+    try {
+      const created = await submitOrder(buildOrderPayload({ action: "save" }));
+      const invoice = await completePayment(created._id, {
+        subtotal,
+        discountAmount,
+        serviceChargeAmount: 0,
+        taxAmount,
+        total,
+        method: settleMethod,
+        tipAmount: Number(settleTip) || 0,
+      });
+      printHtml(
+        buildInvoiceHtml({
+          restaurantName,
+          fssai,
+          invoiceNumber: invoice.invoiceNumber,
+          items: cart.map((line) => ({ name: line.name, qty: line.qty })),
+          subtotal,
+          discountAmount,
+          taxAmount,
+          total,
+          method: settleMethod,
+        })
+      );
+      setShowSettle(false);
       setCart([]);
       setTableId("");
       setCustomerId("");
       setOrderNotes("");
       setDiscountPercent(0);
+      setStatus(settleMethod === "due" ? "Bill saved — payment due." : "Payment completed.");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not complete payment");
+    } finally {
+      setSettling(false);
     }
   }
 
@@ -708,7 +768,7 @@ export default function CafePosPage() {
               </button>
               <button
                 type="button"
-                onClick={() => handleAction("payment")}
+                onClick={openSettle}
                 className="col-span-2 flex items-center justify-center gap-1.5 rounded-md bg-(--color-accent) py-2.5 text-sm font-medium text-white"
               >
                 <CreditCardIcon size={15} strokeWidth={1.8} />
@@ -718,6 +778,113 @@ export default function CafePosPage() {
           </div>
         )}
       </div>
+
+      {showSettle && (
+        <div
+          className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => !settling && setShowSettle(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Settle & Save — {formatCurrency(total)}</h2>
+              <button
+                type="button"
+                onClick={() => setShowSettle(false)}
+                disabled={settling}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) disabled:opacity-50 dark:hover:bg-white/10"
+              >
+                <Cancel01Icon size={16} strokeWidth={1.8} />
+              </button>
+            </div>
+
+            <div className="mt-4 text-xs font-medium text-(--color-text-muted)">Payment Type</div>
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              {SETTLE_METHODS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSettleMethod(key)}
+                  className={`rounded-md border py-2 text-xs font-medium transition-colors ${
+                    settleMethod === key
+                      ? "border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)"
+                      : "border-(--color-border) text-(--color-text-muted)"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {settleMethod === "cash" && (
+              <div className="mt-4">
+                <label className="text-xs text-(--color-text-muted)">Customer Paid</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={customerPaid}
+                  onChange={(e) => setCustomerPaid(e.target.value)}
+                  placeholder={String(total)}
+                  className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                />
+                {customerPaid !== "" && (
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-(--color-text-muted)">Return to Customer</span>
+                    <span
+                      className={`font-semibold tabular-nums ${
+                        Number(customerPaid) < total ? "text-red-500" : ""
+                      }`}
+                    >
+                      {formatCurrency(Math.max(0, Number(customerPaid) - total))}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <span className="text-(--color-text-muted)">Tip</span>
+              <div className="flex items-center gap-1">
+                <span className="text-(--color-text-muted)">₹</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={settleTip}
+                  onChange={(e) => setSettleTip(e.target.value)}
+                  className="w-20 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-right text-sm outline-none focus:border-(--color-accent)"
+                />
+              </div>
+            </div>
+
+            {settleMethod === "due" && (
+              <div className="mt-3 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+                Bill will be saved as due — payment pending, order still counts as served.
+              </div>
+            )}
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSettle(false)}
+                disabled={settling}
+                className="flex-1 rounded-md border border-(--color-border) py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSettle}
+                disabled={settling}
+                className="flex-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {settling ? "Settling…" : "Settle & Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

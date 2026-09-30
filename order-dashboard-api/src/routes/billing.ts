@@ -56,7 +56,7 @@ const LOYALTY_EARN_RATE = 100;
 
 billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   const tenantId = req.user!.tenantId!;
-  const order = await prisma.order.findUnique({ where: { id: req.params.orderId } });
+  const order = await prisma.order.findFirst({ where: { id: req.params.orderId, tenantId } });
   if (!order) return res.status(404).json({ error: "Order not found" });
 
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
@@ -113,7 +113,10 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
 
   await prisma.order.update({
     where: { id: order.id },
-    data: { paymentStatus: "paid", status: order.status === "pending" ? "completed" : order.status },
+    data: {
+      paymentStatus: method === "due" ? "unpaid" : "paid",
+      status: order.status === "pending" ? "completed" : order.status,
+    },
   });
 
   notifyOutlet(order.outletId, "orders:changed");

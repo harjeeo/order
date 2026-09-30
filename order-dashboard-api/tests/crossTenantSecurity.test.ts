@@ -86,6 +86,34 @@ describe("cross-tenant authorization boundaries", () => {
     expect(stillIntact?.paymentStatus).not.toBe("refunded");
   });
 
+  it("blocks tenant A staff from settling payment on tenant B's order", async () => {
+    const category = await prisma.menuCategory.create({ data: { tenantId: tenantB.tenant.id, outletId: tenantB.outlet.id, name: "Cat Pay" } });
+    const item = await prisma.menuItem.create({
+      data: { tenantId: tenantB.tenant.id, outletId: tenantB.outlet.id, categoryId: category.id, name: "Item Pay", price: 100 },
+    });
+    const orderB = await prisma.order.create({
+      data: {
+        tenantId: tenantB.tenant.id,
+        outletId: tenantB.outlet.id,
+        orderNumber: "TEST-B-PAY",
+        orderType: "takeaway",
+        status: "pending",
+        amount: 100,
+        items: { create: [{ menuItemId: item.id, name: item.name, qty: 1, unitPrice: 100 }] },
+      },
+    });
+
+    const payRes = await request(app)
+      .post(`/api/billing/orders/${orderB.id}/pay`)
+      .set("Authorization", `Bearer ${tenantA.token}`)
+      .send({ subtotal: 100, total: 100, method: "cash" });
+    expect(payRes.status).toBe(404);
+
+    const stillIntact = await prisma.order.findUnique({ where: { id: orderB.id } });
+    expect(stillIntact?.paymentStatus).toBe("unpaid");
+    expect(stillIntact?.status).toBe("pending");
+  });
+
   it("blocks tenant A staff from modifying tenant B's menu item", async () => {
     const category = await prisma.menuCategory.create({ data: { tenantId: tenantB.tenant.id, outletId: tenantB.outlet.id, name: "Cat2" } });
     const itemB = await prisma.menuItem.create({
