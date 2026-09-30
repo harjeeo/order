@@ -214,14 +214,15 @@ enum TableStatus {
 }
 
 model Table {
-  id       String      @id @default(cuid())
-  tenantId String
-  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  outletId String
-  outlet   Outlet      @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  number   String
-  capacity Int
-  status   TableStatus @default(available)
+  id         String      @id @default(cuid())
+  tenantId   String
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId   String
+  outlet     Outlet      @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  number     String
+  capacity   Int
+  status     TableStatus @default(available)
+  occupiedAt DateTime?
 
   orders       Order[]
   reservations Reservation[]

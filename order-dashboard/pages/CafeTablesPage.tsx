@@ -12,9 +12,12 @@ import {
   Cancel01Icon,
   QrCodeIcon,
   PlusSignIcon,
+  PrinterIcon,
+  ViewIcon,
 } from "hugeicons-react";
-import { getTables, createTable, setTableStatus, transferTable, mergeTables } from "../lib/api";
+import { getTables, createTable, setTableStatus, transferTable, mergeTables, getSettings } from "../lib/api";
 import { getSession } from "../lib/useAuth";
+import { buildInvoiceHtml, printHtml } from "../lib/print";
 
 function TableQrModal({ table, onClose }) {
   const [dataUrl, setDataUrl] = useState("");
@@ -140,6 +143,15 @@ const STATUS_META = {
   billing: { label: "Billing", dot: "bg-blue-500", card: "border-blue-500/40 bg-blue-500/5" },
 };
 
+function formatCurrency(n) {
+  return `₹${n.toLocaleString("en-IN")}`;
+}
+
+function runningMinutes(occupiedAt, now) {
+  if (!occupiedAt) return null;
+  return Math.max(0, Math.floor((now - new Date(occupiedAt).getTime()) / 60000));
+}
+
 export default function CafeTablesPage() {
   const [tables, setTables] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -148,6 +160,9 @@ export default function CafeTablesPage() {
   const [status, setStatus] = useState("");
   const [qrTable, setQrTable] = useState(null);
   const [showAddTable, setShowAddTable] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [restaurantName, setRestaurantName] = useState("");
+  const [fssai, setFssai] = useState("");
 
   async function refresh() {
     const data = await getTables();
@@ -156,6 +171,18 @@ export default function CafeTablesPage() {
 
   useEffect(() => {
     refresh();
+    getSettings().then((s: any) => {
+      setRestaurantName(s.restaurant?.name ?? "");
+      setFssai(s.invoice?.fssai ?? "");
+    });
+  }, []);
+
+  // Keeps each occupied table's "N min" running-time badge live without a
+  // full data refresh — the amount only changes when orders do (refresh()
+  // already covers that), just the clock needs to tick.
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -163,6 +190,20 @@ export default function CafeTablesPage() {
     const t = setTimeout(() => setStatus(""), 2200);
     return () => clearTimeout(t);
   }, [status]);
+
+  function handleQuickPrint(e, table) {
+    e.stopPropagation();
+    if (!table.activeOrder) return;
+    printHtml(
+      buildInvoiceHtml({
+        restaurantName,
+        fssai,
+        invoiceNumber: table.activeOrder.orderNumber,
+        items: table.activeOrder.items,
+        total: table.runningAmount,
+      })
+    );
+  }
 
   const selected = tables.find((t) => t._id === selectedId) ?? null;
 
@@ -271,12 +312,15 @@ export default function CafeTablesPage() {
             const meta = STATUS_META[t.status];
             const isSelected = t._id === selectedId;
             const isMergeChoice = mergeSelection.includes(t._id);
+            const minutes = runningMinutes(t.occupiedAt, now);
             return (
-              <button
+              <div
                 key={t._id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => selectTable(t)}
-                className={`relative rounded-xl border p-4 text-left transition-colors ${meta.card} ${
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && selectTable(t)}
+                className={`relative cursor-pointer rounded-xl border p-4 text-left transition-colors ${meta.card} ${
                   isSelected || isMergeChoice ? "ring-2 ring-(--color-accent)" : ""
                 }`}
               >
@@ -290,7 +334,40 @@ export default function CafeTablesPage() {
                   {t.capacity} seats
                 </div>
                 <div className="mt-1 text-xs font-medium">{meta.label}</div>
-              </button>
+
+                {minutes !== null && (t.status === "occupied" || t.status === "billing") && (
+                  <div className="mt-2 flex items-center justify-between border-t border-(--color-border)/60 pt-2">
+                    <span className="text-[11px] text-(--color-text-muted)">{minutes} Min</span>
+                    {t.runningAmount > 0 && (
+                      <span className="text-xs font-semibold tabular-nums">{formatCurrency(t.runningAmount)}</span>
+                    )}
+                  </div>
+                )}
+
+                {t.activeOrder && (
+                  <div className="mt-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      title="Print Bill"
+                      onClick={(e) => handleQuickPrint(e, t)}
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    >
+                      <PrinterIcon size={12} strokeWidth={1.8} />
+                    </button>
+                    <button
+                      type="button"
+                      title="View Table"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectTable(t);
+                      }}
+                      className="flex h-6 w-6 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                    >
+                      <ViewIcon size={12} strokeWidth={1.8} />
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
           {tables.length === 0 && (

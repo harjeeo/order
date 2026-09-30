@@ -192,7 +192,15 @@ export async function toggleMenuItemAvailability(itemId: string) {
 }
 
 function mapTable(t: any) {
-  return { _id: t.id, number: t.number, capacity: t.capacity, status: t.status };
+  return {
+    _id: t.id,
+    number: t.number,
+    capacity: t.capacity,
+    status: t.status,
+    occupiedAt: t.occupiedAt ?? null,
+    runningAmount: t.runningAmount ?? 0,
+    activeOrder: t.activeOrder ?? null,
+  };
 }
 
 export async function getTables() {

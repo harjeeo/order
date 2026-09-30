@@ -122,7 +122,12 @@ ordersRouter.post("/", async (req, res) => {
     });
   }
   if (data.tableId) {
-    await prisma.table.update({ where: { id: data.tableId }, data: { status: "occupied" } });
+    const table = await prisma.table.findUnique({ where: { id: data.tableId } });
+    // Only stamp occupiedAt on the table's first order — a second round
+    // placed on an already-occupied table shouldn't reset its running timer.
+    if (table && table.status !== "occupied") {
+      await prisma.table.update({ where: { id: data.tableId }, data: { status: "occupied", occupiedAt: new Date() } });
+    }
   }
 
   notifyOutlet(req.outletId!, "orders:changed");

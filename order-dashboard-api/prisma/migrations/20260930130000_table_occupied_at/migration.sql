@@ -1,0 +1,1 @@
+ALTER TABLE "Table" ADD COLUMN "occupiedAt" TIMESTAMP(3);
