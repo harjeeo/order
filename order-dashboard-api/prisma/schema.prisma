@@ -482,16 +482,17 @@ model StockMovement {
 // --- Expenses ---------------------------------------------------------
 
 model Expense {
-  id       String   @id @default(cuid())
-  tenantId String
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  outletId String
-  outlet   Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  category String
-  amount   Int
-  date     DateTime
-  method   String
-  notes    String   @default("")
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId     String
+  outlet       Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  category     String
+  amount       Int
+  date         DateTime
+  method       String
+  notes        String   @default("")
+  employeeName String   @default("")
 
   @@index([tenantId])
   @@index([outletId])

@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
-import { PlusSignIcon, Delete02Icon, Cancel01Icon, Wallet01Icon, Calendar01Icon } from "hugeicons-react";
-import { getExpenses, createExpense, deleteExpense, EXPENSE_CATEGORIES, PAYMENT_METHODS } from "../lib/api";
+import { PlusSignIcon, Delete02Icon, Cancel01Icon, Wallet01Icon } from "hugeicons-react";
+import { getExpenses, createExpensesBulk, deleteExpense, getStaff, EXPENSE_CATEGORIES, PAYMENT_METHODS } from "../lib/api";
 
-function emptyForm() {
-  return {
-    category: EXPENSE_CATEGORIES[0],
-    amount: "",
-    date: new Date().toISOString().slice(0, 10),
-    method: PAYMENT_METHODS[0],
-    notes: "",
-  };
+const BLANK_ROWS = 10;
+
+function emptyRow() {
+  return { category: "", amount: "", notes: "", employeeName: "", method: PAYMENT_METHODS[0] };
 }
 
 function formatCurrency(n) {
@@ -24,8 +20,11 @@ export default function CafeExpensesPage() {
   const [expenses, setExpenses] = useState([]);
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm());
+  const [staff, setStaff] = useState([]);
+  const [showGrid, setShowGrid] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [gridError, setGridError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function refresh() {
     setExpenses(await getExpenses({ category, search }));
@@ -35,12 +34,42 @@ export default function CafeExpensesPage() {
     refresh();
   }, [category, search]);
 
-  async function handleAdd() {
-    if (!form.amount) return;
-    await createExpense({ ...form, amount: Number(form.amount) });
-    setForm(emptyForm());
-    setShowForm(false);
-    refresh();
+  function openGrid() {
+    setGridError("");
+    setRows(Array.from({ length: BLANK_ROWS }, emptyRow));
+    getStaff().then(setStaff);
+    setShowGrid(true);
+  }
+
+  function updateRow(index, field, value) {
+    setRows((rs) => rs.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+  }
+
+  function addMoreRows() {
+    setRows((rs) => [...rs, ...Array.from({ length: BLANK_ROWS }, emptyRow)]);
+  }
+
+  function removeRow(index) {
+    setRows((rs) => rs.filter((_, i) => i !== index));
+  }
+
+  async function handleSaveGrid() {
+    const valid = rows.filter((r) => r.category && Number(r.amount) > 0);
+    if (valid.length === 0) {
+      setGridError("Add at least one row with a reason and amount.");
+      return;
+    }
+    setGridError("");
+    setSaving(true);
+    try {
+      await createExpensesBulk(valid);
+      setShowGrid(false);
+      refresh();
+    } catch (err) {
+      setGridError(err instanceof Error ? err.message : "Could not save expenses");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete(expense) {
@@ -62,11 +91,11 @@ export default function CafeExpensesPage() {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm(true)}
+          onClick={openGrid}
           className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
         >
           <PlusSignIcon size={14} strokeWidth={1.8} />
-          Add Expense
+          Add Expenses
         </button>
       </div>
 
@@ -101,10 +130,11 @@ export default function CafeExpensesPage() {
           <thead>
             <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
               <th className="px-3 py-2 font-medium">Date</th>
-              <th className="px-3 py-2 font-medium">Category</th>
+              <th className="px-3 py-2 font-medium">Reason</th>
               <th className="px-3 py-2 font-medium">Amount</th>
-              <th className="px-3 py-2 font-medium">Payment Method</th>
-              <th className="px-3 py-2 font-medium">Notes</th>
+              <th className="px-3 py-2 font-medium">Employee</th>
+              <th className="px-3 py-2 font-medium">Paid From</th>
+              <th className="px-3 py-2 font-medium">Explanation</th>
               <th className="px-3 py-2 font-medium">Actions</th>
             </tr>
           </thead>
@@ -116,6 +146,7 @@ export default function CafeExpensesPage() {
                   <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs font-medium dark:bg-white/10">{e.category}</span>
                 </td>
                 <td className="px-3 py-2 tabular-nums font-medium">{formatCurrency(e.amount)}</td>
+                <td className="px-3 py-2 text-(--color-text-muted)">{e.employeeName || "-"}</td>
                 <td className="px-3 py-2 text-(--color-text-muted)">{e.method}</td>
                 <td className="px-3 py-2 text-(--color-text-muted)">{e.notes || "-"}</td>
                 <td className="px-3 py-2">
@@ -131,7 +162,7 @@ export default function CafeExpensesPage() {
             ))}
             {expenses.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                <td colSpan={7} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
                   No expenses recorded.
                 </td>
               </tr>
@@ -140,78 +171,149 @@ export default function CafeExpensesPage() {
         </table>
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4" onClick={() => setShowForm(false)}>
+      {showGrid && (
+        <div
+          className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => !saving && setShowGrid(false)}
+        >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
+            className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Add Expense</h2>
+              <h2 className="text-lg font-semibold">Add Expenses</h2>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+                onClick={() => setShowGrid(false)}
+                disabled={saving}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) disabled:opacity-50 dark:hover:bg-white/10"
               >
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>
+            <p className="mt-1 text-xs text-(--color-text-muted)">
+              Fill in as many rows as you need in one go. Only rows with a reason and amount get saved.
+            </p>
 
-            <div className="mt-4 flex flex-col gap-2">
-              <select
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none"
-              >
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                value={form.amount}
-                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                placeholder="Amount"
-                className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
-              />
-              <div className="flex items-center gap-2 rounded-md border border-(--color-border) px-2">
-                <Calendar01Icon size={14} strokeWidth={1.8} className="text-(--color-text-muted)" />
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                  className="w-full bg-transparent p-2 text-sm outline-none"
-                />
-              </div>
-              <select
-                value={form.method}
-                onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))}
-                className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none"
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Notes (optional)"
-                rows={2}
-                className="resize-none rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
-              />
+            <div className="mt-3 flex-1 overflow-auto rounded-md border border-(--color-border)">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-(--color-canvas)">
+                  <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
+                    <th className="px-2 py-2 font-medium">Reason</th>
+                    <th className="px-2 py-2 font-medium">Amount</th>
+                    <th className="px-2 py-2 font-medium">Explanation</th>
+                    <th className="px-2 py-2 font-medium">Employee</th>
+                    <th className="px-2 py-2 font-medium">Paid From</th>
+                    <th className="px-2 py-2 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={index} className="border-b border-(--color-border) last:border-0">
+                      <td className="p-1.5">
+                        <select
+                          value={row.category}
+                          onChange={(e) => updateRow(index, "category", e.target.value)}
+                          className="w-36 rounded-md border border-(--color-border) bg-transparent p-1.5 text-sm outline-none focus:border-(--color-accent)"
+                        >
+                          <option value="">Select Reason</option>
+                          {EXPENSE_CATEGORIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.amount}
+                          onChange={(e) => updateRow(index, "amount", e.target.value)}
+                          placeholder="Enter Amount"
+                          className="w-28 rounded-md border border-(--color-border) bg-transparent p-1.5 text-sm outline-none focus:border-(--color-accent)"
+                        />
+                      </td>
+                      <td className="p-1.5">
+                        <input
+                          value={row.notes}
+                          onChange={(e) => updateRow(index, "notes", e.target.value)}
+                          placeholder="Enter Explanation"
+                          className="w-40 rounded-md border border-(--color-border) bg-transparent p-1.5 text-sm outline-none focus:border-(--color-accent)"
+                        />
+                      </td>
+                      <td className="p-1.5">
+                        <select
+                          value={row.employeeName}
+                          onChange={(e) => updateRow(index, "employeeName", e.target.value)}
+                          className="w-36 rounded-md border border-(--color-border) bg-transparent p-1.5 text-sm outline-none focus:border-(--color-accent)"
+                        >
+                          <option value="">Select Employee</option>
+                          {staff.map((s) => (
+                            <option key={s._id} value={s.name}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-1.5">
+                        <select
+                          value={row.method}
+                          onChange={(e) => updateRow(index, "method", e.target.value)}
+                          className="w-32 rounded-md border border-(--color-border) bg-transparent p-1.5 text-sm outline-none focus:border-(--color-accent)"
+                        >
+                          {PAYMENT_METHODS.map((m) => (
+                            <option key={m} value={m}>
+                              From {m}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(index)}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-red-500/10 hover:text-red-500"
+                        >
+                          <Delete02Icon size={14} strokeWidth={1.8} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAdd}
-              className="mt-4 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
-            >
-              Add Expense
-            </button>
+            {gridError && <p className="mt-2 text-xs text-red-500">{gridError}</p>}
+
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={addMoreRows}
+                className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium"
+              >
+                <PlusSignIcon size={14} strokeWidth={1.8} />
+                Add {BLANK_ROWS} Rows
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGrid(false)}
+                  disabled={saving}
+                  className="rounded-md border border-(--color-border) px-4 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveGrid}
+                  disabled={saving}
+                  className="rounded-md bg-(--color-accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

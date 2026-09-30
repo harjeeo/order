@@ -667,11 +667,40 @@ export async function getShifts({ page = 1, pageSize = 30 }: { page?: number; pa
 
 // --- Expenses ---------------------------------------------------------
 
-export const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Salary", "Purchase", "Maintenance", "Other"];
+export const EXPENSE_CATEGORIES = [
+  "Milk",
+  "Petrol",
+  "Salary",
+  "Advance Salary",
+  "Stationary",
+  "Vegetables",
+  "Groceries",
+  "Staff-Expense",
+  "Delivery Boy",
+  "Electricity",
+  "Gas",
+  "Rent",
+  "Internet",
+  "Water",
+  "Maintenance",
+  "Advertisement",
+  "Purchase",
+  "Petty Cash Settlement",
+  "Donation",
+  "Other",
+];
 export const PAYMENT_METHODS = ["Cash", "UPI", "Card", "Bank Transfer"];
 
 function mapExpense(e: any) {
-  return { _id: e.id, category: e.category, amount: e.amount, date: toDateInput(e.date), method: e.method, notes: e.notes };
+  return {
+    _id: e.id,
+    category: e.category,
+    amount: e.amount,
+    date: toDateInput(e.date),
+    method: e.method,
+    notes: e.notes,
+    employeeName: e.employeeName ?? "",
+  };
 }
 
 export async function getExpenses({ category = "All", search = "" }: { category?: string; search?: string } = {}) {
@@ -682,6 +711,10 @@ export async function getExpenses({ category = "All", search = "" }: { category?
 export async function createExpense(data: any) {
   const expense = await post("/expenses", data);
   return mapExpense(expense);
+}
+
+export async function createExpensesBulk(rows: any[]) {
+  return post("/expenses/bulk", { rows });
 }
 
 export async function deleteExpense(expenseId: string) {
