@@ -47,6 +47,7 @@ async function request(path: string, options: RequestInit = {}) {
 const get = (path: string) => request(path);
 const post = (path: string, body?: unknown) => request(path, { method: "POST", body: body !== undefined ? JSON.stringify(body) : undefined });
 const patch = (path: string, body?: unknown) => request(path, { method: "PATCH", body: JSON.stringify(body) });
+const put = (path: string, body?: unknown) => request(path, { method: "PUT", body: JSON.stringify(body) });
 const del = (path: string) => request(path, { method: "DELETE" });
 
 function qs(params: Record<string, string | undefined>) {
@@ -708,6 +709,10 @@ export async function getSettings() {
 export async function updateSettings(section: string, data: any) {
   const settings = await patch(`/settings/${section}`, data);
   return (settings as any)[section];
+}
+
+export async function updateOrderPreferences(items: string[]) {
+  return put("/settings/order-preferences", { items });
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {

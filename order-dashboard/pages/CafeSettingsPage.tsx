@@ -19,10 +19,13 @@ import {
   SnapchatIcon,
   YoutubeIcon,
   Image01Icon,
+  StickyNote01Icon,
+  Cancel01Icon,
 } from "hugeicons-react";
 import {
   getSettings,
   updateSettings,
+  updateOrderPreferences,
   changePassword,
   getOutlets,
   createOutlet,
@@ -44,6 +47,7 @@ const TABS = [
   { key: "tax", label: "GST / Tax", icon: PercentIcon },
   { key: "invoice", label: "Invoice", icon: Invoice01Icon },
   { key: "kot", label: "KOT", icon: KitchenUtensilsIcon },
+  { key: "orderPreferences", label: "Order Preferences", icon: StickyNote01Icon },
   { key: "printer", label: "Printer", icon: PrinterIcon },
   { key: "paymentMethods", label: "Payment Methods", icon: CreditCardIcon },
   { key: "coupons", label: "Coupons", icon: CouponPercentIcon },
@@ -169,6 +173,33 @@ export default function CafeSettingsPage() {
     window.location.href = "/cafe";
   }
 
+  const [orderPreferences, setOrderPreferences] = useState([]);
+  const [newPreference, setNewPreference] = useState("");
+
+  useEffect(() => {
+    if (tab === "orderPreferences") setOrderPreferences(settings?.orderPreferences ?? []);
+  }, [tab, settings]);
+
+  async function handleAddPreference() {
+    const text = newPreference.trim();
+    if (!text || orderPreferences.includes(text)) {
+      setNewPreference("");
+      return;
+    }
+    const updated = [...orderPreferences, text];
+    const saved = await updateOrderPreferences(updated);
+    setOrderPreferences(saved);
+    setSettings((s) => ({ ...s, orderPreferences: saved }));
+    setNewPreference("");
+  }
+
+  async function handleRemovePreference(text) {
+    const updated = orderPreferences.filter((p) => p !== text);
+    const saved = await updateOrderPreferences(updated);
+    setOrderPreferences(saved);
+    setSettings((s) => ({ ...s, orderPreferences: saved }));
+  }
+
   const [coupons, setCoupons] = useState([]);
   const [newCouponCode, setNewCouponCode] = useState("");
   const [newCouponType, setNewCouponType] = useState("percent");
@@ -284,7 +315,15 @@ export default function CafeSettingsPage() {
   const { theme, toggleTheme } = useTheme();
 
   if (!settings) return null;
-  if (tab !== "account" && tab !== "outlets" && tab !== "coupons" && tab !== "language" && !draft) return null;
+  if (
+    tab !== "account" &&
+    tab !== "outlets" &&
+    tab !== "coupons" &&
+    tab !== "orderPreferences" &&
+    tab !== "language" &&
+    !draft
+  )
+    return null;
 
   return (
     <div className="flex h-full">
@@ -516,6 +555,53 @@ export default function CafeSettingsPage() {
                 <input type="checkbox" checked={draft.showPrices} onChange={(e) => set("showPrices", e.target.checked)} />
                 Show item prices on KOT
               </label>
+            </div>
+          )}
+
+          {tab === "orderPreferences" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Quick-pick instructions staff can add to an item in POS (e.g. "Extra Spicy", "Less Oil") instead of
+                typing them out every time.
+              </p>
+
+              <div className="flex items-center gap-2">
+                <input
+                  value={newPreference}
+                  onChange={(e) => setNewPreference(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddPreference()}
+                  placeholder="e.g. Extra Spicy"
+                  className={`${inputClass} flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddPreference}
+                  className="shrink-0 rounded-md bg-(--color-accent) px-3 py-2 text-sm font-medium text-white"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {orderPreferences.map((p) => (
+                  <span
+                    key={p}
+                    className="flex items-center gap-1.5 rounded-full border border-(--color-border) px-3 py-1.5 text-xs"
+                  >
+                    {p}
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePreference(p)}
+                      className="text-(--color-text-muted) transition-colors hover:text-red-500"
+                    >
+                      <Cancel01Icon size={12} strokeWidth={1.8} />
+                    </button>
+                  </span>
+                ))}
+                {orderPreferences.length === 0 && (
+                  <p className="text-sm text-(--color-text-muted)">No presets yet — add some above.</p>
+                )}
+              </div>
             </div>
           )}
 

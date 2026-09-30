@@ -39,3 +39,23 @@ settingsRouter.patch("/:section", async (req, res) => {
   });
   res.json(updated);
 });
+
+// A flat list of quick-pick item instructions (e.g. "Extra Spicy"), unlike
+// the object-shaped sections above — replaced wholesale rather than merged.
+settingsRouter.put("/order-preferences", async (req, res) => {
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  const cleaned = [
+    ...new Set(
+      items
+        .map((s: unknown) => String(s).trim())
+        .filter((s: string) => s.length > 0 && s.length <= 60)
+    ),
+  ].slice(0, 100);
+
+  await prisma.settings.upsert({
+    where: { tenantId: req.user!.tenantId! },
+    update: { orderPreferences: cleaned as any },
+    create: { tenantId: req.user!.tenantId!, orderPreferences: cleaned as any },
+  });
+  res.json(cleaned);
+});

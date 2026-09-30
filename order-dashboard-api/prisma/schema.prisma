@@ -594,10 +594,11 @@ model Settings {
   tenantId String @unique
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  restaurant     Json @default("{}")
-  tax            Json @default("{}")
-  invoice        Json @default("{}")
-  kot            Json @default("{}")
-  printer        Json @default("{}")
-  paymentMethods Json @default("{}")
+  restaurant        Json @default("{}")
+  tax               Json @default("{}")
+  invoice           Json @default("{}")
+  kot               Json @default("{}")
+  printer           Json @default("{}")
+  paymentMethods    Json @default("{}")
+  orderPreferences  Json @default("[]")
 }

@@ -96,6 +96,8 @@ export default function CafePosPage() {
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [restaurantName, setRestaurantName] = useState("");
   const [fssai, setFssai] = useState("");
+  const [orderPreferences, setOrderPreferences] = useState([]);
+  const [showPresetSuggestions, setShowPresetSuggestions] = useState(false);
 
   async function handleAddCustomer() {
     setAddCustomerError("");
@@ -125,6 +127,7 @@ export default function CafePosPage() {
     getSettings().then((s: any) => {
       setRestaurantName(s.restaurant?.name ?? "");
       setFssai(s.invoice?.fssai ?? "");
+      setOrderPreferences(s.orderPreferences ?? []);
     });
   }, []);
 
@@ -140,6 +143,7 @@ export default function CafePosPage() {
 
   function openConfigure(item) {
     if (!item.available) return;
+    setShowPresetSuggestions(false);
     setConfiguring({
       item,
       variant: item.variants[0] ?? null,
@@ -541,15 +545,42 @@ export default function CafePosPage() {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="relative mt-4">
               <div className="text-xs font-medium text-(--color-text-muted)">Special Instructions</div>
               <textarea
                 value={configuring.notes}
-                onChange={(e) => setConfiguring((c) => ({ ...c, notes: e.target.value }))}
+                onChange={(e) => {
+                  setConfiguring((c) => ({ ...c, notes: e.target.value }));
+                  setShowPresetSuggestions(true);
+                }}
+                onFocus={() => setShowPresetSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowPresetSuggestions(false), 150)}
                 placeholder="e.g. less spicy, no onions…"
                 rows={2}
                 className="mt-2 w-full resize-none rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
+              {showPresetSuggestions &&
+                orderPreferences.filter((p) => p.toLowerCase().includes(configuring.notes.trim().toLowerCase()))
+                  .length > 0 && (
+                  <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-(--color-border) bg-(--color-canvas) shadow-lg">
+                    {orderPreferences
+                      .filter((p) => p.toLowerCase().includes(configuring.notes.trim().toLowerCase()))
+                      .map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setConfiguring((c) => ({ ...c, notes: p }));
+                            setShowPresetSuggestions(false);
+                          }}
+                          className="block w-full px-3 py-1.5 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                        >
+                          {p}
+                        </button>
+                      ))}
+                  </div>
+                )}
             </div>
 
             <div className="mt-auto flex gap-2 pt-5">
