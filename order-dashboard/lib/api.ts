@@ -420,6 +420,7 @@ function mapInvoice(inv: any) {
     roundOff: inv.roundOff,
     total: inv.total,
     tipAmount: inv.tipAmount ?? 0,
+    walletAmountUsed: inv.walletAmountUsed ?? 0,
     couponCode: inv.couponCode ?? "",
     method: inv.method,
     refunded: inv.refunded,
@@ -472,11 +473,16 @@ function mapCustomer(c: any) {
     totalSpent: c.totalSpent ?? 0,
     lastOrderAt: c.lastOrderAt ?? null,
     loyaltyPoints: c.loyaltyPoints ?? 0,
+    walletBalance: c.walletBalance ?? 0,
   };
 }
 
 export async function getCustomer(customerId: string) {
   return mapCustomer(await get(`/customers/${customerId}`));
+}
+
+export async function topUpWallet(customerId: string, amount: number) {
+  return mapCustomer(await post(`/customers/${customerId}/wallet/topup`, { amount }));
 }
 
 export async function getCustomers({

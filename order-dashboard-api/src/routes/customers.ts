@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant } from "../middleware/auth";
 
@@ -64,11 +65,40 @@ customersRouter.post("/", async (req, res) => {
   res.status(201).json(customer);
 });
 
+// Deliberately excludes loyaltyPoints/walletBalance — those only move
+// through the dedicated, audited paths (billing settlement, wallet top-up),
+// never as a free-form field edit.
+const updateCustomerSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    address: z.string().optional(),
+  })
+  .strict();
+
 customersRouter.patch("/:id", async (req, res) => {
+  const parsed = updateCustomerSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
   const tenantId = req.user!.tenantId!;
   const existing = await prisma.customer.findFirst({ where: { id: req.params.id, tenantId } });
   if (!existing) return res.status(404).json({ error: "Customer not found" });
-  const customer = await prisma.customer.update({ where: { id: existing.id }, data: req.body });
+  const customer = await prisma.customer.update({ where: { id: existing.id }, data: parsed.data });
+  res.json(customer);
+});
+
+customersRouter.post("/:id/wallet/topup", async (req, res) => {
+  const amount = Math.round(Number(req.body.amount));
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Enter a positive amount." });
+
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.customer.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Customer not found" });
+
+  const customer = await prisma.customer.update({
+    where: { id: existing.id },
+    data: { walletBalance: existing.walletBalance + amount },
+  });
   res.json(customer);
 });
 

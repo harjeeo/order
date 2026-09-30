@@ -67,6 +67,7 @@ export default function CafeBillingPage() {
   const [toast, setToast] = useState("");
   const [customerLoyalty, setCustomerLoyalty] = useState(null);
   const [redeemPoints, setRedeemPoints] = useState(0);
+  const [walletAmountUsed, setWalletAmountUsed] = useState(0);
   const [feedbackInvoice, setFeedbackInvoice] = useState(null);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackNote, setFeedbackNote] = useState("");
@@ -93,6 +94,9 @@ export default function CafeBillingPage() {
   const maxRedeemablePoints = customerLoyalty
     ? Math.min(customerLoyalty.loyaltyPoints, selected ? selected.amount : 0)
     : 0;
+  const maxWalletUsable = customerLoyalty
+    ? Math.min(customerLoyalty.walletBalance ?? 0, selected ? selected.amount : 0)
+    : 0;
 
   const breakdown = useMemo(() => {
     if (!selected) return null;
@@ -100,14 +104,38 @@ export default function CafeBillingPage() {
     const percentDiscount = Math.round((subtotal * discountPercent) / 100);
     const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discountAmount, subtotal - percentDiscount) : 0;
     const pointsDiscount = Math.min(redeemPoints, maxRedeemablePoints, subtotal - percentDiscount - couponDiscount);
-    const discountAmount = percentDiscount + couponDiscount + pointsDiscount;
+    const walletApplied = Math.min(
+      walletAmountUsed,
+      maxWalletUsable,
+      subtotal - percentDiscount - couponDiscount - pointsDiscount
+    );
+    const discountAmount = percentDiscount + couponDiscount + pointsDiscount + walletApplied;
     const serviceChargeAmount = Math.round(((subtotal - discountAmount) * serviceChargePercent) / 100);
     const taxAmount = Math.round((subtotal - discountAmount + serviceChargeAmount) * 0.05);
     const rawTotal = subtotal - discountAmount + serviceChargeAmount + taxAmount;
     const total = Math.round(rawTotal);
     const roundOff = +(total - rawTotal).toFixed(2);
-    return { subtotal, discountAmount, serviceChargeAmount, taxAmount, roundOff, total, pointsDiscount, couponDiscount };
-  }, [selected, discountPercent, serviceChargePercent, redeemPoints, maxRedeemablePoints, appliedCoupon]);
+    return {
+      subtotal,
+      discountAmount,
+      serviceChargeAmount,
+      taxAmount,
+      roundOff,
+      total,
+      pointsDiscount,
+      couponDiscount,
+      walletApplied,
+    };
+  }, [
+    selected,
+    discountPercent,
+    serviceChargePercent,
+    redeemPoints,
+    maxRedeemablePoints,
+    walletAmountUsed,
+    maxWalletUsable,
+    appliedCoupon,
+  ]);
 
   const grandTotal = breakdown ? breakdown.total + Number(tipAmount || 0) : 0;
   const perPersonShare = splitPeople > 1 ? grandTotal / splitPeople : 0;
@@ -132,6 +160,7 @@ export default function CafeBillingPage() {
     setSplitCash(0);
     setSplitUpi(0);
     setRedeemPoints(0);
+    setWalletAmountUsed(0);
     setTipAmount(0);
     setSplitPeople(1);
     setCouponInput("");
@@ -163,6 +192,7 @@ export default function CafeBillingPage() {
       method,
       tipAmount: Number(tipAmount) || 0,
       redeemPoints: breakdown.pointsDiscount,
+      walletAmountUsed: breakdown.walletApplied,
       couponCode: appliedCoupon?.code,
       splits: method === "split" ? { cash: Number(splitCash), upi: Number(splitUpi) } : undefined,
     });
@@ -453,6 +483,21 @@ export default function CafeBillingPage() {
                     max={maxRedeemablePoints}
                     value={redeemPoints}
                     onChange={(e) => setRedeemPoints(Math.min(maxRedeemablePoints, Math.max(0, Number(e.target.value))))}
+                    className="w-16 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-right text-sm outline-none"
+                  />
+                </div>
+              )}
+              {maxWalletUsable > 0 && (
+                <div className="mt-1.5 flex items-center justify-between text-sm">
+                  <span className="text-(--color-text-muted)">
+                    Use wallet ({formatCurrency(customerLoyalty.walletBalance)} available)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={maxWalletUsable}
+                    value={walletAmountUsed}
+                    onChange={(e) => setWalletAmountUsed(Math.min(maxWalletUsable, Math.max(0, Number(e.target.value))))}
                     className="w-16 rounded-md border border-(--color-border) bg-transparent px-2 py-1 text-right text-sm outline-none"
                   />
                 </div>

@@ -62,6 +62,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
   const tipAmount = Math.max(0, Math.round(Number(req.body.tipAmount) || 0));
   const redeemPoints = Math.max(0, Math.floor(Number(req.body.redeemPoints) || 0));
+  const walletAmountUsed = Math.max(0, Math.round(Number(req.body.walletAmountUsed) || 0));
   const couponCode = req.body.couponCode ? String(req.body.couponCode).trim().toUpperCase() : "";
 
   // Re-checked here (not just at /coupons/validate) so two staff can't
@@ -74,6 +75,10 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     if (error) return res.status(400).json({ error });
   }
 
+  if (walletAmountUsed > 0 && !order.customerId) {
+    return res.status(400).json({ error: "Select a customer to use their wallet balance." });
+  }
+
   let pointsEarned = 0;
   let customerPointsBalance: number | null = null;
 
@@ -83,10 +88,16 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
       if (redeemPoints > customer.loyaltyPoints) {
         return res.status(400).json({ error: `Customer only has ${customer.loyaltyPoints} points available` });
       }
+      if (walletAmountUsed > customer.walletBalance) {
+        return res.status(400).json({ error: `Customer only has ₹${customer.walletBalance} in wallet balance` });
+      }
       pointsEarned = Math.floor(total / LOYALTY_EARN_RATE);
       const updatedCustomer = await prisma.customer.update({
         where: { id: order.customerId },
-        data: { loyaltyPoints: customer.loyaltyPoints - redeemPoints + pointsEarned },
+        data: {
+          loyaltyPoints: customer.loyaltyPoints - redeemPoints + pointsEarned,
+          walletBalance: customer.walletBalance - walletAmountUsed,
+        },
       });
       customerPointsBalance = updatedCustomer.loyaltyPoints;
     }
@@ -103,6 +114,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     roundOff,
     total,
     tipAmount,
+    walletAmountUsed,
     couponCode,
     method,
   });

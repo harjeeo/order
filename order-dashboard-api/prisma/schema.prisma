@@ -271,6 +271,7 @@ model Customer {
   email         String @default("")
   address       String @default("")
   loyaltyPoints Int    @default(0)
+  walletBalance Int    @default(0)
 
   orders Order[]
 
@@ -384,6 +385,7 @@ model Invoice {
   roundOff             Float    @default(0)
   total                Int
   tipAmount            Int      @default(0)
+  walletAmountUsed     Int      @default(0)
   couponCode           String   @default("")
   method               String
   refunded             Boolean  @default(false)

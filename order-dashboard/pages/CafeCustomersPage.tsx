@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search01Icon, PlusSignIcon, Edit02Icon, Mail01Icon, Call02Icon, MapPinIcon, Cancel01Icon, Delete02Icon, UserMultiple02Icon } from "hugeicons-react";
-import { getCustomers, getCustomerOrderHistory, createCustomer, updateCustomer, deleteCustomer } from "../lib/api";
+import { getCustomers, getCustomerOrderHistory, createCustomer, updateCustomer, deleteCustomer, topUpWallet } from "../lib/api";
 import Avatar from "../components/Avatar";
 import Pagination from "../components/Pagination";
 
@@ -28,6 +28,9 @@ export default function CafeCustomersPage() {
   const [editingId, setEditingId] = useState(null); // "new" | customerId | null
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState("");
+  const [showTopup, setShowTopup] = useState(false);
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupError, setTopupError] = useState("");
 
   async function refresh() {
     const result = await getCustomers({ search, page, pageSize: PAGE_SIZE });
@@ -91,6 +94,30 @@ export default function CafeCustomersPage() {
     refresh();
   }
 
+  function openTopup() {
+    setTopupAmount("");
+    setTopupError("");
+    setShowTopup(true);
+  }
+
+  async function handleTopup() {
+    const amount = Number(topupAmount);
+    if (!amount || amount <= 0) {
+      setTopupError("Enter a positive amount.");
+      return;
+    }
+    try {
+      const updated = await topUpWallet(selected._id, amount);
+      setSelected((s) => ({ ...s, walletBalance: updated.walletBalance }));
+      setShowTopup(false);
+      setTopupAmount("");
+      setTopupError("");
+      refresh();
+    } catch (err) {
+      setTopupError(err instanceof Error ? err.message : "Could not top up wallet");
+    }
+  }
+
   return (
     <div className="flex h-full">
       <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -135,6 +162,7 @@ export default function CafeCustomersPage() {
                 <th className="px-3 py-2 font-medium">Total Orders</th>
                 <th className="px-3 py-2 font-medium">Total Spent</th>
                 <th className="px-3 py-2 font-medium">Points</th>
+                <th className="px-3 py-2 font-medium">Wallet</th>
                 <th className="px-3 py-2 font-medium">Last Order</th>
                 <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
@@ -156,6 +184,7 @@ export default function CafeCustomersPage() {
                   <td className="px-3 py-2 tabular-nums">{c.totalOrders}</td>
                   <td className="px-3 py-2 tabular-nums">{formatCurrency(c.totalSpent)}</td>
                   <td className="px-3 py-2 tabular-nums text-(--color-accent)">{c.loyaltyPoints}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-accent)">{formatCurrency(c.walletBalance ?? 0)}</td>
                   <td className="px-3 py-2 text-(--color-text-muted)">{formatDate(c.lastOrderAt)}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
@@ -185,7 +214,7 @@ export default function CafeCustomersPage() {
               ))}
               {customers.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                  <td colSpan={8} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
                     No customers found.
                   </td>
                 </tr>
@@ -247,6 +276,13 @@ export default function CafeCustomersPage() {
             <div className="rounded-md bg-(--color-accent)/10 px-3 py-2 text-sm text-(--color-accent)">
               {selected.loyaltyPoints} Points
             </div>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between rounded-md bg-(--color-accent)/10 px-3 py-2 text-sm text-(--color-accent)">
+            <span>Wallet: {formatCurrency(selected.walletBalance ?? 0)}</span>
+            <button type="button" onClick={openTopup} className="text-xs font-medium underline">
+              Top Up
+            </button>
           </div>
 
           <h3 className="mt-5 text-xs font-medium text-(--color-text-muted)">Order History</h3>
@@ -316,6 +352,48 @@ export default function CafeCustomersPage() {
               className="mt-4 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
             >
               {editingId === "new" ? "Add Customer" : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showTopup && selected && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4" onClick={() => setShowTopup(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Top Up Wallet — {selected.name}</h2>
+              <button
+                type="button"
+                onClick={() => setShowTopup(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) dark:hover:bg-white/10"
+              >
+                <Cancel01Icon size={16} strokeWidth={1.8} />
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-(--color-text-muted)">
+              Current balance: {formatCurrency(selected.walletBalance ?? 0)}
+            </p>
+            <label className="mt-4 flex flex-col gap-1">
+              <span className="text-xs text-(--color-text-muted)">Amount to add (₹)</span>
+              <input
+                type="number"
+                min={1}
+                value={topupAmount}
+                onChange={(e) => setTopupAmount(e.target.value)}
+                autoFocus
+                className="rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+              />
+            </label>
+            {topupError && <div className="mt-2 text-xs text-red-500">{topupError}</div>}
+            <button
+              type="button"
+              onClick={handleTopup}
+              className="mt-4 w-full rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white"
+            >
+              Add to Wallet
             </button>
           </div>
         </div>

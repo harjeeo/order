@@ -26,6 +26,7 @@ import {
   submitOrder,
   getSettings,
   completePayment,
+  getCustomer,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import { useTranslation } from "../lib/i18n";
@@ -85,6 +86,9 @@ export default function CafePosPage() {
   const [splitCash, setSplitCash] = useState("");
   const [splitUpi, setSplitUpi] = useState("");
   const [settling, setSettling] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [useLoyalty, setUseLoyalty] = useState(false);
+  const [useWallet, setUseWallet] = useState(false);
 
   const [complimentary, setComplimentary] = useState(false);
   const [salesReturn, setSalesReturn] = useState(false);
@@ -140,6 +144,14 @@ export default function CafePosPage() {
     const t = setTimeout(() => setStatus(""), 2500);
     return () => clearTimeout(t);
   }, [status]);
+
+  useEffect(() => {
+    if (!customerId) {
+      setSelectedCustomer(null);
+      return;
+    }
+    getCustomer(customerId).then(setSelectedCustomer);
+  }, [customerId]);
 
   function openConfigure(item) {
     if (!item.available) return;
@@ -199,6 +211,11 @@ export default function CafePosPage() {
   const taxableAmount = subtotal - discountAmount;
   const taxAmount = Math.round(taxableAmount * 0.05);
   const total = taxableAmount + taxAmount;
+
+  const loyaltyApplied = useLoyalty && selectedCustomer ? Math.min(selectedCustomer.loyaltyPoints, total) : 0;
+  const walletApplied =
+    useWallet && selectedCustomer ? Math.min(selectedCustomer.walletBalance, Math.max(0, total - loyaltyApplied)) : 0;
+  const amountToCollect = Math.max(0, total - loyaltyApplied - walletApplied);
 
   function buildOrderPayload(extra = {}) {
     return {
@@ -276,6 +293,8 @@ export default function CafePosPage() {
     setSettleTip("0");
     setSplitCash("");
     setSplitUpi("");
+    setUseLoyalty(false);
+    setUseWallet(false);
     setShowSettle(true);
   }
 
@@ -287,11 +306,13 @@ export default function CafePosPage() {
     setDiscountPercent(0);
     setComplimentary(false);
     setSalesReturn(false);
+    setUseLoyalty(false);
+    setUseWallet(false);
   }
 
   async function handleSettle() {
-    if (settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== total) {
-      setStatus("Split amounts must add up to the total.");
+    if (settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== amountToCollect) {
+      setStatus("Split amounts must add up to the amount to collect.");
       return;
     }
     setSettling(true);
@@ -305,6 +326,8 @@ export default function CafePosPage() {
         total,
         method: settleMethod,
         tipAmount: Number(settleTip) || 0,
+        redeemPoints: loyaltyApplied,
+        walletAmountUsed: walletApplied,
       });
       printHtml(
         buildInvoiceHtml({
@@ -905,7 +928,7 @@ export default function CafePosPage() {
             className="w-full max-w-sm rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Settle & Save — {formatCurrency(total)}</h2>
+              <h2 className="text-lg font-semibold">Settle & Save — {formatCurrency(amountToCollect)}</h2>
               <button
                 type="button"
                 onClick={() => setShowSettle(false)}
@@ -915,26 +938,66 @@ export default function CafePosPage() {
                 <Cancel01Icon size={16} strokeWidth={1.8} />
               </button>
             </div>
+            {(loyaltyApplied > 0 || walletApplied > 0) && (
+              <p className="mt-1 text-xs text-(--color-text-muted)">
+                Bill total {formatCurrency(total)} − {loyaltyApplied > 0 && `Loyalty ${formatCurrency(loyaltyApplied)}`}
+                {loyaltyApplied > 0 && walletApplied > 0 && " − "}
+                {walletApplied > 0 && `Wallet ${formatCurrency(walletApplied)}`}
+              </p>
+            )}
 
-            <div className="mt-4 text-xs font-medium text-(--color-text-muted)">Payment Type</div>
-            <div className="mt-2 grid grid-cols-3 gap-1.5">
-              {SETTLE_METHODS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSettleMethod(key)}
-                  className={`rounded-md border py-2 text-xs font-medium transition-colors ${
-                    settleMethod === key
-                      ? "border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)"
-                      : "border-(--color-border) text-(--color-text-muted)"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {selectedCustomer && (selectedCustomer.loyaltyPoints > 0 || selectedCustomer.walletBalance > 0) && (
+              <div className="mt-4 flex flex-col gap-2">
+                {selectedCustomer.loyaltyPoints > 0 && (
+                  <label className="flex items-center justify-between rounded-md border border-(--color-border) px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2">
+                      <input type="checkbox" checked={useLoyalty} onChange={(e) => setUseLoyalty(e.target.checked)} />
+                      Use Loyalty Points
+                    </span>
+                    <span className="text-xs text-(--color-text-muted)">{selectedCustomer.loyaltyPoints} pts available</span>
+                  </label>
+                )}
+                {selectedCustomer.walletBalance > 0 && (
+                  <label className="flex items-center justify-between rounded-md border border-(--color-border) px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2">
+                      <input type="checkbox" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} />
+                      Use Virtual Wallet
+                    </span>
+                    <span className="text-xs text-(--color-text-muted)">
+                      {formatCurrency(selectedCustomer.walletBalance)} available
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
 
-            {settleMethod === "cash" && (
+            {amountToCollect === 0 ? (
+              <div className="mt-4 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400">
+                Fully covered by Loyalty/Wallet — no additional payment needed.
+              </div>
+            ) : (
+              <>
+                <div className="mt-4 text-xs font-medium text-(--color-text-muted)">Payment Type</div>
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                  {SETTLE_METHODS.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSettleMethod(key)}
+                      className={`rounded-md border py-2 text-xs font-medium transition-colors ${
+                        settleMethod === key
+                          ? "border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)"
+                          : "border-(--color-border) text-(--color-text-muted)"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {amountToCollect > 0 && settleMethod === "cash" && (
               <div className="mt-4">
                 <label className="text-xs text-(--color-text-muted)">Customer Paid</label>
                 <input
@@ -942,7 +1005,7 @@ export default function CafePosPage() {
                   min={0}
                   value={customerPaid}
                   onChange={(e) => setCustomerPaid(e.target.value)}
-                  placeholder={String(total)}
+                  placeholder={String(amountToCollect)}
                   className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
                 />
                 {customerPaid !== "" && (
@@ -950,17 +1013,17 @@ export default function CafePosPage() {
                     <span className="text-(--color-text-muted)">Return to Customer</span>
                     <span
                       className={`font-semibold tabular-nums ${
-                        Number(customerPaid) < total ? "text-red-500" : ""
+                        Number(customerPaid) < amountToCollect ? "text-red-500" : ""
                       }`}
                     >
-                      {formatCurrency(Math.max(0, Number(customerPaid) - total))}
+                      {formatCurrency(Math.max(0, Number(customerPaid) - amountToCollect))}
                     </span>
                   </div>
                 )}
               </div>
             )}
 
-            {settleMethod === "split" && (
+            {amountToCollect > 0 && settleMethod === "split" && (
               <div className="mt-4 flex items-center gap-2">
                 <div className="flex-1">
                   <label className="text-xs text-(--color-text-muted)">Cash</label>
@@ -984,8 +1047,8 @@ export default function CafePosPage() {
                 </div>
               </div>
             )}
-            {settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== total && (
-              <p className="mt-1 text-xs text-red-500">Split amounts must add up to {formatCurrency(total)}.</p>
+            {settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== amountToCollect && (
+              <p className="mt-1 text-xs text-red-500">Split amounts must add up to {formatCurrency(amountToCollect)}.</p>
             )}
 
             <div className="mt-4 flex items-center justify-between text-sm">
@@ -1022,7 +1085,7 @@ export default function CafePosPage() {
                 onClick={handleSettle}
                 disabled={
                   settling ||
-                  (settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== total)
+                  (settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== amountToCollect)
                 }
                 className="flex-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-50"
               >
