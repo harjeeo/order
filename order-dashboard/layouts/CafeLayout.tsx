@@ -101,7 +101,7 @@ function OutletSwitcher() {
   if (outlets.length <= 1) return null;
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-(--color-text-muted)">
+    <div className="hidden items-center gap-2 px-2 py-1.5 text-sm text-(--color-text-muted) sm:flex">
       <Building02Icon size={18} strokeWidth={1.8} />
       <select
         value={currentId ?? ""}
@@ -144,7 +144,7 @@ function CafeLink({ to, label, icon: Icon, end = false }) {
       to={to}
       end={end}
       className={({ isActive }) =>
-        `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+        `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-center text-[11px] leading-tight transition-colors sm:flex-row sm:justify-start sm:gap-2 sm:rounded-md sm:px-2 sm:py-1.5 sm:text-left sm:text-sm ${
           isActive
             ? "bg-black/5 font-medium text-(--color-text) dark:bg-white/10"
             : "text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
@@ -175,12 +175,12 @@ export default function CafeLayout() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-(--color-canvas) text-(--color-text)">
-      <aside className="flex h-full w-60 shrink-0 flex-col border-r border-(--color-border) bg-(--color-sidebar) py-3">
-        <div className="flex items-center gap-2 px-5 py-1.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-(--color-accent)/10 text-(--color-accent)">
+      <aside className="flex h-full w-20 shrink-0 flex-col border-r border-(--color-border) bg-(--color-sidebar) py-3 sm:w-60">
+        <div className="flex items-center justify-center gap-2 px-2 py-1.5 sm:justify-start sm:px-5">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-(--color-accent)/10 text-(--color-accent)">
             <RestaurantIcon size={16} strokeWidth={1.8} />
           </span>
-          <span className="text-sm font-semibold">Cafe POS</span>
+          <span className="hidden text-sm font-semibold sm:inline">Cafe POS</span>
         </div>
 
         <div className="px-3">
@@ -198,9 +198,9 @@ export default function CafeLayout() {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10"
+            className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-center text-[11px] leading-tight text-(--color-text-muted) hover:bg-black/5 dark:hover:bg-white/10 sm:flex-row sm:justify-start sm:gap-2 sm:rounded-md sm:px-2 sm:py-1.5 sm:text-left sm:text-sm"
           >
-            <Logout01Icon size={16} strokeWidth={1.8} />
+            <Logout01Icon size={18} strokeWidth={1.8} />
             <span>{t("nav.logout")}</span>
           </button>
         </div>
