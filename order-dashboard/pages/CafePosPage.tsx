@@ -40,6 +40,7 @@ const SETTLE_METHODS = [
   { key: "cash", label: "Cash" },
   { key: "card", label: "Card" },
   { key: "upi", label: "UPI" },
+  { key: "split", label: "Split" },
   { key: "due", label: "Due" },
   { key: "other", label: "Other" },
 ];
@@ -81,7 +82,12 @@ export default function CafePosPage() {
   const [settleMethod, setSettleMethod] = useState("cash");
   const [customerPaid, setCustomerPaid] = useState("");
   const [settleTip, setSettleTip] = useState("0");
+  const [splitCash, setSplitCash] = useState("");
+  const [splitUpi, setSplitUpi] = useState("");
   const [settling, setSettling] = useState(false);
+
+  const [complimentary, setComplimentary] = useState(false);
+  const [salesReturn, setSalesReturn] = useState(false);
 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
@@ -264,10 +270,26 @@ export default function CafePosPage() {
     setSettleMethod("cash");
     setCustomerPaid("");
     setSettleTip("0");
+    setSplitCash("");
+    setSplitUpi("");
     setShowSettle(true);
   }
 
+  function resetCart() {
+    setCart([]);
+    setTableId("");
+    setCustomerId("");
+    setOrderNotes("");
+    setDiscountPercent(0);
+    setComplimentary(false);
+    setSalesReturn(false);
+  }
+
   async function handleSettle() {
+    if (settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== total) {
+      setStatus("Split amounts must add up to the total.");
+      return;
+    }
     setSettling(true);
     try {
       const created = await submitOrder(buildOrderPayload({ action: "save" }));
@@ -294,11 +316,7 @@ export default function CafePosPage() {
         })
       );
       setShowSettle(false);
-      setCart([]);
-      setTableId("");
-      setCustomerId("");
-      setOrderNotes("");
-      setDiscountPercent(0);
+      resetCart();
       setStatus(settleMethod === "due" ? "Bill saved — payment due." : "Payment completed.");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Could not complete payment");
@@ -307,12 +325,49 @@ export default function CafePosPage() {
     }
   }
 
+  // Complimentary (comp) and Sales Return skip the payment-type step
+  // entirely — no money actually changes hands, so the order is saved and
+  // settled with a zero (comp) or negative (return) amount straight away.
+  async function handleSpecialSettle() {
+    if (!canCheckout()) return;
+    setSettling(true);
+    try {
+      const signedTotal = complimentary ? 0 : -total;
+      const method = complimentary ? "complimentary" : "sales_return";
+      const created = await submitOrder(buildOrderPayload({ action: "save", total: signedTotal }));
+      const invoice = await completePayment(created._id, {
+        subtotal,
+        discountAmount,
+        serviceChargeAmount: 0,
+        taxAmount,
+        total: signedTotal,
+        method,
+        tipAmount: 0,
+      });
+      printHtml(
+        buildInvoiceHtml({
+          restaurantName,
+          fssai,
+          invoiceNumber: invoice.invoiceNumber,
+          items: cart.map((line) => ({ name: line.name, qty: line.qty })),
+          subtotal,
+          discountAmount,
+          taxAmount,
+          total: signedTotal,
+          method,
+        })
+      );
+      resetCart();
+      setStatus(complimentary ? "Order saved as complimentary." : "Sales return recorded.");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not save order");
+    } finally {
+      setSettling(false);
+    }
+  }
+
   function handleCancel() {
-    setCart([]);
-    setTableId("");
-    setCustomerId("");
-    setOrderNotes("");
-    setDiscountPercent(0);
+    resetCart();
     setStatus("Order cancelled.");
   }
 
@@ -693,6 +748,31 @@ export default function CafePosPage() {
               </div>
             </div>
 
+            <div className="mt-3 flex items-center gap-4 text-sm">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={complimentary}
+                  onChange={(e) => {
+                    setComplimentary(e.target.checked);
+                    if (e.target.checked) setSalesReturn(false);
+                  }}
+                />
+                Complimentary
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={salesReturn}
+                  onChange={(e) => {
+                    setSalesReturn(e.target.checked);
+                    if (e.target.checked) setComplimentary(false);
+                  }}
+                />
+                Sales Return
+              </label>
+            </div>
+
             <div className="mt-3 space-y-1 border-t border-(--color-border) pt-3 text-sm">
               <div className="flex justify-between text-(--color-text-muted)">
                 <span>{t("pos.subtotal")}</span>
@@ -768,11 +848,16 @@ export default function CafePosPage() {
               </button>
               <button
                 type="button"
-                onClick={openSettle}
-                className="col-span-2 flex items-center justify-center gap-1.5 rounded-md bg-(--color-accent) py-2.5 text-sm font-medium text-white"
+                onClick={complimentary || salesReturn ? handleSpecialSettle : openSettle}
+                disabled={settling}
+                className="col-span-2 flex items-center justify-center gap-1.5 rounded-md bg-(--color-accent) py-2.5 text-sm font-medium text-white disabled:opacity-50"
               >
                 <CreditCardIcon size={15} strokeWidth={1.8} />
-                {t("pos.completePayment")}
+                {complimentary
+                  ? "Save Complimentary Order"
+                  : salesReturn
+                  ? "Save Sales Return"
+                  : t("pos.completePayment")}
               </button>
             </div>
           </div>
@@ -844,6 +929,34 @@ export default function CafePosPage() {
               </div>
             )}
 
+            {settleMethod === "split" && (
+              <div className="mt-4 flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-(--color-text-muted)">Cash</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={splitCash}
+                    onChange={(e) => setSplitCash(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-(--color-text-muted)">UPI</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={splitUpi}
+                    onChange={(e) => setSplitUpi(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                  />
+                </div>
+              </div>
+            )}
+            {settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== total && (
+              <p className="mt-1 text-xs text-red-500">Split amounts must add up to {formatCurrency(total)}.</p>
+            )}
+
             <div className="mt-4 flex items-center justify-between text-sm">
               <span className="text-(--color-text-muted)">Tip</span>
               <div className="flex items-center gap-1">
@@ -876,7 +989,10 @@ export default function CafePosPage() {
               <button
                 type="button"
                 onClick={handleSettle}
-                disabled={settling}
+                disabled={
+                  settling ||
+                  (settleMethod === "split" && Number(splitCash || 0) + Number(splitUpi || 0) !== total)
+                }
                 className="flex-1 rounded-md bg-(--color-accent) py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 {settling ? "Settling…" : "Settle & Save"}

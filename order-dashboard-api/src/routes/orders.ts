@@ -48,7 +48,9 @@ const createOrderSchema = z.object({
   waiter: z.string().default(""),
   notes: z.string().default(""),
   items: z.array(orderItemSchema).min(1),
-  amount: z.number().nonnegative(),
+  // Negative allowed: a "Sales Return" order records a return as negative
+  // revenue so it nets out of daily sales totals in Reports.
+  amount: z.number(),
   action: z.enum(["save", "hold", "kitchen", "kot", "bill", "payment"]).default("save"),
 });
 
