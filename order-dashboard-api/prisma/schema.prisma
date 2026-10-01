@@ -55,6 +55,7 @@ model Tenant {
   settings    Settings?
   coupons      Coupon[]
   reservations Reservation[]
+  dayEndClosings DayEndClosing[]
 }
 
 // --- Outlets / branches ----------------------------------------------
@@ -79,6 +80,7 @@ model Outlet {
   reservations Reservation[]
   invoices     Invoice[]
   expenses     Expense[]
+  dayEndClosings DayEndClosing[]
 
   @@index([tenantId])
 }
@@ -495,6 +497,39 @@ model Expense {
   method       String
   notes        String   @default("")
   employeeName String   @default("")
+
+  @@index([tenantId])
+  @@index([outletId])
+}
+
+// Closes out a trading period (since the outlet's last closing, or since
+// its creation if there isn't one yet) with an orders breakdown and a cash
+// reconciliation. Each closing's periodStart is the prior one's periodEnd,
+// so the full order history is covered with no gaps or overlaps.
+model DayEndClosing {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId             String
+  outlet               Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  periodStart          DateTime
+  periodEnd            DateTime
+  successOrders        Int      @default(0)
+  successAmount        Int      @default(0)
+  cancelledOrders      Int      @default(0)
+  cancelledAmount      Int      @default(0)
+  complimentaryOrders  Int      @default(0)
+  complimentaryAmount  Int      @default(0)
+  salesReturnOrders    Int      @default(0)
+  salesReturnAmount    Int      @default(0)
+  dueOrders            Int      @default(0)
+  dueAmount            Int      @default(0)
+  expectedCash         Int      @default(0)
+  countedCash          Int      @default(0)
+  difference           Int      @default(0)
+  closedBy             String   @default("")
+  notes                String   @default("")
+  createdAt            DateTime @default(now())
 
   @@index([tenantId])
   @@index([outletId])

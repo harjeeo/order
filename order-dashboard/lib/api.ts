@@ -727,6 +727,47 @@ export async function deleteExpense(expenseId: string) {
   return del(`/expenses/${expenseId}`);
 }
 
+// --- Day End ------------------------------------------------------------
+
+function mapDayEndClosing(c: any) {
+  return {
+    _id: c.id,
+    periodStart: c.periodStart,
+    periodEnd: c.periodEnd,
+    successOrders: c.successOrders,
+    successAmount: c.successAmount,
+    cancelledOrders: c.cancelledOrders,
+    cancelledAmount: c.cancelledAmount,
+    complimentaryOrders: c.complimentaryOrders,
+    complimentaryAmount: c.complimentaryAmount,
+    salesReturnOrders: c.salesReturnOrders,
+    salesReturnAmount: c.salesReturnAmount,
+    dueOrders: c.dueOrders,
+    dueAmount: c.dueAmount,
+    onlineOrders: c.onlineOrders ?? 0,
+    onlineAmount: c.onlineAmount ?? 0,
+    expectedCash: c.expectedCash,
+    countedCash: c.countedCash,
+    difference: c.difference,
+    closedBy: c.closedBy,
+    notes: c.notes,
+    createdAt: c.createdAt,
+  };
+}
+
+export async function getDayEndPreview() {
+  return mapDayEndClosing(await get("/dayend/preview"));
+}
+
+export async function closeDayEnd(countedCash: number, notes: string) {
+  return mapDayEndClosing(await post("/dayend/close", { countedCash, notes }));
+}
+
+export async function getDayEndHistory({ page = 1, pageSize = 20 }: { page?: number; pageSize?: number } = {}) {
+  const result = await get(`/dayend/history${qs({ page: String(page), pageSize: String(pageSize) })}`);
+  return { items: result.items.map(mapDayEndClosing), total: result.total, page: result.page, pageSize: result.pageSize };
+}
+
 // --- Reports ------------------------------------------------------------
 
 export const REPORT_RANGES = ["daily", "weekly", "monthly", "custom"];

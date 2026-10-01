@@ -20,6 +20,7 @@ import CafeStaffPage from "./pages/CafeStaffPage";
 import CafeAttendancePage from "./pages/CafeAttendancePage";
 import CafePayrollPage from "./pages/CafePayrollPage";
 import CafeExpensesPage from "./pages/CafeExpensesPage";
+import CafeDayEndPage from "./pages/CafeDayEndPage";
 import CafeReportsPage from "./pages/CafeReportsPage";
 import CafeSubscriptionPage from "./pages/CafeSubscriptionPage";
 import CafeSettingsPage from "./pages/CafeSettingsPage";
@@ -91,6 +92,7 @@ const router = createBrowserRouter([
       { path: "attendance", element: <CafeAttendancePage /> },
       { path: "payroll", element: <CafePayrollPage /> },
       { path: "expenses", element: <CafeExpensesPage /> },
+      { path: "day-end", element: <CafeDayEndPage /> },
       { path: "reports", element: <CafeReportsPage /> },
       { path: "settings", element: <CafeSettingsPage /> },
       { path: "subscription", element: <CafeSubscriptionPage /> },

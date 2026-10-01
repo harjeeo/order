@@ -28,6 +28,7 @@ import {
   Building02Icon,
   WifiError01Icon,
   CalendarAdd01Icon,
+  Moon02Icon,
 } from "hugeicons-react";
 
 function OfflineBanner() {
@@ -134,6 +135,7 @@ const navLinks = [
   { to: "/cafe/attendance", labelKey: "nav.attendance", icon: Clock01Icon },
   { to: "/cafe/payroll", labelKey: "nav.payroll", icon: MoneySend01Icon },
   { to: "/cafe/expenses", labelKey: "nav.expenses", icon: Wallet01Icon },
+  { to: "/cafe/day-end", labelKey: "nav.dayEnd", icon: Moon02Icon },
   { to: "/cafe/reports", labelKey: "nav.reports", icon: Analytics01Icon },
   { to: "/cafe/subscription", labelKey: "nav.subscription", icon: CrownIcon },
 ];
