@@ -434,10 +434,13 @@ model Ingredient {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   outletId String
   outlet   Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  name     String
-  unit     String @default("kg")
-  stock    Float  @default(0)
-  minimum  Float  @default(0)
+  name      String
+  unit      String  @default("kg")
+  stock     Float   @default(0)
+  minimum   Float   @default(0)
+  category  String  @default("")
+  favourite Boolean @default(false)
+  active    Boolean @default(true)
 
   movements StockMovement[]
   recipeUses RecipeIngredient[]

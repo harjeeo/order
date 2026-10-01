@@ -520,14 +520,33 @@ export async function deleteCustomer(customerId: string) {
 
 // --- Inventory ----------------------------------------------------------
 
+function mapIngredient(i: any) {
+  return {
+    _id: i.id,
+    name: i.name,
+    unit: i.unit,
+    stock: i.stock,
+    minimum: i.minimum,
+    status: i.status,
+    category: i.category ?? "",
+    favourite: !!i.favourite,
+    active: i.active ?? true,
+  };
+}
+
 export async function getIngredients() {
   const ingredients = await get("/inventory/ingredients");
-  return ingredients.map((i: any) => ({ _id: i.id, name: i.name, unit: i.unit, stock: i.stock, minimum: i.minimum, status: i.status }));
+  return ingredients.map(mapIngredient);
 }
 
 export async function recordStockMovement(ingredientId: string, payload: { type: string; qty: number | string; note?: string }) {
   const ingredient = await post(`/inventory/ingredients/${ingredientId}/movements`, payload);
-  return { _id: ingredient.id, name: ingredient.name, unit: ingredient.unit, stock: ingredient.stock, minimum: ingredient.minimum, status: ingredient.status };
+  return mapIngredient(ingredient);
+}
+
+export async function updateIngredient(ingredientId: string, data: Partial<{ name: string; unit: string; minimum: number; category: string; favourite: boolean; active: boolean }>) {
+  const ingredient = await patch(`/inventory/ingredients/${ingredientId}`, data);
+  return mapIngredient(ingredient);
 }
 
 export async function getStockLog() {
@@ -545,7 +564,7 @@ export async function getStockLog() {
 
 export async function createIngredient(data: any) {
   const ingredient = await post("/inventory/ingredients", data);
-  return { _id: ingredient.id, ...ingredient };
+  return mapIngredient(ingredient);
 }
 
 // --- Recipes ----------------------------------------------------------

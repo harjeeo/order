@@ -8,8 +8,12 @@ import {
   PlusSignIcon,
   Cancel01Icon,
   PackageIcon,
+  StarIcon,
+  Search01Icon,
+  ToggleOnIcon,
+  ToggleOffIcon,
 } from "hugeicons-react";
-import { getIngredients, recordStockMovement, getStockLog, createIngredient } from "../lib/api";
+import { getIngredients, recordStockMovement, getStockLog, createIngredient, updateIngredient } from "../lib/api";
 
 const MOVEMENT_TYPES = [
   { key: "in", label: "Stock In", icon: PackageAdd01Icon },
@@ -38,7 +42,10 @@ export default function CafeInventoryPage() {
   const [note, setNote] = useState("");
 
   const [showAdd, setShowAdd] = useState(false);
-  const [newIngredient, setNewIngredient] = useState({ name: "", unit: "kg", stock: "", minimum: "" });
+  const [newIngredient, setNewIngredient] = useState({ name: "", unit: "kg", stock: "", minimum: "", category: "" });
+
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   async function refresh() {
     setIngredients(await getIngredients());
@@ -69,14 +76,33 @@ export default function CafeInventoryPage() {
       unit: newIngredient.unit,
       stock: Number(newIngredient.stock) || 0,
       minimum: Number(newIngredient.minimum) || 0,
+      category: newIngredient.category.trim(),
     });
-    setNewIngredient({ name: "", unit: "kg", stock: "", minimum: "" });
+    setNewIngredient({ name: "", unit: "kg", stock: "", minimum: "", category: "" });
     setShowAdd(false);
+    refresh();
+  }
+
+  async function toggleFavourite(ing) {
+    await updateIngredient(ing._id, { favourite: !ing.favourite });
+    refresh();
+  }
+
+  async function toggleActive(ing) {
+    await updateIngredient(ing._id, { active: !ing.active });
     refresh();
   }
 
   const lowCount = ingredients.filter((i) => i.status === "low").length;
   const outCount = ingredients.filter((i) => i.status === "out").length;
+
+  const categories = Array.from(new Set(ingredients.map((i) => i.category).filter(Boolean))).sort();
+
+  const visibleIngredients = ingredients.filter((i) => {
+    if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (categoryFilter !== "all" && i.category !== categoryFilter) return false;
+    return true;
+  });
 
   // Simple reorder heuristic: top the stock back up to 2x the minimum
   // threshold. No supplier integration — this is just a suggestion list
@@ -144,21 +170,49 @@ export default function CafeInventoryPage() {
           </div>
         )}
 
-        <div className="mt-5 overflow-x-auto rounded-xl border border-(--color-border)">
+        <div className="mt-5 flex items-center gap-2">
+          <div className="relative flex-1 max-w-xs">
+            <Search01Icon size={14} strokeWidth={1.8} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search ingredients"
+              className="w-full rounded-md border border-(--color-border) bg-transparent py-1.5 pl-8 pr-2 text-sm outline-none focus:border-(--color-accent)"
+            />
+          </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-md border border-(--color-border) bg-transparent px-2 py-1.5 text-sm outline-none focus:border-(--color-accent)"
+          >
+            <option value="all">All Categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-3 overflow-x-auto rounded-xl border border-(--color-border)">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
                 <th className="px-3 py-2 font-medium">Ingredient</th>
+                <th className="px-3 py-2 font-medium">Category</th>
                 <th className="px-3 py-2 font-medium">Stock</th>
                 <th className="px-3 py-2 font-medium">Minimum</th>
                 <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">Favourite</th>
+                <th className="px-3 py-2 font-medium">Active</th>
                 <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {ingredients.map((ing) => (
-                <tr key={ing._id} className="border-b border-(--color-border) last:border-0">
+              {visibleIngredients.map((ing) => (
+                <tr key={ing._id} className={`border-b border-(--color-border) last:border-0 ${!ing.active ? "opacity-50" : ""}`}>
                   <td className="px-3 py-2 font-medium">{ing.name}</td>
+                  <td className="px-3 py-2 text-(--color-text-muted)">{ing.category || "-"}</td>
                   <td className="px-3 py-2 tabular-nums">
                     {ing.stock} {ing.unit}
                   </td>
@@ -170,6 +224,26 @@ export default function CafeInventoryPage() {
                       {ing.status !== "ok" && <Alert02Icon size={11} strokeWidth={1.8} />}
                       {STATUS_LABEL[ing.status]}
                     </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleFavourite(ing)}
+                      title={ing.favourite ? "Remove favourite" : "Set as favourite"}
+                      className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${ing.favourite ? "text-amber-500" : "text-(--color-text-muted) hover:text-(--color-text)"}`}
+                    >
+                      <StarIcon size={15} strokeWidth={1.8} fill={ing.favourite ? "currentColor" : "none"} />
+                    </button>
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(ing)}
+                      title={ing.active ? "Deactivate" : "Activate"}
+                      className={ing.active ? "text-emerald-600 dark:text-emerald-400" : "text-(--color-text-muted)"}
+                    >
+                      {ing.active ? <ToggleOnIcon size={22} strokeWidth={1.8} /> : <ToggleOffIcon size={22} strokeWidth={1.8} />}
+                    </button>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
@@ -188,10 +262,10 @@ export default function CafeInventoryPage() {
                   </td>
                 </tr>
               ))}
-              {ingredients.length === 0 && (
+              {visibleIngredients.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
-                    No ingredients yet.
+                  <td colSpan={8} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                    No ingredients found.
                   </td>
                 </tr>
               )}
@@ -292,6 +366,12 @@ export default function CafeInventoryPage() {
                   value={newIngredient.unit}
                   onChange={(e) => setNewIngredient((f) => ({ ...f, unit: e.target.value }))}
                   placeholder="Unit (kg, ltr, pcs)"
+                  className="flex-1 rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
+                />
+                <input
+                  value={newIngredient.category}
+                  onChange={(e) => setNewIngredient((f) => ({ ...f, category: e.target.value }))}
+                  placeholder="Category"
                   className="flex-1 rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
                 />
               </div>

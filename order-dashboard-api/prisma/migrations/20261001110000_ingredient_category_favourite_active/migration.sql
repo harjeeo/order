@@ -1,0 +1,4 @@
+ALTER TABLE "Ingredient"
+  ADD COLUMN "category" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "favourite" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true;
