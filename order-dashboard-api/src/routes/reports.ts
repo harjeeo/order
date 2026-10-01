@@ -21,16 +21,81 @@ async function resolveOutletId(req: any): Promise<string | null> {
   return outlet?.id ?? null;
 }
 
-async function loadReportData(tenantId: string, outletId: string | null) {
+// The range tabs (daily/weekly/monthly/custom) previously had no effect —
+// the frontend never actually sent a range and the backend never filtered
+// by one, so every tab showed identical all-time data. This resolves an
+// actual [from, to) window from the query string.
+function resolveDateRange(req: any): { from: Date; to: Date } {
+  const range = String(req.query.range ?? "daily");
+  const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+  let from: Date;
+  if (range === "weekly") {
+    from = new Date(to);
+    from.setDate(from.getDate() - 7);
+  } else if (range === "monthly") {
+    from = new Date(to);
+    from.setDate(from.getDate() - 30);
+  } else if (range === "custom") {
+    from = req.query.from ? new Date(String(req.query.from)) : new Date(to.getTime() - 90 * 24 * 60 * 60 * 1000);
+  } else {
+    from = new Date(to);
+    from.setHours(0, 0, 0, 0);
+  }
+  return { from, to };
+}
+
+async function loadReportData(tenantId: string, outletId: string | null, range: { from: Date; to: Date }) {
+  const createdAt = { gte: range.from, lte: range.to };
   const [orders, invoices, ingredients, movements, expenses, menuItems] = await Promise.all([
-    prisma.order.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) }, include: { items: true } }),
-    prisma.invoice.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) }, include: { order: true } }),
+    prisma.order.findMany({ where: { tenantId, createdAt, ...(outletId ? { outletId } : {}) }, include: { items: true } }),
+    prisma.invoice.findMany({ where: { tenantId, createdAt, ...(outletId ? { outletId } : {}) }, include: { order: true } }),
     prisma.ingredient.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) } }),
     prisma.stockMovement.findMany({ where: { tenantId, type: "wastage", ...(outletId ? { ingredient: { outletId } } : {}) } }),
-    prisma.expense.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) } }),
+    prisma.expense.findMany({ where: { tenantId, date: createdAt, ...(outletId ? { outletId } : {}) } }),
     prisma.menuItem.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) }, include: { category: true } }),
   ]);
   return { orders, invoices, ingredients, movements, expenses, menuItems };
+}
+
+function channelBreakdownFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
+  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+  const empty = () => ({ orders: 0, amount: 0 });
+  const channels = { dineIn: empty(), takeaway: empty(), delivery: empty(), online: empty() };
+  for (const o of nonCancelled) {
+    const key = o.orderType === "dine_in" ? "dineIn" : o.orderType === "takeaway" ? "takeaway" : "delivery";
+    channels[key].orders += 1;
+    channels[key].amount += o.amount;
+    // Cross-cut, not mutually exclusive with the order-type buckets above —
+    // a QR/public-menu order is still also a dine-in/takeaway/delivery order.
+    if (o.source === "customer") {
+      channels.online.orders += 1;
+      channels.online.amount += o.amount;
+    }
+  }
+  return channels;
+}
+
+function taxByItemFrom(
+  orders: Awaited<ReturnType<typeof loadReportData>>["orders"],
+  menuItems: Awaited<ReturnType<typeof loadReportData>>["menuItems"]
+) {
+  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+  const itemTax: Record<string, { qty: number; taxableValue: number; taxAmount: number; taxPercent: number }> = {};
+  for (const order of nonCancelled) {
+    for (const item of order.items) {
+      const menuItem = menuItems.find((m) => item.name.startsWith(m.name));
+      const taxPercent = menuItem?.tax ?? 5;
+      const taxableValue = item.qty * item.unitPrice;
+      const taxAmount = Math.round((taxableValue * taxPercent) / 100);
+      itemTax[item.name] ??= { qty: 0, taxableValue: 0, taxAmount: 0, taxPercent };
+      itemTax[item.name].qty += item.qty;
+      itemTax[item.name].taxableValue += taxableValue;
+      itemTax[item.name].taxAmount += taxAmount;
+    }
+  }
+  return Object.entries(itemTax)
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.taxAmount - a.taxAmount);
 }
 
 function bestSellersFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
@@ -51,7 +116,8 @@ function bestSellersFrom(orders: Awaited<ReturnType<typeof loadReportData>>["ord
 reportsRouter.get("/", async (req, res) => {
   const tenantId = req.user!.tenantId!;
   const outletId = await resolveOutletId(req);
-  const { orders, invoices, ingredients, movements, expenses, menuItems } = await loadReportData(tenantId, outletId);
+  const range = resolveDateRange(req);
+  const { orders, invoices, ingredients, movements, expenses, menuItems } = await loadReportData(tenantId, outletId, range);
 
   const nonCancelled = orders.filter((o) => o.status !== "cancelled");
   const completed = orders.filter((o) => o.status === "completed");
@@ -75,11 +141,21 @@ reportsRouter.get("/", async (req, res) => {
     categorySales[category] = (categorySales[category] ?? 0) + revenue;
   }
 
+  // Always the trailing 7 days regardless of the selected range tab — a
+  // "Daily" or "Monthly" view still wants this as a fixed reference chart,
+  // not clipped to whatever window is currently selected.
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+  const trendOrders = await prisma.order.findMany({
+    where: { tenantId, createdAt: { gte: sevenDaysAgo }, status: { not: "cancelled" }, ...(outletId ? { outletId } : {}) },
+    select: { amount: true, createdAt: true },
+  });
   const trend = [6, 5, 4, 3, 2, 1, 0].map((n) => {
     const day = new Date();
     day.setDate(day.getDate() - n);
     const dateStr = day.toISOString().slice(0, 10);
-    const amount = nonCancelled
+    const amount = trendOrders
       .filter((o) => o.createdAt.toISOString().slice(0, 10) === dateStr)
       .reduce((s, o) => s + o.amount, 0);
     return { label: dateStr.slice(5), amount };
@@ -119,7 +195,8 @@ reportsRouter.get("/", async (req, res) => {
       cancelled: cancelled.length,
       avgOrderValue: nonCancelled.length ? Math.round(totalSales / nonCancelled.length) : 0,
     },
-    products: { bestSellers, categorySales },
+    products: { bestSellers, allItems: bestSellersFrom(orders), taxByItem: taxByItemFrom(orders, menuItems), categorySales },
+    channels: channelBreakdownFrom(orders),
     payments: paymentTotals,
     inventory: {
       totalIngredients: ingredients.length,

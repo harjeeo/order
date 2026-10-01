@@ -808,8 +808,8 @@ export async function deleteCashMovement(movementId: string) {
 
 export const REPORT_RANGES = ["daily", "weekly", "monthly", "custom"];
 
-export async function getReportsSummary({ allOutlets = false }: { range?: string; allOutlets?: boolean } = {}) {
-  return get(`/reports${qs({ allOutlets: allOutlets ? "true" : undefined })}`);
+export async function getReportsSummary({ range = "daily", allOutlets = false }: { range?: string; allOutlets?: boolean } = {}) {
+  return get(`/reports${qs({ range, allOutlets: allOutlets ? "true" : undefined })}`);
 }
 
 export async function exportGstReportCsv({ from, to, allOutlets = false }: { from?: string; to?: string; allOutlets?: boolean } = {}) {

@@ -8,6 +8,11 @@ import {
   StarIcon,
   Medal01Icon,
   Download04Icon,
+  Store01Icon,
+  ShoppingBag01Icon,
+  TruckDeliveryIcon,
+  GlobalIcon,
+  Search01Icon,
 } from "hugeicons-react";
 import { getReportsSummary, exportGstReportCsv, getOutlets, REPORT_RANGES } from "../lib/api";
 
@@ -30,6 +35,7 @@ export default function CafeReportsPage() {
   const [exporting, setExporting] = useState(false);
   const [multiOutlet, setMultiOutlet] = useState(false);
   const [allOutlets, setAllOutlets] = useState(false);
+  const [itemSearch, setItemSearch] = useState("");
 
   useEffect(() => {
     getOutlets().then((list) => setMultiOutlet(list.length > 1));
@@ -55,6 +61,17 @@ export default function CafeReportsPage() {
   const maxCategory = Math.max(...(Object.values(report.products.categorySales) as number[]), 1);
   const maxPayment = Math.max(...(Object.values(report.payments) as number[]), 1);
   const maxExpenseCategory = Math.max(...report.expenses.byCategory.map((e) => e.amount), 1);
+
+  const filteredItems = report.products.allItems.filter((i) =>
+    i.name.toLowerCase().includes(itemSearch.trim().toLowerCase())
+  );
+
+  const CHANNELS = [
+    { key: "dineIn", label: "Dine In", icon: Store01Icon },
+    { key: "takeaway", label: "Takeaway", icon: ShoppingBag01Icon },
+    { key: "delivery", label: "Delivery", icon: TruckDeliveryIcon },
+    { key: "online", label: "Online", icon: GlobalIcon },
+  ];
 
   return (
     <div className="px-8 py-6">
@@ -133,6 +150,28 @@ export default function CafeReportsPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Sales by Channel */}
+      <section className="mt-6">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+          <GlobalIcon size={14} strokeWidth={1.8} />
+          Sales by Channel
+        </h2>
+        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {CHANNELS.map(({ key, label, icon: Icon }) => (
+            <div key={key} className="rounded-xl border border-(--color-border) p-4">
+              <div className="flex items-center gap-1.5 text-xs text-(--color-text-muted)">
+                <Icon size={13} strokeWidth={1.8} />
+                {label}
+              </div>
+              <div className="mt-1 text-xl font-semibold tabular-nums">{formatCurrency(report.channels[key].amount)}</div>
+              <div className="mt-0.5 text-xs text-(--color-text-muted)">
+                {report.channels[key].orders} order{report.channels[key].orders === 1 ? "" : "s"}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -338,6 +377,95 @@ export default function CafeReportsPage() {
           </div>
         </section>
       </div>
+
+      {/* Item Sales Report */}
+      <section className="mt-6">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+            <Invoice01Icon size={14} strokeWidth={1.8} />
+            Item Sales Report
+          </h2>
+          <div className="relative w-56">
+            <Search01Icon
+              size={14}
+              strokeWidth={1.8}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
+            />
+            <input
+              value={itemSearch}
+              onChange={(e) => setItemSearch(e.target.value)}
+              placeholder="Search item…"
+              className="w-full rounded-md border border-(--color-border) bg-transparent py-1.5 pl-8 pr-3 text-xs outline-none focus:border-(--color-accent)"
+            />
+          </div>
+        </div>
+        <div className="mt-2 max-h-96 overflow-y-auto overflow-x-auto rounded-xl border border-(--color-border)">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 bg-(--color-canvas)">
+              <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
+                <th className="px-3 py-2 font-medium">Item</th>
+                <th className="px-3 py-2 font-medium">Qty Sold</th>
+                <th className="px-3 py-2 font-medium">Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredItems.map((item) => (
+                <tr key={item.name} className="border-b border-(--color-border) last:border-0">
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-text-muted)">{item.qty}</td>
+                  <td className="px-3 py-2 tabular-nums font-medium">{formatCurrency(item.revenue)}</td>
+                </tr>
+              ))}
+              {filteredItems.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                    No items match your search.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Tax Report: Item Wise */}
+      <section className="mt-6">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+          <Coins01Icon size={14} strokeWidth={1.8} />
+          Tax Report: Item Wise
+        </h2>
+        <div className="mt-2 max-h-96 overflow-y-auto overflow-x-auto rounded-xl border border-(--color-border)">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 bg-(--color-canvas)">
+              <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
+                <th className="px-3 py-2 font-medium">Item</th>
+                <th className="px-3 py-2 font-medium">Qty</th>
+                <th className="px-3 py-2 font-medium">Taxable Value</th>
+                <th className="px-3 py-2 font-medium">Tax %</th>
+                <th className="px-3 py-2 font-medium">Tax Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.products.taxByItem.map((item) => (
+                <tr key={item.name} className="border-b border-(--color-border) last:border-0">
+                  <td className="px-3 py-2">{item.name}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-text-muted)">{item.qty}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-text-muted)">{formatCurrency(item.taxableValue)}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-text-muted)">{item.taxPercent}%</td>
+                  <td className="px-3 py-2 tabular-nums font-medium">{formatCurrency(item.taxAmount)}</td>
+                </tr>
+              ))}
+              {report.products.taxByItem.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                    No taxable sales in this period.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
