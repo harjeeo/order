@@ -122,4 +122,29 @@ describe("day end closing", () => {
     expect(previewAfter.body.expectedCash).toBe(0);
     expect(new Date(previewAfter.body.periodStart).getTime()).toBe(new Date(closeRes.body.periodEnd).getTime());
   });
+
+  it("folds cash top-ups and withdrawals into expected cash", async () => {
+    await request(app)
+      .post("/api/cashflow")
+      .set("Authorization", `Bearer ${ctx.token}`)
+      .send({ type: "topup", amount: 500, reason: "opening float" });
+    await request(app)
+      .post("/api/cashflow")
+      .set("Authorization", `Bearer ${ctx.token}`)
+      .send({ type: "withdrawal", amount: 120, reason: "manager pickup" });
+
+    const res = await request(app).get("/api/dayend/preview").set("Authorization", `Bearer ${ctx.token}`);
+    expect(res.body.cashTopUps).toBe(500);
+    expect(res.body.cashWithdrawals).toBe(120);
+    // no sales/expenses in this fresh period, so expected cash is just the net float movement
+    expect(res.body.expectedCash).toBe(380);
+
+    const closeRes = await request(app)
+      .post("/api/dayend/close")
+      .set("Authorization", `Bearer ${ctx.token}`)
+      .send({ countedCash: 380 });
+    expect(closeRes.body.cashTopUps).toBe(500);
+    expect(closeRes.body.cashWithdrawals).toBe(120);
+    expect(closeRes.body.difference).toBe(0);
+  });
 });

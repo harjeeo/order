@@ -30,6 +30,7 @@ import { couponsRouter } from "./routes/coupons";
 import { reservationsRouter } from "./routes/reservations";
 import { menuIconsRouter } from "./routes/menuIcons";
 import { dayEndRouter } from "./routes/dayend";
+import { cashFlowRouter } from "./routes/cashflow";
 
 // CORS_ORIGIN is a comma-separated allowlist (e.g.
 // "https://app.example.com,https://admin.example.com"). Left unset, every
@@ -93,6 +94,7 @@ app.use("/api/platform-settings", platformSettingsRouter);
 app.use("/api/print-log", printLogRouter);
 app.use("/api/shifts", shiftsRouter);
 app.use("/api/dayend", dayEndRouter);
+app.use("/api/cashflow", cashFlowRouter);
 app.use("/api/public", publicRouter);
 app.use("/api/outlets", outletsRouter);
 app.use("/api/coupons", couponsRouter);

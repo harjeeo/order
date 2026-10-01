@@ -65,7 +65,7 @@ async function summarizePeriod(tenantId: string, outletId: string, since: Date, 
     }
   }
 
-  const [cashInvoices, cashExpenses] = await Promise.all([
+  const [cashInvoices, cashExpenses, cashTopUps, cashWithdrawals] = await Promise.all([
     prisma.invoice.aggregate({
       where: { tenantId, outletId, method: "cash", createdAt: { gte: since, lt: until } },
       _sum: { total: true },
@@ -74,10 +74,29 @@ async function summarizePeriod(tenantId: string, outletId: string, since: Date, 
       where: { tenantId, outletId, method: "Cash", date: { gte: since, lt: until } },
       _sum: { amount: true },
     }),
+    prisma.cashMovement.aggregate({
+      where: { tenantId, outletId, type: "topup", createdAt: { gte: since, lt: until } },
+      _sum: { amount: true },
+    }),
+    prisma.cashMovement.aggregate({
+      where: { tenantId, outletId, type: "withdrawal", createdAt: { gte: since, lt: until } },
+      _sum: { amount: true },
+    }),
   ]);
-  const expectedCash = (cashInvoices._sum.total ?? 0) - (cashExpenses._sum.amount ?? 0);
+  const cashSales = cashInvoices._sum.total ?? 0;
+  const cashExpenseTotal = cashExpenses._sum.amount ?? 0;
+  const cashTopUpTotal = cashTopUps._sum.amount ?? 0;
+  const cashWithdrawalTotal = cashWithdrawals._sum.amount ?? 0;
+  const expectedCash = cashSales - cashExpenseTotal + cashTopUpTotal - cashWithdrawalTotal;
 
-  return { ...totals, expectedCash };
+  return {
+    ...totals,
+    cashSales,
+    cashExpenseTotal,
+    cashTopUps: cashTopUpTotal,
+    cashWithdrawals: cashWithdrawalTotal,
+    expectedCash,
+  };
 }
 
 dayEndRouter.get("/preview", async (req, res) => {
@@ -116,6 +135,8 @@ dayEndRouter.post("/close", async (req, res) => {
       salesReturnAmount: summary.salesReturnAmount,
       dueOrders: summary.dueOrders,
       dueAmount: summary.dueAmount,
+      cashTopUps: summary.cashTopUps,
+      cashWithdrawals: summary.cashWithdrawals,
       expectedCash: summary.expectedCash,
       countedCash,
       difference: countedCash - summary.expectedCash,

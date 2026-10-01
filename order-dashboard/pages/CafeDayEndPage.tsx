@@ -106,13 +106,31 @@ export default function CafeDayEndPage() {
 
       <div className="mt-6 max-w-md rounded-xl border border-(--color-border) p-5">
         <h2 className="text-sm font-semibold">Cash Reconciliation</h2>
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-(--color-text-muted)">Expected Cash</span>
-          <span className="font-medium tabular-nums">{formatCurrency(preview.expectedCash)}</span>
+
+        <div className="mt-3 space-y-1 text-sm">
+          <div className="flex justify-between text-(--color-text-muted)">
+            <span>Cash Sales</span>
+            <span className="tabular-nums">{formatCurrency(preview.cashSales)}</span>
+          </div>
+          <div className="flex justify-between text-(--color-text-muted)">
+            <span>Cash Expenses</span>
+            <span className="tabular-nums">-{formatCurrency(preview.cashExpenseTotal)}</span>
+          </div>
+          <div className="flex justify-between text-(--color-text-muted)">
+            <span>Cash Top-Ups</span>
+            <span className="tabular-nums">+{formatCurrency(preview.cashTopUps)}</span>
+          </div>
+          <div className="flex justify-between text-(--color-text-muted)">
+            <span>Cash Withdrawals</span>
+            <span className="tabular-nums">-{formatCurrency(preview.cashWithdrawals)}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-(--color-border) pt-1 font-medium">
+            <span>Expected Cash</span>
+            <span className="tabular-nums">{formatCurrency(preview.expectedCash)}</span>
+          </div>
         </div>
         <p className="mt-1 text-[11px] text-(--color-text-muted)">
-          Cash-method sales minus cash-paid expenses for this period. Split payments aren't broken out, so verify
-          the drawer if any orders were settled with a split method.
+          Split payments aren't broken out, so verify the drawer if any orders were settled with a split method.
         </p>
 
         <label className="mt-3 flex flex-col gap-1">

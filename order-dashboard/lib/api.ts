@@ -746,6 +746,10 @@ function mapDayEndClosing(c: any) {
     dueAmount: c.dueAmount,
     onlineOrders: c.onlineOrders ?? 0,
     onlineAmount: c.onlineAmount ?? 0,
+    cashSales: c.cashSales ?? 0,
+    cashExpenseTotal: c.cashExpenseTotal ?? 0,
+    cashTopUps: c.cashTopUps ?? 0,
+    cashWithdrawals: c.cashWithdrawals ?? 0,
     expectedCash: c.expectedCash,
     countedCash: c.countedCash,
     difference: c.difference,
@@ -766,6 +770,38 @@ export async function closeDayEnd(countedCash: number, notes: string) {
 export async function getDayEndHistory({ page = 1, pageSize = 20 }: { page?: number; pageSize?: number } = {}) {
   const result = await get(`/dayend/history${qs({ page: String(page), pageSize: String(pageSize) })}`);
   return { items: result.items.map(mapDayEndClosing), total: result.total, page: result.page, pageSize: result.pageSize };
+}
+
+// --- Cash Flow (till top-ups / withdrawals) ------------------------------
+
+function mapCashMovement(m: any) {
+  return {
+    _id: m.id,
+    type: m.type,
+    amount: m.amount,
+    reason: m.reason,
+    createdBy: m.createdBy,
+    createdAt: m.createdAt,
+  };
+}
+
+export async function getCashMovements({
+  type = "all",
+  page = 1,
+  pageSize = 20,
+}: { type?: string; page?: number; pageSize?: number } = {}) {
+  const result = await get(
+    `/cashflow${qs({ type: type !== "all" ? type : undefined, page: String(page), pageSize: String(pageSize) })}`
+  );
+  return { items: result.items.map(mapCashMovement), total: result.total, page: result.page, pageSize: result.pageSize };
+}
+
+export async function createCashMovement(type: "topup" | "withdrawal", amount: number, reason: string) {
+  return mapCashMovement(await post("/cashflow", { type, amount, reason }));
+}
+
+export async function deleteCashMovement(movementId: string) {
+  return del(`/cashflow/${movementId}`);
 }
 
 // --- Reports ------------------------------------------------------------

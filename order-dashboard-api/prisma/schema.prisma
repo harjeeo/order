@@ -56,6 +56,7 @@ model Tenant {
   coupons      Coupon[]
   reservations Reservation[]
   dayEndClosings DayEndClosing[]
+  cashMovements  CashMovement[]
 }
 
 // --- Outlets / branches ----------------------------------------------
@@ -81,6 +82,7 @@ model Outlet {
   invoices     Invoice[]
   expenses     Expense[]
   dayEndClosings DayEndClosing[]
+  cashMovements  CashMovement[]
 
   @@index([tenantId])
 }
@@ -524,12 +526,40 @@ model DayEndClosing {
   salesReturnAmount    Int      @default(0)
   dueOrders            Int      @default(0)
   dueAmount            Int      @default(0)
+  cashTopUps           Int      @default(0)
+  cashWithdrawals      Int      @default(0)
   expectedCash         Int      @default(0)
   countedCash          Int      @default(0)
   difference           Int      @default(0)
   closedBy             String   @default("")
   notes                String   @default("")
   createdAt            DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([outletId])
+}
+
+// --- Cash drawer movements ----------------------------------------------
+// Float added to or taken out of the till that is neither a sale nor a
+// business expense (e.g. opening float, a manager's cash pickup) — kept
+// separate from Expense so Day End's cash reconciliation doesn't conflate
+// the two.
+enum CashMovementType {
+  topup
+  withdrawal
+}
+
+model CashMovement {
+  id        String           @id @default(cuid())
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId  String
+  outlet    Outlet           @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  type      CashMovementType
+  amount    Int
+  reason    String           @default("")
+  createdBy String           @default("")
+  createdAt DateTime         @default(now())
 
   @@index([tenantId])
   @@index([outletId])
