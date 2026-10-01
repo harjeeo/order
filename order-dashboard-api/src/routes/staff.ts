@@ -36,6 +36,13 @@ staffRouter.get("/", async (req, res) => {
 // support) can add staff and set a temporary password for them.
 staffRouter.post("/", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
   const { name, email, password, role, phone } = req.body;
+  // SUPER_ADMIN is a platform-level role (seeded directly, never granted
+  // through tenant staff management) — without this check a tenant's own
+  // Manager/Admin could mint themselves a platform-wide super admin account
+  // via this endpoint and reach every other tenant's data.
+  if (role === "SUPER_ADMIN") {
+    return res.status(403).json({ error: "Cannot create a Super Admin account here" });
+  }
   // A Manager can staff up their own team but shouldn't be able to create
   // a peer/superior Admin account — only an Admin (or Super Admin) can.
   if (req.user!.role === "MANAGER" && role === "ADMIN") {
@@ -67,6 +74,10 @@ staffRouter.patch("/:id", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async 
   if (!existing) return res.status(404).json({ error: "Staff member not found" });
 
   const { password, role, permissions, ...rest } = req.body;
+  if (role === "SUPER_ADMIN") {
+    return res.status(403).json({ error: "Cannot grant a Super Admin role here" });
+  }
+
   const data: any = { ...rest };
   if (password) data.passwordHash = await bcrypt.hash(password, 10);
   // Only an Admin (or Super Admin) can change what a staff member is

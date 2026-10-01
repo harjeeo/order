@@ -193,6 +193,29 @@ describe("cross-tenant authorization boundaries", () => {
     expect(stillManager?.role).toBe("MANAGER");
   });
 
+  it("blocks tenant A staff from stamping tenant B's table as occupied via order creation", async () => {
+    const tableB = await prisma.table.create({
+      data: { tenantId: tenantB.tenant.id, outletId: tenantB.outlet.id, number: "B-1", capacity: 4, status: "available" },
+    });
+
+    const res = await request(app)
+      .post("/api/orders")
+      .set("Authorization", `Bearer ${tenantA.token}`)
+      .send({
+        orderType: "dine_in",
+        tableId: tableB.id,
+        items: [{ name: "Test Item", qty: 1, unitPrice: 50 }],
+        amount: 50,
+      });
+    // The order itself is created under tenant A (tableId is just a loose
+    // reference), but tenant B's table must be untouched.
+    expect(res.status).toBe(201);
+
+    const stillAvailable = await prisma.table.findUnique({ where: { id: tableB.id } });
+    expect(stillAvailable?.status).toBe("available");
+    expect(stillAvailable?.occupiedAt).toBeNull();
+  });
+
   it("prevents a Manager from creating a new Admin account", async () => {
     const email = `manager2-${Date.now()}@example.test`;
     const passwordHash = await bcrypt.hash("password123", 10);
