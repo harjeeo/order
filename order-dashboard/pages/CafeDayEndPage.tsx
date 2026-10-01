@@ -1,20 +1,7 @@
 import { useEffect, useState } from "react";
 import { Moon02Icon } from "hugeicons-react";
 import { getDayEndPreview, closeDayEnd, getDayEndHistory } from "../lib/api";
-
-function formatCurrency(n) {
-  return `₹${n.toLocaleString("en-IN")}`;
-}
-
-function formatDateTime(iso) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatCurrency, formatDateTime } from "../lib/format";
 
 export default function CafeDayEndPage() {
   const [preview, setPreview] = useState(null);

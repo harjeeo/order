@@ -104,3 +104,12 @@ export async function requireOutlet(req: Request, res: Response, next: NextFunct
   req.outletId = outlet.id;
   next();
 }
+
+// AuthUser (the JWT payload) only carries email, not a display name — audit
+// fields like "closed by"/"created by" want a human name when one exists.
+// One extra lookup per write, not worth caching: these are low-frequency
+// actions (closing a day, recording a cash movement), not a hot path.
+export async function resolveActorName(userId: string, fallbackEmail: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  return user?.name ?? fallbackEmail;
+}

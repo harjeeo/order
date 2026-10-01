@@ -67,6 +67,10 @@ describe("table reservations", () => {
 
     const table = await prisma.table.findUnique({ where: { id: tableId } });
     expect(table?.status).toBe("occupied");
+    // Seating a reservation is one of several ways a table opens — it must
+    // stamp occupiedAt too, the same as a manual status change or a new
+    // dine-in order, or the table card's running-time badge won't work.
+    expect(table?.occupiedAt).not.toBeNull();
   });
 
   it("filters reservations by status", async () => {

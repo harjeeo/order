@@ -5,6 +5,19 @@ import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 export const tablesRouter = Router();
 tablesRouter.use(requireAuth, requireTenant, requireOutlet);
 
+// The one place that means "this table just started being used" — stamps
+// occupiedAt (for the running-time badge on the table card) alongside the
+// status flag, and only on the transition into occupied so a second order
+// on an already-occupied table doesn't reset its timer. Every place that
+// opens a table (new dine-in order, manual status change, reservation
+// check-in, a customer's own QR order) should go through this rather than
+// setting `status: "occupied"` by hand and risking occupiedAt drifting out
+// of sync with it.
+export async function occupyTable(tableId: string, currentStatus: string) {
+  if (currentStatus === "occupied") return;
+  await prisma.table.update({ where: { id: tableId }, data: { status: "occupied", occupiedAt: new Date() } });
+}
+
 // Attaches each table's running (unpaid, non-cancelled) bill: the total
 // amount across all its open orders, plus the most recent one's id/number/
 // items so the table card can offer a one-click reprint without a second
@@ -60,11 +73,15 @@ tablesRouter.patch("/:id/status", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Not found" });
 
   const newStatus = req.body.status;
-  const data: { status: string; occupiedAt?: Date | null } = { status: newStatus };
-  if (newStatus === "occupied" && existing.status !== "occupied") data.occupiedAt = new Date();
-  if (newStatus === "available") data.occupiedAt = null;
+  if (newStatus === "occupied") {
+    await occupyTable(existing.id, existing.status);
+  } else {
+    const data: { status: string; occupiedAt?: null } = { status: newStatus };
+    if (newStatus === "available") data.occupiedAt = null;
+    await prisma.table.update({ where: { id: existing.id }, data: data as any });
+  }
 
-  const table = await prisma.table.update({ where: { id: existing.id }, data: data as any });
+  const table = await prisma.table.findUniqueOrThrow({ where: { id: existing.id } });
   res.json(table);
 });
 
@@ -100,10 +117,7 @@ tablesRouter.post("/merge", async (req, res) => {
     where: { tableId: { in: sources }, tenantId, paymentStatus: "unpaid", status: { not: "cancelled" } },
     data: { tableId: targetId },
   });
-  await prisma.table.update({
-    where: { id: target.id },
-    data: { status: "occupied", occupiedAt: target.occupiedAt ?? new Date() },
-  });
+  await occupyTable(target.id, target.status);
   await prisma.table.updateMany({
     where: { id: { in: sources }, tenantId },
     data: { status: "available", occupiedAt: null },

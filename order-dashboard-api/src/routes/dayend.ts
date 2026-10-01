@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet, resolveActorName } from "../middleware/auth";
+import { parsePagination } from "../lib/pagination";
 
 export const dayEndRouter = Router();
 dayEndRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -116,8 +117,10 @@ dayEndRouter.post("/close", async (req, res) => {
 
   const since = await periodStartFor(tenantId, outletId);
   const until = new Date();
-  const summary = await summarizePeriod(tenantId, outletId, since, until);
-  const staffUser = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  const [summary, closedBy] = await Promise.all([
+    summarizePeriod(tenantId, outletId, since, until),
+    resolveActorName(req.user!.id, req.user!.email),
+  ]);
 
   const closing = await prisma.dayEndClosing.create({
     data: {
@@ -140,7 +143,7 @@ dayEndRouter.post("/close", async (req, res) => {
       expectedCash: summary.expectedCash,
       countedCash,
       difference: countedCash - summary.expectedCash,
-      closedBy: staffUser?.name ?? req.user!.email,
+      closedBy,
       notes,
     },
   });
@@ -150,8 +153,7 @@ dayEndRouter.post("/close", async (req, res) => {
 dayEndRouter.get("/history", async (req, res) => {
   const tenantId = req.user!.tenantId!;
   const outletId = req.outletId!;
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+  const { page, pageSize } = parsePagination(req);
 
   const [items, total] = await Promise.all([
     prisma.dayEndClosing.findMany({

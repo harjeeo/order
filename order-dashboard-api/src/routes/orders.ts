@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 import { notifyOutlet } from "../socket";
+import { occupyTable } from "./tables";
 
 export const ordersRouter = Router();
 ordersRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -123,11 +124,7 @@ ordersRouter.post("/", async (req, res) => {
   }
   if (data.tableId) {
     const table = await prisma.table.findFirst({ where: { id: data.tableId, tenantId } });
-    // Only stamp occupiedAt on the table's first order — a second round
-    // placed on an already-occupied table shouldn't reset its running timer.
-    if (table && table.status !== "occupied") {
-      await prisma.table.update({ where: { id: table.id }, data: { status: "occupied", occupiedAt: new Date() } });
-    }
+    if (table) await occupyTable(table.id, table.status);
   }
 
   notifyOutlet(req.outletId!, "orders:changed");

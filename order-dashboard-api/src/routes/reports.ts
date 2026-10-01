@@ -60,8 +60,9 @@ async function loadReportData(tenantId: string, outletId: string | null, range: 
   return { orders, invoices, ingredients, movements, expenses, menuItems };
 }
 
-function channelBreakdownFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
-  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+// Each xFrom helper below takes the caller's already-filtered non-cancelled
+// orders rather than re-deriving it — the route handler computes it once.
+function channelBreakdownFrom(nonCancelled: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
   const empty = () => ({ orders: 0, amount: 0 });
   const channels = { dineIn: empty(), takeaway: empty(), delivery: empty(), online: empty() };
   for (const o of nonCancelled) {
@@ -79,10 +80,9 @@ function channelBreakdownFrom(orders: Awaited<ReturnType<typeof loadReportData>>
 }
 
 function taxByItemFrom(
-  orders: Awaited<ReturnType<typeof loadReportData>>["orders"],
+  nonCancelled: Awaited<ReturnType<typeof loadReportData>>["orders"],
   menuItems: Awaited<ReturnType<typeof loadReportData>>["menuItems"]
 ) {
-  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
   const itemTax: Record<string, { qty: number; taxableValue: number; taxAmount: number; taxPercent: number }> = {};
   for (const order of nonCancelled) {
     for (const item of order.items) {
@@ -118,8 +118,7 @@ function itemSalesByBillFrom(invoices: Awaited<ReturnType<typeof loadReportData>
 // (e.g. "Burger (+Extra Cheese, Extra Mayo)") rather than stored as a
 // separate field, and their cost is folded into the item's unitPrice — so
 // this can only report how often each addon was chosen, not its revenue.
-function addonPopularityFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
-  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+function addonPopularityFrom(nonCancelled: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
   const addonPattern = /\(\+([^)]+)\)\s*$/;
   const counts: Record<string, number> = {};
   for (const order of nonCancelled) {
@@ -136,8 +135,7 @@ function addonPopularityFrom(orders: Awaited<ReturnType<typeof loadReportData>>[
     .sort((a, b) => b.timesOrdered - a.timesOrdered);
 }
 
-function hourlyBreakdownFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
-  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+function hourlyBreakdownFrom(nonCancelled: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
   const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, amount: 0, orders: 0 }));
   for (const o of nonCancelled) {
     const h = o.createdAt.getHours();
@@ -147,8 +145,7 @@ function hourlyBreakdownFrom(orders: Awaited<ReturnType<typeof loadReportData>>[
   return hours;
 }
 
-function bestSellersFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
-  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+function bestSellersFrom(nonCancelled: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
   const itemSales: Record<string, { qty: number; revenue: number }> = {};
   for (const order of nonCancelled) {
     for (const item of order.items) {
@@ -178,13 +175,14 @@ reportsRouter.get("/", async (req, res) => {
     if (paymentTotals[inv.method] !== undefined) paymentTotals[inv.method] += inv.total;
   }
 
-  const bestSellers = bestSellersFrom(orders).slice(0, 5);
+  const allItemSales = bestSellersFrom(nonCancelled);
+  const bestSellers = allItemSales.slice(0, 5);
 
   // Best-effort: order items only store a name, so category is matched by
   // name prefix against the current menu (variant labels like "Cheese
   // Burger (Cheese)" still match "Cheese Burger").
   const categorySales: Record<string, number> = {};
-  for (const { name, revenue } of bestSellersFrom(orders)) {
+  for (const { name, revenue } of allItemSales) {
     const menuItem = menuItems.find((m) => name.startsWith(m.name));
     const category = menuItem?.category.name ?? "Other";
     categorySales[category] = (categorySales[category] ?? 0) + revenue;
@@ -246,14 +244,14 @@ reportsRouter.get("/", async (req, res) => {
     },
     products: {
       bestSellers,
-      allItems: bestSellersFrom(orders),
-      taxByItem: taxByItemFrom(orders, menuItems),
+      allItems: allItemSales,
+      taxByItem: taxByItemFrom(nonCancelled, menuItems),
       itemSalesByBill: itemSalesByBillFrom(invoices).slice(0, 200),
-      addonPopularity: addonPopularityFrom(orders),
+      addonPopularity: addonPopularityFrom(nonCancelled),
       categorySales,
     },
-    channels: channelBreakdownFrom(orders),
-    hourly: hourlyBreakdownFrom(orders),
+    channels: channelBreakdownFrom(nonCancelled),
+    hourly: hourlyBreakdownFrom(nonCancelled),
     payments: paymentTotals,
     inventory: {
       totalIngredients: ingredients.length,

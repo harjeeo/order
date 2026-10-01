@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CashbackIcon, Cancel01Icon } from "hugeicons-react";
 import { getDueOrders, completePayment } from "../lib/api";
+import { formatCurrency, formatDateTime } from "../lib/format";
 
 const SETTLE_METHODS = [
   { key: "cash", label: "Cash" },
@@ -8,20 +9,6 @@ const SETTLE_METHODS = [
   { key: "upi", label: "UPI" },
   { key: "other", label: "Other" },
 ];
-
-function formatCurrency(n) {
-  return `₹${n.toLocaleString("en-IN")}`;
-}
-
-function formatDateTime(iso) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function CafeDuePaymentsPage() {
   const [orders, setOrders] = useState([]);

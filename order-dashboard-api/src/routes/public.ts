@@ -1,8 +1,9 @@
-import { Router } from "express";
+import { Response, Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { createOrderWithNumber, deductStockForOrder } from "./orders";
+import { occupyTable } from "./tables";
 import { notifyOutlet } from "../socket";
 
 // Unauthenticated, internet-facing routes for QR-code table ordering.
@@ -113,6 +114,25 @@ async function pricePublicOrderItems(
   return { items, amount };
 }
 
+// Wraps pricePublicOrderItems so both order-placement routes below share one
+// error-to-response translation instead of repeating the same try/catch.
+// Returns null (after already sending the 400) when pricing failed.
+async function priceOrRespondBadRequest(
+  res: Response,
+  outletId: string,
+  rawItems: Parameters<typeof pricePublicOrderItems>[1]
+) {
+  try {
+    return await pricePublicOrderItems(outletId, rawItems);
+  } catch (err) {
+    if (err instanceof PublicOrderPricingError) {
+      res.status(400).json({ error: err.message });
+      return null;
+    }
+    throw err;
+  }
+}
+
 // --- Slug-based public storefront (no table/QR code needed) --------------
 // A standing link (pos.getojar.com/menu/:slug) a cafe can put in their
 // Instagram bio or anywhere on social — same public menu/ordering
@@ -168,14 +188,9 @@ publicRouter.post("/menu/:slug/orders", async (req, res) => {
 
   const { items: rawItems, customerPhone, ...rest } = parsed.data;
 
-  let items: Awaited<ReturnType<typeof pricePublicOrderItems>>["items"];
-  let amount: number;
-  try {
-    ({ items, amount } = await pricePublicOrderItems(outlet.id, rawItems));
-  } catch (err) {
-    if (err instanceof PublicOrderPricingError) return res.status(400).json({ error: err.message });
-    throw err;
-  }
+  const priced = await priceOrRespondBadRequest(res, outlet.id, rawItems);
+  if (!priced) return;
+  const { items, amount } = priced;
 
   let customer = await prisma.customer.findFirst({ where: { tenantId: tenant.id, phone: customerPhone } });
   if (!customer) {
@@ -216,14 +231,9 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
 
   const { items: rawItems, tableId, customerPhone, ...rest } = parsed.data;
 
-  let items: Awaited<ReturnType<typeof pricePublicOrderItems>>["items"];
-  let amount: number;
-  try {
-    ({ items, amount } = await pricePublicOrderItems(table.outletId, rawItems));
-  } catch (err) {
-    if (err instanceof PublicOrderPricingError) return res.status(400).json({ error: err.message });
-    throw err;
-  }
+  const priced = await priceOrRespondBadRequest(res, table.outletId, rawItems);
+  if (!priced) return;
+  const { items, amount } = priced;
 
   // Same phone ordering again (a repeat visit, or a second round at the
   // same table) reuses their existing profile instead of creating
@@ -242,7 +252,7 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
   await prisma.kitchenTicket.create({ data: { tenantId, orderId: order.id, orderNumber: order.orderNumber } });
   notifyOutlet(table.outletId, "orders:changed");
   notifyOutlet(table.outletId, "kitchen:changed");
-  await prisma.table.update({ where: { id: tableId }, data: { status: "occupied" } });
+  await occupyTable(tableId, table.status);
 
   res.status(201).json({ orderNumber: order.orderNumber });
 });

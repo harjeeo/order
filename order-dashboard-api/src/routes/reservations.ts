@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
+import { occupyTable } from "./tables";
 
 export const reservationsRouter = Router();
 reservationsRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -58,8 +59,8 @@ reservationsRouter.patch("/:id/status", async (req, res) => {
 
   // Seating a reservation with an assigned table occupies it, same as
   // opening the table manually from the Tables page.
-  if (reservation.status === "seated" && reservation.tableId) {
-    await prisma.table.update({ where: { id: reservation.tableId }, data: { status: "occupied" } });
+  if (reservation.status === "seated" && reservation.tableId && reservation.table) {
+    await occupyTable(reservation.tableId, reservation.table.status);
   }
 
   res.json(reservation);

@@ -1,20 +1,7 @@
 import { useEffect, useState } from "react";
 import { Coins01Icon, PlusSignIcon, MinusSignIcon, Cancel01Icon, Delete02Icon } from "hugeicons-react";
 import { getCashMovements, createCashMovement, deleteCashMovement } from "../lib/api";
-
-function formatCurrency(n) {
-  return `₹${n.toLocaleString("en-IN")}`;
-}
-
-function formatDateTime(iso) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatCurrency, formatDateTime } from "../lib/format";
 
 export default function CafeCashFlowPage() {
   const [movements, setMovements] = useState([]);

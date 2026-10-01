@@ -82,6 +82,7 @@ describe("public QR ordering", () => {
 
     const table = await prisma.table.findUnique({ where: { id: tableId } });
     expect(table?.status).toBe("occupied");
+    expect(table?.occupiedAt).not.toBeNull();
 
     const kot = await prisma.kitchenTicket.findFirst({ where: { orderId: order!.id } });
     expect(kot).not.toBeNull();

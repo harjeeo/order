@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet, resolveActorName } from "../middleware/auth";
+import { parsePagination } from "../lib/pagination";
 
 export const cashFlowRouter = Router();
 cashFlowRouter.use(requireAuth, requireTenant, requireOutlet);
@@ -9,8 +10,7 @@ cashFlowRouter.get("/", async (req, res) => {
   const { type } = req.query as { type?: string };
   const tenantId = req.user!.tenantId!;
   const outletId = req.outletId!;
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+  const { page, pageSize } = parsePagination(req);
   const where = {
     tenantId,
     outletId,
@@ -37,7 +37,7 @@ cashFlowRouter.post("/", async (req, res) => {
   const amount = Math.round(Number(req.body.amount));
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Enter a positive amount." });
 
-  const staffUser = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  const createdBy = await resolveActorName(req.user!.id, req.user!.email);
   const movement = await prisma.cashMovement.create({
     data: {
       tenantId: req.user!.tenantId!,
@@ -45,7 +45,7 @@ cashFlowRouter.post("/", async (req, res) => {
       type,
       amount,
       reason: String(req.body.reason || "").slice(0, 300),
-      createdBy: staffUser?.name ?? req.user!.email,
+      createdBy,
     },
   });
   res.status(201).json(movement);
