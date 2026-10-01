@@ -81,8 +81,7 @@ export default function CafePublicOrderPage() {
         tableId,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        items: cartLines.map((l) => ({ menuItemId: l.item._id, name: l.item.name, qty: l.qty, unitPrice: l.item.price })),
-        amount: cartTotal,
+        items: cartLines.map((l) => ({ menuItemId: l.item._id, qty: l.qty })),
       });
       setPlacedOrderNumber(res.orderNumber);
       setCart({});

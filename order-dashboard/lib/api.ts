@@ -1178,9 +1178,15 @@ export async function getPublicTable(tenantId: string, tableId: string) {
   return publicRequest(`/${tenantId}/tables/${tableId}`);
 }
 
+// Only menuItemId/variantName/addonNames/qty/notes are sent per item — the
+// server looks up the real price from the tenant's own menu and recomputes
+// the order total itself, rather than trusting a price from the customer's
+// phone/browser.
+type PublicOrderItem = { menuItemId: string; variantName?: string | null; addonNames?: string[]; qty: number; notes?: string };
+
 export async function placePublicOrder(
   tenantId: string,
-  payload: { tableId: string; customerName: string; customerPhone: string; notes?: string; items: any[]; amount: number }
+  payload: { tableId: string; customerName: string; customerPhone: string; notes?: string; items: PublicOrderItem[] }
 ) {
   return publicRequest(`/${tenantId}/orders`, { method: "POST", body: JSON.stringify(payload) });
 }
@@ -1201,7 +1207,7 @@ export async function getPublicMenuBySlug(slug: string) {
 
 export async function placePublicMenuOrder(
   slug: string,
-  payload: { customerName: string; customerPhone: string; notes?: string; items: any[]; amount: number }
+  payload: { customerName: string; customerPhone: string; notes?: string; items: PublicOrderItem[] }
 ) {
   return publicRequest(`/menu/${slug}/orders`, { method: "POST", body: JSON.stringify(payload) });
 }

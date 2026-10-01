@@ -101,6 +101,31 @@ describe("public slug-based menu ordering", () => {
     expect(orders).toHaveLength(2);
   });
 
+  it("prices a variant and addons from the real menu, ignoring any client-supplied price", async () => {
+    const category = await prisma.menuCategory.findFirstOrThrow({ where: { tenantId } });
+    const item = await prisma.menuItem.create({
+      data: { tenantId, outletId: category.outletId, categoryId: category.id, name: "Burger", price: 100, available: true },
+    });
+    await prisma.menuVariant.create({ data: { menuItemId: item.id, name: "Large", price: 150 } });
+    await prisma.menuAddon.create({ data: { menuItemId: item.id, name: "Extra Cheese", price: 20 } });
+
+    const res = await request(app)
+      .post(`/api/public/menu/${slug}/orders`)
+      .send({
+        customerName: "Variant Guest",
+        customerPhone: "9334455667",
+        items: [{ menuItemId: item.id, qty: 1, variantName: "Large", addonNames: ["Extra Cheese"], unitPrice: 1 }],
+      });
+    expect(res.status).toBe(201);
+
+    const order = await prisma.order.findFirst({
+      where: { tenantId, orderNumber: res.body.orderNumber },
+      include: { items: true },
+    });
+    expect(order?.amount).toBe(170); // 150 (Large) + 20 (Extra Cheese), not the tampered unitPrice
+    expect(order?.items[0].name).toBe("Burger (Large) (+Extra Cheese)");
+  });
+
   it("404s for a slug order against an inactive tenant", async () => {
     const other = await createTenantWithAdmin("Inactive Slug Cafe");
     await prisma.tenant.update({ where: { id: other.tenant.id }, data: { status: "suspended" } });

@@ -38,7 +38,16 @@ export default function CafePublicMenuPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [items, setItems] = useState([]);
   const [cart, setCart] = useState<
-    { id: string; itemId: string; name: string; unitPrice: number; qty: number; simple: boolean }[]
+    {
+      id: string;
+      itemId: string;
+      name: string;
+      unitPrice: number;
+      qty: number;
+      simple: boolean;
+      variantName: string | null;
+      addonNames: string[];
+    }[]
   >([]);
   const [configuring, setConfiguring] = useState<{ item: any; variant: any; addons: any[]; qty: number } | null>(
     null
@@ -80,7 +89,10 @@ export default function CafePublicMenuPage() {
         next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
         return next;
       }
-      return [...prev, { id: item._id, itemId: item._id, name: item.name, unitPrice: item.price, qty: 1, simple: true }];
+      return [
+        ...prev,
+        { id: item._id, itemId: item._id, name: item.name, unitPrice: item.price, qty: 1, simple: true, variantName: null, addonNames: [] },
+      ];
     });
   }
 
@@ -111,8 +123,20 @@ export default function CafePublicMenuPage() {
     if (!configuring) return;
     const { item, variant, addons, qty } = configuring;
     const unitPrice = (variant ? variant.price : item.price) + addons.reduce((s, a) => s + a.price, 0);
-    const name = item.name + (variant ? ` (${variant.name})` : "") + (addons.length ? ` + ${addons.map((a) => a.name).join(", ")}` : "");
-    setCart((prev) => [...prev, { id: `${item._id}-${Date.now()}`, itemId: item._id, name, unitPrice, qty, simple: false }]);
+    const name = item.name + (variant ? ` (${variant.name})` : "") + (addons.length ? ` (+${addons.map((a) => a.name).join(", ")})` : "");
+    setCart((prev) => [
+      ...prev,
+      {
+        id: `${item._id}-${Date.now()}`,
+        itemId: item._id,
+        name,
+        unitPrice,
+        qty,
+        simple: false,
+        variantName: variant?.name ?? null,
+        addonNames: addons.map((a) => a.name),
+      },
+    ]);
     setConfiguring(null);
   }
 
@@ -127,8 +151,7 @@ export default function CafePublicMenuPage() {
       const res = await placePublicMenuOrder(slug, {
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        items: cart.map((l) => ({ menuItemId: l.itemId, name: l.name, qty: l.qty, unitPrice: l.unitPrice })),
-        amount: cartTotal,
+        items: cart.map((l) => ({ menuItemId: l.itemId, qty: l.qty, variantName: l.variantName, addonNames: l.addonNames })),
       });
       setPlacedOrderNumber(res.orderNumber);
       setCart([]);

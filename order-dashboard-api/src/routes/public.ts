@@ -55,13 +55,63 @@ publicRouter.get("/:tenantId/tables/:tableId/menu", async (req, res) => {
   });
 });
 
+// Public orders never trust a client-supplied name/unitPrice/amount — a
+// customer's phone is an untrusted client, and taking those at face value
+// would let anyone place a real kitchen order at whatever price they typed
+// (down to ₹0). Instead the client sends only which item/variant/addons it
+// wants; pricePublicOrderItems below looks up every price from the tenant's
+// own menu and recomputes the order total server-side.
 const orderItemSchema = z.object({
-  menuItemId: z.string().optional(),
-  name: z.string(),
+  menuItemId: z.string(),
+  variantName: z.string().nullable().optional(),
+  addonNames: z.array(z.string()).default([]),
   qty: z.number().int().positive(),
-  unitPrice: z.number().default(0),
   notes: z.string().default(""),
 });
+
+class PublicOrderPricingError extends Error {}
+
+async function pricePublicOrderItems(
+  outletId: string,
+  rawItems: { menuItemId: string; variantName?: string | null; addonNames: string[]; qty: number; notes: string }[]
+) {
+  const menuItemIds = [...new Set(rawItems.map((i) => i.menuItemId))];
+  const menuItems = await prisma.menuItem.findMany({
+    where: { id: { in: menuItemIds }, outletId, available: true },
+    include: { variants: true, addons: true },
+  });
+  const byId = new Map(menuItems.map((m) => [m.id, m]));
+
+  let amount = 0;
+  const items = rawItems.map((raw) => {
+    const menuItem = byId.get(raw.menuItemId);
+    if (!menuItem) throw new PublicOrderPricingError("One of the items in your order is no longer available");
+
+    let basePrice = menuItem.price;
+    let variantLabel = "";
+    if (raw.variantName) {
+      const variant = menuItem.variants.find((v) => v.name === raw.variantName);
+      if (!variant) throw new PublicOrderPricingError(`"${raw.variantName}" is not a valid option for ${menuItem.name}`);
+      basePrice = variant.price;
+      variantLabel = ` (${variant.name})`;
+    }
+
+    const addonNames = [...new Set(raw.addonNames)];
+    const addonsTotal = addonNames.reduce((sum, name) => {
+      const addon = menuItem.addons.find((a) => a.name === name);
+      if (!addon) throw new PublicOrderPricingError(`"${name}" is not a valid add-on for ${menuItem.name}`);
+      return sum + addon.price;
+    }, 0);
+    const addonLabel = addonNames.length ? ` (+${addonNames.join(", ")})` : "";
+
+    const unitPrice = basePrice + addonsTotal;
+    amount += unitPrice * raw.qty;
+
+    return { menuItemId: menuItem.id, name: `${menuItem.name}${variantLabel}${addonLabel}`, qty: raw.qty, unitPrice, notes: raw.notes };
+  });
+
+  return { items, amount };
+}
 
 // --- Slug-based public storefront (no table/QR code needed) --------------
 // A standing link (pos.getojar.com/menu/:slug) a cafe can put in their
@@ -103,7 +153,6 @@ const publicMenuOrderSchema = z.object({
   customerPhone: z.string().trim().min(7, "Enter a valid phone number"),
   notes: z.string().default(""),
   items: z.array(orderItemSchema).min(1),
-  amount: z.number().nonnegative(),
 });
 
 publicRouter.post("/menu/:slug/orders", async (req, res) => {
@@ -117,7 +166,16 @@ publicRouter.post("/menu/:slug/orders", async (req, res) => {
   const parsed = publicMenuOrderSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
 
-  const { items, customerPhone, ...rest } = parsed.data;
+  const { items: rawItems, customerPhone, ...rest } = parsed.data;
+
+  let items: Awaited<ReturnType<typeof pricePublicOrderItems>>["items"];
+  let amount: number;
+  try {
+    ({ items, amount } = await pricePublicOrderItems(outlet.id, rawItems));
+  } catch (err) {
+    if (err instanceof PublicOrderPricingError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
 
   let customer = await prisma.customer.findFirst({ where: { tenantId: tenant.id, phone: customerPhone } });
   if (!customer) {
@@ -126,7 +184,7 @@ publicRouter.post("/menu/:slug/orders", async (req, res) => {
 
   const order = await createOrderWithNumber(
     tenant.id,
-    { ...rest, orderType: "takeaway", outletId: outlet.id, source: "customer", customerId: customer.id },
+    { ...rest, amount, orderType: "takeaway", outletId: outlet.id, source: "customer", customerId: customer.id },
     items
   );
   await deductStockForOrder(tenant.id, order.orderNumber, items);
@@ -143,7 +201,6 @@ const publicOrderSchema = z.object({
   customerPhone: z.string().trim().min(7, "Enter a valid phone number"),
   notes: z.string().default(""),
   items: z.array(orderItemSchema).min(1),
-  amount: z.number().nonnegative(),
 });
 
 publicRouter.post("/:tenantId/orders", async (req, res) => {
@@ -157,7 +214,16 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
   const table = await prisma.table.findFirst({ where: { id: parsed.data.tableId, tenantId } });
   if (!table) return res.status(404).json({ error: "Table not found" });
 
-  const { items, tableId, customerPhone, ...rest } = parsed.data;
+  const { items: rawItems, tableId, customerPhone, ...rest } = parsed.data;
+
+  let items: Awaited<ReturnType<typeof pricePublicOrderItems>>["items"];
+  let amount: number;
+  try {
+    ({ items, amount } = await pricePublicOrderItems(table.outletId, rawItems));
+  } catch (err) {
+    if (err instanceof PublicOrderPricingError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
 
   // Same phone ordering again (a repeat visit, or a second round at the
   // same table) reuses their existing profile instead of creating
@@ -169,7 +235,7 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
 
   const order = await createOrderWithNumber(
     tenantId,
-    { ...rest, orderType: "dine_in", tableId, outletId: table.outletId, source: "customer", customerId: customer.id },
+    { ...rest, amount, orderType: "dine_in", tableId, outletId: table.outletId, source: "customer", customerId: customer.id },
     items
   );
   await deductStockForOrder(tenantId, order.orderNumber, items);

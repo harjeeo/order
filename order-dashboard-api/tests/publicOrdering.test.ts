@@ -68,8 +68,7 @@ describe("public QR ordering", () => {
         tableId,
         customerName: "QR Guest",
         customerPhone: "9876543210",
-        items: [{ menuItemId, name: "Cold Coffee", qty: 2, unitPrice: 150 }],
-        amount: 300,
+        items: [{ menuItemId, qty: 2 }],
       });
     expect(res.status).toBe(201);
     expect(res.body.orderNumber).toBeTruthy();
@@ -77,6 +76,9 @@ describe("public QR ordering", () => {
     const order = await prisma.order.findFirst({ where: { tenantId, orderNumber: res.body.orderNumber } });
     expect(order?.source).toBe("customer");
     expect(order?.orderType).toBe("dine_in");
+    // Price came from the menu (150), not the client — confirms the order
+    // wasn't just trusting a client-supplied amount.
+    expect(order?.amount).toBe(300);
 
     const table = await prisma.table.findUnique({ where: { id: tableId } });
     expect(table?.status).toBe("occupied");
@@ -88,7 +90,7 @@ describe("public QR ordering", () => {
   it("rejects a public order with no customer name or phone", async () => {
     const res = await request(app)
       .post(`/api/public/${tenantId}/orders`)
-      .send({ tableId, items: [{ menuItemId, name: "Cold Coffee", qty: 1, unitPrice: 150 }], amount: 150 });
+      .send({ tableId, items: [{ menuItemId, qty: 1 }] });
     expect(res.status).toBe(400);
   });
 
@@ -97,8 +99,7 @@ describe("public QR ordering", () => {
       tableId,
       customerName: "Repeat Guest",
       customerPhone: "9998887770",
-      items: [{ menuItemId, name: "Cold Coffee", qty: 1, unitPrice: 150 }],
-      amount: 150,
+      items: [{ menuItemId, qty: 1 }],
     };
     const first = await request(app).post(`/api/public/${tenantId}/orders`).send(body);
     const second = await request(app).post(`/api/public/${tenantId}/orders`).send(body);
@@ -116,8 +117,42 @@ describe("public QR ordering", () => {
     const other = await createTenantWithAdmin("Other Cafe 2");
     const res = await request(app)
       .post(`/api/public/${other.tenant.id}/orders`)
-      .send({ tableId, customerName: "X", customerPhone: "9876543210", items: [{ name: "X", qty: 1 }], amount: 10 });
+      .send({ tableId, customerName: "X", customerPhone: "9876543210", items: [{ menuItemId, qty: 1 }] });
     expect(res.status).toBe(404);
     await deleteTenant(other.tenant.id);
+  });
+
+  it("ignores a client-supplied price and recomputes it from the real menu price", async () => {
+    const res = await request(app)
+      .post(`/api/public/${tenantId}/orders`)
+      .send({
+        tableId,
+        customerName: "Price Tamperer",
+        customerPhone: "9112233445",
+        // A tampered request: real price is 150, but the client claims 1.
+        items: [{ menuItemId, qty: 3, unitPrice: 1, name: "Cold Coffee (hacked)" }],
+        amount: 3,
+      });
+    expect(res.status).toBe(201);
+
+    const order = await prisma.order.findFirst({
+      where: { tenantId, orderNumber: res.body.orderNumber },
+      include: { items: true },
+    });
+    expect(order?.amount).toBe(450); // 3 x real menu price (150), not 3
+    expect(order?.items[0].unitPrice).toBe(150);
+    expect(order?.items[0].name).toBe("Cold Coffee");
+  });
+
+  it("rejects an order for a variant/addon name that doesn't exist on the menu item", async () => {
+    const res = await request(app)
+      .post(`/api/public/${tenantId}/orders`)
+      .send({
+        tableId,
+        customerName: "Bad Variant",
+        customerPhone: "9223344556",
+        items: [{ menuItemId, qty: 1, variantName: "Does Not Exist" }],
+      });
+    expect(res.status).toBe(400);
   });
 });
