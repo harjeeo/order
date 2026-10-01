@@ -17,6 +17,18 @@ billingRouter.get("/billable-orders", async (req, res) => {
   res.json(orders);
 });
 
+// Orders that were already served and billed but settled with "Due" at
+// checkout — distinct from billable-orders above, which also includes
+// orders still mid-kitchen that haven't been billed yet at all.
+billingRouter.get("/due-orders", async (req, res) => {
+  const orders = await prisma.order.findMany({
+    where: { tenantId: req.user!.tenantId!, outletId: req.outletId!, paymentStatus: "unpaid", status: "completed" },
+    include: { items: true, table: true },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(orders);
+});
+
 billingRouter.get("/invoices", async (req, res) => {
   const tenantId = req.user!.tenantId!;
   const outletId = req.outletId!;

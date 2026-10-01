@@ -30,6 +30,7 @@ import {
   CalendarAdd01Icon,
   Moon02Icon,
   Coins01Icon,
+  CashbackIcon,
 } from "hugeicons-react";
 
 function OfflineBanner() {
@@ -129,6 +130,7 @@ const navLinks = [
   { to: "/cafe/kitchen", labelKey: "nav.kitchen", icon: KitchenUtensilsIcon },
   { to: "/cafe/menu", labelKey: "nav.menu", icon: MenuRestaurantIcon },
   { to: "/cafe/billing", labelKey: "nav.billing", icon: CreditCardIcon },
+  { to: "/cafe/due-payments", labelKey: "nav.duePayments", icon: CashbackIcon },
   { to: "/cafe/inventory", labelKey: "nav.inventory", icon: PackageIcon },
   { to: "/cafe/recipes", labelKey: "nav.recipes", icon: ChefHatIcon },
   { to: "/cafe/customers", labelKey: "nav.customers", icon: UserMultiple02Icon },

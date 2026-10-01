@@ -110,4 +110,42 @@ describe("cafe reports", () => {
     expect(taxRow.taxPercent).toBe(12);
     expect(taxRow.taxAmount).toBe(36);
   });
+
+  it("reports item sales by bill number, addon popularity, and hourly sales", async () => {
+    const order = await makeOrder({ orderNumber: "RPT-BILL", itemName: "Billed Item", price: 90, qty: 2 });
+    await prisma.invoice.create({
+      data: {
+        tenantId: ctx.tenant.id,
+        outletId: ctx.outlet.id,
+        invoiceNumber: "RPT-INV-1",
+        orderId: order.id,
+        subtotal: 180,
+        total: 180,
+        method: "cash",
+      },
+    });
+
+    await makeOrder({
+      orderNumber: "RPT-ADDON",
+      itemName: "Burger (+Extra Cheese, Extra Mayo)",
+      price: 150,
+      qty: 2,
+    });
+
+    const res = await request(app).get("/api/reports?range=monthly").set("Authorization", `Bearer ${ctx.token}`);
+
+    const billRow = res.body.products.itemSalesByBill.find((r: any) => r.invoiceNumber === "RPT-INV-1");
+    expect(billRow.itemName).toBe("Billed Item");
+    expect(billRow.qty).toBe(2);
+    expect(billRow.amount).toBe(180);
+
+    const cheese = res.body.products.addonPopularity.find((a: any) => a.name === "Extra Cheese");
+    const mayo = res.body.products.addonPopularity.find((a: any) => a.name === "Extra Mayo");
+    expect(cheese.timesOrdered).toBe(2);
+    expect(mayo.timesOrdered).toBe(2);
+
+    expect(res.body.hourly).toHaveLength(24);
+    const totalHourlyAmount = res.body.hourly.reduce((s: number, h: any) => s + h.amount, 0);
+    expect(totalHourlyAmount).toBe(res.body.sales.total);
+  });
 });

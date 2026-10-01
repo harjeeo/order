@@ -48,7 +48,10 @@ async function loadReportData(tenantId: string, outletId: string | null, range: 
   const createdAt = { gte: range.from, lte: range.to };
   const [orders, invoices, ingredients, movements, expenses, menuItems] = await Promise.all([
     prisma.order.findMany({ where: { tenantId, createdAt, ...(outletId ? { outletId } : {}) }, include: { items: true } }),
-    prisma.invoice.findMany({ where: { tenantId, createdAt, ...(outletId ? { outletId } : {}) }, include: { order: true } }),
+    prisma.invoice.findMany({
+      where: { tenantId, createdAt, ...(outletId ? { outletId } : {}) },
+      include: { order: { include: { items: true } } },
+    }),
     prisma.ingredient.findMany({ where: { tenantId, ...(outletId ? { outletId } : {}) } }),
     prisma.stockMovement.findMany({ where: { tenantId, type: "wastage", ...(outletId ? { ingredient: { outletId } } : {}) } }),
     prisma.expense.findMany({ where: { tenantId, date: createdAt, ...(outletId ? { outletId } : {}) } }),
@@ -96,6 +99,52 @@ function taxByItemFrom(
   return Object.entries(itemTax)
     .map(([name, v]) => ({ name, ...v }))
     .sort((a, b) => b.taxAmount - a.taxAmount);
+}
+
+function itemSalesByBillFrom(invoices: Awaited<ReturnType<typeof loadReportData>>["invoices"]) {
+  const rows: { invoiceNumber: string; date: Date; itemName: string; qty: number; amount: number }[] = [];
+  for (const inv of invoices) {
+    if (inv.refunded) continue;
+    const order = (inv as any).order;
+    if (!order) continue;
+    for (const item of order.items as { name: string; qty: number; unitPrice: number }[]) {
+      rows.push({ invoiceNumber: inv.invoiceNumber, date: inv.createdAt, itemName: item.name, qty: item.qty, amount: item.qty * item.unitPrice });
+    }
+  }
+  return rows.sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
+// Addon names are baked into the order item's own name string at order time
+// (e.g. "Burger (+Extra Cheese, Extra Mayo)") rather than stored as a
+// separate field, and their cost is folded into the item's unitPrice — so
+// this can only report how often each addon was chosen, not its revenue.
+function addonPopularityFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
+  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+  const addonPattern = /\(\+([^)]+)\)\s*$/;
+  const counts: Record<string, number> = {};
+  for (const order of nonCancelled) {
+    for (const item of order.items) {
+      const match = item.name.match(addonPattern);
+      if (!match) continue;
+      for (const addon of match[1].split(",").map((a) => a.trim()).filter(Boolean)) {
+        counts[addon] = (counts[addon] ?? 0) + item.qty;
+      }
+    }
+  }
+  return Object.entries(counts)
+    .map(([name, timesOrdered]) => ({ name, timesOrdered }))
+    .sort((a, b) => b.timesOrdered - a.timesOrdered);
+}
+
+function hourlyBreakdownFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
+  const nonCancelled = orders.filter((o) => o.status !== "cancelled");
+  const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, amount: 0, orders: 0 }));
+  for (const o of nonCancelled) {
+    const h = o.createdAt.getHours();
+    hours[h].amount += o.amount;
+    hours[h].orders += 1;
+  }
+  return hours;
 }
 
 function bestSellersFrom(orders: Awaited<ReturnType<typeof loadReportData>>["orders"]) {
@@ -195,8 +244,16 @@ reportsRouter.get("/", async (req, res) => {
       cancelled: cancelled.length,
       avgOrderValue: nonCancelled.length ? Math.round(totalSales / nonCancelled.length) : 0,
     },
-    products: { bestSellers, allItems: bestSellersFrom(orders), taxByItem: taxByItemFrom(orders, menuItems), categorySales },
+    products: {
+      bestSellers,
+      allItems: bestSellersFrom(orders),
+      taxByItem: taxByItemFrom(orders, menuItems),
+      itemSalesByBill: itemSalesByBillFrom(invoices).slice(0, 200),
+      addonPopularity: addonPopularityFrom(orders),
+      categorySales,
+    },
     channels: channelBreakdownFrom(orders),
+    hourly: hourlyBreakdownFrom(orders),
     payments: paymentTotals,
     inventory: {
       totalIngredients: ingredients.length,

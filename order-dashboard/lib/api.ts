@@ -407,6 +407,11 @@ export async function getBillableOrders() {
   return orders.map(mapOrder);
 }
 
+export async function getDueOrders() {
+  const orders = await get("/billing/due-orders");
+  return orders.map(mapOrder);
+}
+
 function mapInvoice(inv: any) {
   return {
     _id: inv.id,

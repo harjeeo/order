@@ -13,6 +13,8 @@ import {
   TruckDeliveryIcon,
   GlobalIcon,
   Search01Icon,
+  Clock01Icon,
+  AddCircleIcon,
 } from "hugeicons-react";
 import { getReportsSummary, exportGstReportCsv, getOutlets, REPORT_RANGES } from "../lib/api";
 
@@ -61,6 +63,7 @@ export default function CafeReportsPage() {
   const maxCategory = Math.max(...(Object.values(report.products.categorySales) as number[]), 1);
   const maxPayment = Math.max(...(Object.values(report.payments) as number[]), 1);
   const maxExpenseCategory = Math.max(...report.expenses.byCategory.map((e) => e.amount), 1);
+  const maxHourly = Math.max(...report.hourly.map((h) => h.amount), 1);
 
   const filteredItems = report.products.allItems.filter((i) =>
     i.name.toLowerCase().includes(itemSearch.trim().toLowerCase())
@@ -172,6 +175,28 @@ export default function CafeReportsPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Hourly Sales */}
+      <section className="mt-6">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+          <Clock01Icon size={14} strokeWidth={1.8} />
+          Sales by Hour
+        </h2>
+        <div className="mt-2 overflow-x-auto rounded-xl border border-(--color-border) p-4">
+          <div className="flex min-w-[720px] items-end gap-1">
+            {report.hourly.map((h) => (
+              <div key={h.hour} className="flex flex-1 flex-col items-center gap-1">
+                <div
+                  title={`${h.hour}:00 — ${formatCurrency(h.amount)} (${h.orders} orders)`}
+                  className="w-full rounded-t bg-(--color-accent)/60"
+                  style={{ height: `${(h.amount / maxHourly) * 80 + 2}px` }}
+                />
+                <span className="text-[9px] text-(--color-text-muted)">{h.hour}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -464,6 +489,71 @@ export default function CafeReportsPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Item Sales Report with Bill No. */}
+      <section className="mt-6">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+          <Invoice01Icon size={14} strokeWidth={1.8} />
+          Item Sales Report With Bill No.
+        </h2>
+        <p className="mt-1 text-xs text-(--color-text-muted)">Most recent 200 line items in this period.</p>
+        <div className="mt-2 max-h-96 overflow-y-auto overflow-x-auto rounded-xl border border-(--color-border)">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 bg-(--color-canvas)">
+              <tr className="border-b border-(--color-border) text-xs text-(--color-text-muted)">
+                <th className="px-3 py-2 font-medium">Bill No.</th>
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Item</th>
+                <th className="px-3 py-2 font-medium">Qty</th>
+                <th className="px-3 py-2 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.products.itemSalesByBill.map((row, i) => (
+                <tr key={i} className="border-b border-(--color-border) last:border-0">
+                  <td className="px-3 py-2 font-medium">{row.invoiceNumber}</td>
+                  <td className="px-3 py-2 text-(--color-text-muted)">
+                    {new Date(row.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </td>
+                  <td className="px-3 py-2">{row.itemName}</td>
+                  <td className="px-3 py-2 tabular-nums text-(--color-text-muted)">{row.qty}</td>
+                  <td className="px-3 py-2 tabular-nums font-medium">{formatCurrency(row.amount)}</td>
+                </tr>
+              ))}
+              {report.products.itemSalesByBill.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-8 text-center text-sm text-(--color-text-muted)">
+                    No billed items in this period.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Addon Popularity */}
+      <section className="mt-6">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-muted)">
+          <AddCircleIcon size={14} strokeWidth={1.8} />
+          Addon Popularity
+        </h2>
+        <p className="mt-1 text-xs text-(--color-text-muted)">
+          How often each add-on was chosen. Add-on cost is folded into the item price, so this tracks popularity, not
+          separate revenue.
+        </p>
+        <div className="mt-2 rounded-xl border border-(--color-border) p-4">
+          {report.products.addonPopularity.map((a) => (
+            <div key={a.name} className="flex items-center justify-between py-1 text-sm">
+              <span className="text-(--color-text-muted)">{a.name}</span>
+              <span className="tabular-nums font-medium">{a.timesOrdered}×</span>
+            </div>
+          ))}
+          {report.products.addonPopularity.length === 0 && (
+            <p className="text-xs text-(--color-text-muted)">No add-ons ordered in this period.</p>
+          )}
         </div>
       </section>
     </div>
