@@ -27,7 +27,9 @@ function minutesAgo(iso) {
 
 export default function CafeKitchenPage() {
   const [orders, setOrders] = useState([]);
-  const [now, setNow] = useState(Date.now());
+  // Unread on purpose — ticking this every 30s just forces a re-render so
+  // each ticket's elapsed-time badge re-evaluates Date.now() on its own.
+  const [_now, setNow] = useState(Date.now());
 
   async function refresh() {
     setOrders(await getKitchenOrders());

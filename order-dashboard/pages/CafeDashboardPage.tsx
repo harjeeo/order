@@ -41,7 +41,9 @@ function formatShiftDuration(clockInAt) {
 
 function ClockWidget() {
   const [activeShift, setActiveShift] = useState(undefined);
-  const [now, setNow] = useState(Date.now());
+  // Unread on purpose — ticking this every minute just forces a re-render
+  // so the elapsed-time calc below re-evaluates Date.now() on its own.
+  const [_now, setNow] = useState(Date.now());
 
   useEffect(() => {
     getActiveShift().then(setActiveShift);
