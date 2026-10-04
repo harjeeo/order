@@ -106,6 +106,7 @@ export default function CafeMenuPage() {
   const [formError, setFormError] = useState("");
   const [categoryError, setCategoryError] = useState("");
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
 
   async function refreshCategories() {
     setCategories(await getMenuCategories());
@@ -289,7 +290,7 @@ export default function CafeMenuPage() {
               {c !== "All" && (
                 <button
                   type="button"
-                  onClick={() => handleDeleteCategory(c)}
+                  onClick={() => setCategoryToDelete(c)}
                   title={`Delete ${c}`}
                   className={`flex h-4 w-4 items-center justify-center rounded-full ${
                     activeCategory === c ? "hover:bg-white/20" : "hover:bg-black/10 dark:hover:bg-white/20"
@@ -579,6 +580,43 @@ export default function CafeMenuPage() {
           }}
           onClose={() => setShowIconPicker(false)}
         />
+      )}
+
+      {categoryToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setCategoryToDelete(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-(--color-canvas) p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold">Delete "{categoryToDelete}"?</h3>
+            <p className="mt-1.5 text-sm text-(--color-text-muted)">
+              This can't be undone. If any menu items still use this category, deletion will be blocked until you
+              move or delete them first.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCategoryToDelete(null)}
+                className="rounded-md border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteCategory(categoryToDelete);
+                  setCategoryToDelete(null);
+                }}
+                className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
