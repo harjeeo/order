@@ -88,6 +88,16 @@ platformSettingsRouter.post("/whatsapp/test", async (req, res) => {
     cafeName: "Your Cafe",
     orderNumber: "ORD-TEST",
     amount: 100,
+    bill: {
+      restaurantName: "Your Cafe",
+      invoiceNumber: "INV-TEST",
+      orderNumber: "ORD-TEST",
+      customer: "Test Customer",
+      items: [{ name: "Test Item", qty: 1 }],
+      subtotal: 100,
+      total: 100,
+      method: "cash",
+    },
   });
 
   if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test WhatsApp message" });

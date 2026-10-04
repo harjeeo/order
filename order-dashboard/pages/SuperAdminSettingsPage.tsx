@@ -469,10 +469,11 @@ export default function SuperAdminSettingsPage() {
               <div className="mt-2 border-t border-(--color-border) pt-4">
                 <div className="text-sm font-medium">WhatsApp Bill Receipts</div>
                 <p className="mt-1 text-sm text-(--color-text-muted)">
-                  Send the customer's bill on WhatsApp the moment staff settle an order — from one shared WhatsApp
-                  Business number for every cafe on the platform. Requires a Meta Cloud API Phone Number ID/Access
-                  Token and an approved message template (Utility category) with 4 body variables, in this exact
-                  order: customer name, cafe name, order number, amount.
+                  Send the customer's full bill as a PDF on WhatsApp the moment staff settle an order — from one
+                  shared WhatsApp Business number for every cafe on the platform. Requires a Meta Cloud API Phone
+                  Number ID/Access Token and an approved message template (Utility category) with a{" "}
+                  <strong className="text-(--color-text)">Document header</strong> (for the bill PDF) and 4 body
+                  variables, in this exact order: customer name, cafe name, order number, amount.
                 </p>
 
                 <label className="mt-3 flex items-center gap-2 text-sm">

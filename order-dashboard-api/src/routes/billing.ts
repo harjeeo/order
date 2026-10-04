@@ -69,7 +69,7 @@ const LOYALTY_EARN_RATE = 100;
 
 billingRouter.post("/orders/:orderId/pay", async (req, res) => {
   const tenantId = req.user!.tenantId!;
-  const order = await prisma.order.findFirst({ where: { id: req.params.orderId, tenantId } });
+  const order = await prisma.order.findFirst({ where: { id: req.params.orderId, tenantId }, include: { items: true } });
   if (!order) return res.status(404).json({ error: "Order not found" });
 
   const { subtotal, discountAmount = 0, serviceChargeAmount = 0, taxAmount = 0, roundOff = 0, total, method } = req.body;
@@ -151,12 +151,33 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     if (customer?.phone) {
       sendSms(tenantId, customer.phone, `Payment of ₹${total} received for order ${order.orderNumber}. Thank you!`).catch(() => {});
 
-      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      const [tenant, settings] = await Promise.all([
+        prisma.tenant.findUnique({ where: { id: tenantId } }),
+        prisma.settings.findUnique({ where: { tenantId } }),
+      ]);
+      const restaurant = (settings?.restaurant as any) ?? {};
+      const invoiceSettings = (settings?.invoice as any) ?? {};
+      const cafeName = restaurant.name || tenant?.name || "";
+
       sendWhatsAppBill(tenantId, customer.phone, {
         customerName: customer.name || "Guest",
-        cafeName: tenant?.name ?? "",
+        cafeName,
         orderNumber: order.orderNumber,
         amount: total,
+        bill: {
+          restaurantName: cafeName,
+          fssai: invoiceSettings.fssai || undefined,
+          invoiceNumber: invoice.invoiceNumber,
+          orderNumber: order.orderNumber,
+          customer: customer.name || undefined,
+          items: order.items.map((i) => ({ name: i.name, qty: i.qty })),
+          subtotal,
+          discountAmount,
+          serviceChargeAmount,
+          taxAmount,
+          total,
+          method,
+        },
       }).catch(() => {});
     }
   }
