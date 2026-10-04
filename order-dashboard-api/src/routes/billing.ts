@@ -4,6 +4,7 @@ import { prisma } from "../prisma";
 import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
 import { couponError } from "./coupons";
 import { sendSms } from "../lib/sms";
+import { sendWhatsAppBill } from "../lib/whatsapp";
 import { notifyOutlet } from "../socket";
 
 export const billingRouter = Router();
@@ -149,6 +150,14 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
     const customer = await prisma.customer.findUnique({ where: { id: order.customerId } });
     if (customer?.phone) {
       sendSms(tenantId, customer.phone, `Payment of ₹${total} received for order ${order.orderNumber}. Thank you!`).catch(() => {});
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      sendWhatsAppBill(tenantId, customer.phone, {
+        customerName: customer.name || "Guest",
+        cafeName: tenant?.name ?? "",
+        orderNumber: order.orderNumber,
+        amount: total,
+      }).catch(() => {});
     }
   }
 

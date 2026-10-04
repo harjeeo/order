@@ -1044,6 +1044,10 @@ export async function sendTestSms(to: string) {
   return post("/platform-settings/sms/test", { to });
 }
 
+export async function sendTestWhatsApp(to: string) {
+  return post("/platform-settings/whatsapp/test", { to });
+}
+
 // --- Super Admin: Audit log -----------------------------------------
 
 export async function getAuditLog({ page = 1, pageSize = 30 }: { page?: number; pageSize?: number } = {}) {

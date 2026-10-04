@@ -73,6 +73,9 @@ describe("SMS notifications (no provider configured — logged, not sent)", () =
 
     const logs = await prisma.notificationLog.findMany({ where: { tenantId, to: "9998887777" } });
     expect(logs.some((l) => l.message.match(/payment of/i))).toBe(true);
+    // A bill-paid event also attempts a WhatsApp bill receipt (logged, not
+    // sent, since no provider is configured in this test tenant).
+    expect(logs.some((l) => l.channel === "whatsapp" && l.status === "logged")).toBe(true);
   });
 
   it("does not log anything for a walk-in order with no customer", async () => {

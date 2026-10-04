@@ -4,6 +4,7 @@ import { prisma } from "../prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { sendEmail } from "../lib/email";
 import { sendSms } from "../lib/sms";
+import { sendWhatsAppBill } from "../lib/whatsapp";
 import { PLATFORM_SETTINGS_SINGLETON_ID } from "../lib/platformSettingsId";
 
 export const platformSettingsRouter = Router();
@@ -69,6 +70,28 @@ platformSettingsRouter.post("/sms/test", async (req, res) => {
 
   if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test SMS", provider: result.provider });
   res.json({ ok: true, provider: result.provider });
+});
+
+const testWhatsAppSchema = z.object({ to: z.string().min(5) });
+
+// Same idea as /sms/test — sends a real WhatsApp bill-receipt template
+// through the configured Meta Cloud API credentials so a Super Admin can
+// confirm the Phone Number ID/Access Token/template name are right before
+// it's relied on at checkout. Uses placeholder bill details since there's
+// no real order to attach the test to.
+platformSettingsRouter.post("/whatsapp/test", async (req, res) => {
+  const parsed = testWhatsAppSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const result = await sendWhatsAppBill("platform-settings-test", parsed.data.to, {
+    customerName: "Test Customer",
+    cafeName: "Your Cafe",
+    orderNumber: "ORD-TEST",
+    amount: 100,
+  });
+
+  if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test WhatsApp message" });
+  res.json({ ok: true });
 });
 
 // Monthly buckets for the last `months` months (oldest first), each with

@@ -102,9 +102,15 @@ model PlatformSettings {
   // migration needed since it's JSON.
   emailSettings Json @default("{\"provider\":\"none\",\"fromName\":\"Order Dashboard\",\"fromEmail\":\"\",\"mailjet\":{\"apiKey\":\"\",\"apiSecret\":\"\"},\"brevo\":{\"apiKey\":\"\"}}")
 
-  // Pluggable SMS/WhatsApp config for "order ready" / "bill paid" customer
+  // Pluggable SMS config for "order ready" / "bill paid" customer
   // notifications — same shape as emailSettings above.
   smsSettings Json @default("{\"provider\":\"none\",\"twilio\":{\"accountSid\":\"\",\"authToken\":\"\",\"fromNumber\":\"\"}}")
+
+  // WhatsApp Business (Meta Cloud API) bill receipts — one shared sender
+  // number for every tenant, sent as an approved template message (Meta
+  // doesn't allow free-form business-initiated text), so this needs the
+  // template's own name/language alongside the API credentials.
+  whatsappSettings Json @default("{\"enabled\":false,\"phoneNumberId\":\"\",\"accessToken\":\"\",\"templateName\":\"bill_receipt\",\"languageCode\":\"en\"}")
 }
 
 // --- Menu icon library ----------------------------------------------------
@@ -615,6 +621,7 @@ model PrintLog {
 
 enum NotificationChannel {
   sms
+  whatsapp
 }
 
 enum NotificationStatus {
