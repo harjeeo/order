@@ -126,9 +126,14 @@ export default function CafeMenuPage() {
 
   async function handleAddCategory() {
     if (!newCategory.trim()) return;
-    await addMenuCategory(newCategory.trim());
-    setNewCategory("");
-    refreshCategories();
+    setCategoryError("");
+    try {
+      await addMenuCategory(newCategory.trim());
+      setNewCategory("");
+      refreshCategories();
+    } catch (err) {
+      setCategoryError(err instanceof Error ? err.message : "Could not add category");
+    }
   }
 
   async function handleDeleteCategory(name) {
