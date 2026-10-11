@@ -4,7 +4,7 @@ import { prisma } from "../prisma";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { sendEmail } from "../lib/email";
 import { sendSms } from "../lib/sms";
-import { sendWhatsAppBill } from "../lib/whatsapp";
+import { sendWhatsAppBill, sendNewOrderAlert } from "../lib/whatsapp";
 import { PLATFORM_SETTINGS_SINGLETON_ID } from "../lib/platformSettingsId";
 
 export const platformSettingsRouter = Router();
@@ -98,6 +98,24 @@ platformSettingsRouter.post("/whatsapp/test", async (req, res) => {
       total: 100,
       method: "cash",
     },
+  });
+
+  if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test WhatsApp message" });
+  res.json({ ok: true });
+});
+
+// Same idea, for the owner-facing "new order" alert template instead of
+// the customer bill receipt.
+platformSettingsRouter.post("/whatsapp/test-new-order", async (req, res) => {
+  const parsed = testWhatsAppSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+  const result = await sendNewOrderAlert("platform-settings-test", parsed.data.to, {
+    cafeName: "Your Cafe",
+    orderNumber: "ORD-TEST",
+    orderType: "Takeaway",
+    amount: 100,
+    items: "1x Test Item",
   });
 
   if (!result.ok) return res.status(422).json({ error: result.error ?? "Could not send test WhatsApp message" });

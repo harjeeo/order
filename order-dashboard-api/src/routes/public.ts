@@ -5,6 +5,36 @@ import { prisma } from "../prisma";
 import { createOrderWithNumber, deductStockForOrder } from "./orders";
 import { occupyTable } from "./tables";
 import { notifyOutlet } from "../socket";
+import { sendNewOrderAlert } from "../lib/whatsapp";
+
+const ORDER_TYPE_LABELS: Record<string, string> = { dine_in: "Dine-in", takeaway: "Takeaway", delivery: "Delivery" };
+
+// Best-effort WhatsApp ping to the cafe owner's own number (Settings →
+// Restaurant Profile → Phone) whenever a customer places an order through
+// the public QR/Instagram-link storefront — staff placing an order from
+// the POS already know it happened, so this is only wired into the two
+// public routes below, not the authenticated order-creation route.
+async function notifyOwnerOfNewOrder(
+  tenantId: string,
+  tenantName: string,
+  orderNumber: string,
+  orderType: string,
+  amount: number,
+  items: { name: string; qty: number }[]
+) {
+  const settings = await prisma.settings.findUnique({ where: { tenantId } });
+  const restaurant = (settings?.restaurant as any) ?? {};
+  const phone = restaurant.phone;
+  if (!phone) return;
+
+  sendNewOrderAlert(tenantId, phone, {
+    cafeName: restaurant.name || tenantName,
+    orderNumber,
+    orderType: ORDER_TYPE_LABELS[orderType] ?? orderType,
+    amount,
+    items: items.map((i) => `${i.qty}x ${i.name}`).join(", "),
+  }).catch(() => {});
+}
 
 // Unauthenticated, internet-facing routes for QR-code table ordering.
 // No requireAuth/requireTenant here — anyone with a table's QR code can
@@ -206,6 +236,7 @@ publicRouter.post("/menu/:slug/orders", async (req, res) => {
   await prisma.kitchenTicket.create({ data: { tenantId: tenant.id, orderId: order.id, orderNumber: order.orderNumber } });
   notifyOutlet(outlet.id, "orders:changed");
   notifyOutlet(outlet.id, "kitchen:changed");
+  notifyOwnerOfNewOrder(tenant.id, tenant.name, order.orderNumber, "takeaway", amount, items).catch(() => {});
 
   res.status(201).json({ orderNumber: order.orderNumber });
 });
@@ -253,6 +284,7 @@ publicRouter.post("/:tenantId/orders", async (req, res) => {
   notifyOutlet(table.outletId, "orders:changed");
   notifyOutlet(table.outletId, "kitchen:changed");
   await occupyTable(tableId, table.status);
+  notifyOwnerOfNewOrder(tenantId, tenant.name, order.orderNumber, "dine_in", amount, items).catch(() => {});
 
   res.status(201).json({ orderNumber: order.orderNumber });
 });

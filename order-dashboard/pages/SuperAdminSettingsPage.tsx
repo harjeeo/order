@@ -15,6 +15,7 @@ import {
   sendTestEmail,
   sendTestSms,
   sendTestWhatsApp,
+  sendTestNewOrderAlert,
   TENANT_PLANS,
   EMAIL_PROVIDERS,
   SMS_PROVIDERS,
@@ -194,6 +195,27 @@ export default function SuperAdminSettingsPage() {
       setTestWhatsAppStatus({ ok: false, message: err instanceof Error ? err.message : "Could not send test WhatsApp message" });
     } finally {
       setTestingWhatsApp(false);
+    }
+  }
+
+  const [testNewOrderTo, setTestNewOrderTo] = useState("");
+  const [testNewOrderStatus, setTestNewOrderStatus] = useState(null); // { ok: boolean, message: string } | null
+  const [testingNewOrder, setTestingNewOrder] = useState(false);
+
+  async function handleSendTestNewOrder() {
+    setTestNewOrderStatus(null);
+    if (!testNewOrderTo.trim()) {
+      setTestNewOrderStatus({ ok: false, message: "Enter a phone number to send the test to." });
+      return;
+    }
+    setTestingNewOrder(true);
+    try {
+      await sendTestNewOrderAlert(testNewOrderTo.trim());
+      setTestNewOrderStatus({ ok: true, message: `Test alert sent to ${testNewOrderTo.trim()}.` });
+    } catch (err) {
+      setTestNewOrderStatus({ ok: false, message: err instanceof Error ? err.message : "Could not send test alert" });
+    } finally {
+      setTestingNewOrder(false);
     }
   }
 
@@ -467,11 +489,72 @@ export default function SuperAdminSettingsPage() {
               )}
 
               <div className="mt-2 border-t border-(--color-border) pt-4">
+                <div className="text-sm font-medium">WhatsApp Business (Meta Cloud API)</div>
+                <p className="mt-1 text-sm text-(--color-text-muted)">
+                  One shared WhatsApp Business number for every cafe on the platform, used by both features below.
+                </p>
+
+                <div className="mt-3 flex flex-col gap-3">
+                  <Field label="Phone Number ID">
+                    <div className="relative">
+                      <input
+                        type={showSecret["whatsapp.phoneNumberId"] ? "text" : "password"}
+                        value={form.whatsappSettings?.phoneNumberId ?? ""}
+                        onChange={(e) => setWhatsAppField("phoneNumberId", e.target.value)}
+                        placeholder="Paste value here"
+                        className={`${inputClass} w-full pr-9`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSecret((s) => ({ ...s, "whatsapp.phoneNumberId": !s["whatsapp.phoneNumberId"] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
+                      >
+                        {showSecret["whatsapp.phoneNumberId"] ? (
+                          <ViewOffIcon size={15} strokeWidth={1.8} />
+                        ) : (
+                          <ViewIcon size={15} strokeWidth={1.8} />
+                        )}
+                      </button>
+                    </div>
+                  </Field>
+                  <Field label="Access Token">
+                    <div className="relative">
+                      <input
+                        type={showSecret["whatsapp.accessToken"] ? "text" : "password"}
+                        value={form.whatsappSettings?.accessToken ?? ""}
+                        onChange={(e) => setWhatsAppField("accessToken", e.target.value)}
+                        placeholder="Paste value here"
+                        className={`${inputClass} w-full pr-9`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSecret((s) => ({ ...s, "whatsapp.accessToken": !s["whatsapp.accessToken"] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
+                      >
+                        {showSecret["whatsapp.accessToken"] ? (
+                          <ViewOffIcon size={15} strokeWidth={1.8} />
+                        ) : (
+                          <ViewIcon size={15} strokeWidth={1.8} />
+                        )}
+                      </button>
+                    </div>
+                  </Field>
+                  <Field label="Language Code">
+                    <input
+                      value={form.whatsappSettings?.languageCode ?? ""}
+                      onChange={(e) => setWhatsAppField("languageCode", e.target.value)}
+                      placeholder="en"
+                      className={`${inputClass} w-24`}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-(--color-border) pt-4">
                 <div className="text-sm font-medium">WhatsApp Bill Receipts</div>
                 <p className="mt-1 text-sm text-(--color-text-muted)">
-                  Send the customer's full bill as a PDF on WhatsApp the moment staff settle an order — from one
-                  shared WhatsApp Business number for every cafe on the platform. Requires a Meta Cloud API Phone
-                  Number ID/Access Token and an approved message template (Utility category) with a{" "}
+                  Send the customer's full bill as a PDF on WhatsApp the moment staff settle an order. Requires an
+                  approved message template (Utility category) with a{" "}
                   <strong className="text-(--color-text)">Document header</strong> (for the bill PDF) and 4 body
                   variables, in this exact order: customer name, cafe name, order number, amount.
                 </p>
@@ -487,68 +570,14 @@ export default function SuperAdminSettingsPage() {
 
                 {form.whatsappSettings?.enabled && (
                   <div className="mt-3 flex flex-col gap-3">
-                    <Field label="Phone Number ID">
-                      <div className="relative">
-                        <input
-                          type={showSecret["whatsapp.phoneNumberId"] ? "text" : "password"}
-                          value={form.whatsappSettings?.phoneNumberId ?? ""}
-                          onChange={(e) => setWhatsAppField("phoneNumberId", e.target.value)}
-                          placeholder="Paste value here"
-                          className={`${inputClass} w-full pr-9`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowSecret((s) => ({ ...s, "whatsapp.phoneNumberId": !s["whatsapp.phoneNumberId"] }))}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
-                        >
-                          {showSecret["whatsapp.phoneNumberId"] ? (
-                            <ViewOffIcon size={15} strokeWidth={1.8} />
-                          ) : (
-                            <ViewIcon size={15} strokeWidth={1.8} />
-                          )}
-                        </button>
-                      </div>
+                    <Field label="Template Name">
+                      <input
+                        value={form.whatsappSettings?.templateName ?? ""}
+                        onChange={(e) => setWhatsAppField("templateName", e.target.value)}
+                        placeholder="bill_receipt"
+                        className={inputClass}
+                      />
                     </Field>
-                    <Field label="Access Token">
-                      <div className="relative">
-                        <input
-                          type={showSecret["whatsapp.accessToken"] ? "text" : "password"}
-                          value={form.whatsappSettings?.accessToken ?? ""}
-                          onChange={(e) => setWhatsAppField("accessToken", e.target.value)}
-                          placeholder="Paste value here"
-                          className={`${inputClass} w-full pr-9`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowSecret((s) => ({ ...s, "whatsapp.accessToken": !s["whatsapp.accessToken"] }))}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--color-text-muted)"
-                        >
-                          {showSecret["whatsapp.accessToken"] ? (
-                            <ViewOffIcon size={15} strokeWidth={1.8} />
-                          ) : (
-                            <ViewIcon size={15} strokeWidth={1.8} />
-                          )}
-                        </button>
-                      </div>
-                    </Field>
-                    <div className="flex gap-3">
-                      <Field label="Template Name">
-                        <input
-                          value={form.whatsappSettings?.templateName ?? ""}
-                          onChange={(e) => setWhatsAppField("templateName", e.target.value)}
-                          placeholder="bill_receipt"
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="Language Code">
-                        <input
-                          value={form.whatsappSettings?.languageCode ?? ""}
-                          onChange={(e) => setWhatsAppField("languageCode", e.target.value)}
-                          placeholder="en"
-                          className={`${inputClass} w-24`}
-                        />
-                      </Field>
-                    </div>
 
                     <div className="rounded-lg border border-(--color-border) p-3">
                       <div className="text-xs font-medium text-(--color-text-muted)">Send a test WhatsApp message</div>
@@ -574,6 +603,69 @@ export default function SuperAdminSettingsPage() {
                           className={`mt-2 text-xs ${testWhatsAppStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}
                         >
                           {testWhatsAppStatus.message}
+                        </div>
+                      )}
+                      <p className="mt-2 text-[11px] text-(--color-text-muted)">
+                        Save your credentials above first — the test uses whatever is currently saved.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 border-t border-(--color-border) pt-4">
+                <div className="text-sm font-medium">New Order Alerts</div>
+                <p className="mt-1 text-sm text-(--color-text-muted)">
+                  Ping the cafe owner on WhatsApp (the number in their own Settings → Restaurant Profile) the moment
+                  a customer places an order through the public QR/Instagram-link storefront. Requires an approved
+                  text-only template (Utility category, no header) with 5 body variables, in this exact order: cafe
+                  name, order number, order type, amount, items.
+                </p>
+
+                <label className="mt-3 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.whatsappSettings?.newOrderAlertsEnabled ?? false}
+                    onChange={(e) => setWhatsAppField("newOrderAlertsEnabled", e.target.checked)}
+                  />
+                  Enable new order alerts
+                </label>
+
+                {form.whatsappSettings?.newOrderAlertsEnabled && (
+                  <div className="mt-3 flex flex-col gap-3">
+                    <Field label="Template Name">
+                      <input
+                        value={form.whatsappSettings?.newOrderTemplateName ?? ""}
+                        onChange={(e) => setWhatsAppField("newOrderTemplateName", e.target.value)}
+                        placeholder="new_order_alert"
+                        className={inputClass}
+                      />
+                    </Field>
+
+                    <div className="rounded-lg border border-(--color-border) p-3">
+                      <div className="text-xs font-medium text-(--color-text-muted)">Send a test alert</div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={testNewOrderTo}
+                          onChange={(e) => setTestNewOrderTo(e.target.value)}
+                          placeholder="+919876543210"
+                          className={`${inputClass} flex-1`}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSendTestNewOrder}
+                          disabled={testingNewOrder}
+                          className="flex shrink-0 items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-2 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+                        >
+                          <SmartPhone01Icon size={14} strokeWidth={1.8} />
+                          {testingNewOrder ? "Sending…" : "Send Test"}
+                        </button>
+                      </div>
+                      {testNewOrderStatus && (
+                        <div
+                          className={`mt-2 text-xs ${testNewOrderStatus.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}
+                        >
+                          {testNewOrderStatus.message}
                         </div>
                       )}
                       <p className="mt-2 text-[11px] text-(--color-text-muted)">

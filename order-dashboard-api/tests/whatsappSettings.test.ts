@@ -18,6 +18,8 @@ const DEFAULT_WHATSAPP_SETTINGS = {
   accessToken: "",
   templateName: "bill_receipt",
   languageCode: "en",
+  newOrderAlertsEnabled: false,
+  newOrderTemplateName: "new_order_alert",
 };
 
 describe("platform WhatsApp bill-receipt settings", () => {
@@ -96,5 +98,57 @@ describe("platform WhatsApp bill-receipt settings", () => {
   it("requires authentication", async () => {
     const res = await request(app).post("/api/platform-settings/whatsapp/test").send({ to: "9876543210" });
     expect(res.status).toBe(401);
+  });
+
+  it("returns a clear error from /whatsapp/test-new-order when disabled", async () => {
+    await request(app)
+      .patch("/api/platform-settings")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ whatsappSettings: DEFAULT_WHATSAPP_SETTINGS });
+
+    const res = await request(app)
+      .post("/api/platform-settings/whatsapp/test-new-order")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ to: "9876543210" });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/not enabled/i);
+  });
+
+  it("returns a clear error from /whatsapp/test-new-order when enabled but missing credentials", async () => {
+    await request(app)
+      .patch("/api/platform-settings")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ whatsappSettings: { ...DEFAULT_WHATSAPP_SETTINGS, newOrderAlertsEnabled: true } });
+
+    const res = await request(app)
+      .post("/api/platform-settings/whatsapp/test-new-order")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ to: "9876543210" });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/phone number id.*access token/i);
+  });
+
+  it("the bill-receipt and new-order-alert toggles are independent of each other", async () => {
+    await request(app)
+      .patch("/api/platform-settings")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ whatsappSettings: { ...DEFAULT_WHATSAPP_SETTINGS, enabled: true, newOrderAlertsEnabled: false } });
+
+    const billTest = await request(app)
+      .post("/api/platform-settings/whatsapp/test")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ to: "9876543210" });
+    const newOrderTest = await request(app)
+      .post("/api/platform-settings/whatsapp/test-new-order")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ to: "9876543210" });
+
+    // Bill receipts enabled -> fails on missing credentials, not "not enabled".
+    expect(billTest.body.error).toMatch(/phone number id.*access token/i);
+    // New-order alerts still disabled -> fails on "not enabled", confirming
+    // the two toggles don't leak into each other.
+    expect(newOrderTest.body.error).toMatch(/not enabled/i);
   });
 });

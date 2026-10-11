@@ -1048,6 +1048,10 @@ export async function sendTestWhatsApp(to: string) {
   return post("/platform-settings/whatsapp/test", { to });
 }
 
+export async function sendTestNewOrderAlert(to: string) {
+  return post("/platform-settings/whatsapp/test-new-order", { to });
+}
+
 // --- Super Admin: Audit log -----------------------------------------
 
 export async function getAuditLog({ page = 1, pageSize = 30 }: { page?: number; pageSize?: number } = {}) {

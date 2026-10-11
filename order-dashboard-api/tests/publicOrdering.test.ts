@@ -156,4 +156,46 @@ describe("public QR ordering", () => {
       });
     expect(res.status).toBe(400);
   });
+
+  it("pings the cafe owner's own WhatsApp number when a public order comes in, if one is set", async () => {
+    await prisma.settings.upsert({
+      where: { tenantId },
+      update: { restaurant: { phone: "9001112222" } },
+      create: { tenantId, restaurant: { phone: "9001112222" } },
+    });
+
+    const res = await request(app)
+      .post(`/api/public/${tenantId}/orders`)
+      .send({
+        tableId,
+        customerName: "Owner Alert Test",
+        customerPhone: "9334455667",
+        items: [{ menuItemId, qty: 1 }],
+      });
+    expect(res.status).toBe(201);
+
+    await new Promise((r) => setTimeout(r, 100));
+    const logs = await prisma.notificationLog.findMany({ where: { tenantId, to: "9001112222" } });
+    expect(logs.some((l) => l.channel === "whatsapp" && l.message.match(/new order alert/i))).toBe(true);
+
+    await prisma.settings.update({ where: { tenantId }, data: { restaurant: {} } });
+  });
+
+  it("skips the owner alert silently when no restaurant phone is set", async () => {
+    const before = await prisma.notificationLog.count({ where: { tenantId } });
+
+    const res = await request(app)
+      .post(`/api/public/${tenantId}/orders`)
+      .send({
+        tableId,
+        customerName: "No Owner Phone",
+        customerPhone: "9445566778",
+        items: [{ menuItemId, qty: 1 }],
+      });
+    expect(res.status).toBe(201);
+
+    await new Promise((r) => setTimeout(r, 100));
+    const after = await prisma.notificationLog.count({ where: { tenantId } });
+    expect(after).toBe(before);
+  });
 });

@@ -12,6 +12,12 @@ export interface WhatsAppSettings {
   accessToken: string;
   templateName: string;
   languageCode: string;
+  // A second, independent toggle: the owner's "new order" alert reuses the
+  // same Phone Number ID/Access Token above, but has its own on/off switch
+  // and template name since it's a different approved template sent to a
+  // different recipient (the cafe's own number, not the customer's).
+  newOrderAlertsEnabled: boolean;
+  newOrderTemplateName: string;
 }
 
 const DEFAULT_WHATSAPP_SETTINGS: WhatsAppSettings = {
@@ -20,6 +26,8 @@ const DEFAULT_WHATSAPP_SETTINGS: WhatsAppSettings = {
   accessToken: "",
   templateName: "bill_receipt",
   languageCode: "en",
+  newOrderAlertsEnabled: false,
+  newOrderTemplateName: "new_order_alert",
 };
 
 export async function getWhatsAppSettings(): Promise<WhatsAppSettings> {
@@ -135,6 +143,79 @@ export async function sendWhatsAppBill(tenantId: string, to: string, params: Wha
   }
 
   const message = `Bill receipt: ${params.cafeName}, order ${params.orderNumber}, ₹${params.amount}`;
+  await prisma.notificationLog
+    .create({
+      data: { tenantId, channel: "whatsapp", to, message, status: result.ok ? "sent" : "logged" },
+    })
+    .catch(() => {});
+
+  return result;
+}
+
+export interface NewOrderAlertParams {
+  cafeName: string;
+  orderNumber: string;
+  orderType: string;
+  amount: number;
+  items: string;
+}
+
+// Lets the cafe owner know a customer placed an order through the public
+// QR/Instagram-link storefront without having to be staring at the
+// dashboard — sent to the number in Settings → Restaurant Profile, not a
+// customer. Same credentials as sendWhatsAppBill but its own toggle/
+// template, since this is a plain text-body template (no PDF header).
+export async function sendNewOrderAlert(tenantId: string, to: string, params: NewOrderAlertParams): Promise<SendWhatsAppResult> {
+  const settings = await getWhatsAppSettings();
+  let result: SendWhatsAppResult;
+
+  if (!settings.newOrderAlertsEnabled) {
+    result = { ok: false, error: "WhatsApp new-order alerts are not enabled" };
+  } else if (!settings.phoneNumberId || !settings.accessToken) {
+    result = { ok: false, error: "WhatsApp Phone Number ID/Access Token not set" };
+  } else {
+    try {
+      const res = await fetch(`${GRAPH_API_BASE}/${settings.phoneNumberId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${settings.accessToken}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: to.replace(/[^\d+]/g, ""),
+          type: "template",
+          template: {
+            name: settings.newOrderTemplateName,
+            language: { code: settings.languageCode },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: params.cafeName },
+                  { type: "text", text: params.orderNumber },
+                  { type: "text", text: params.orderType },
+                  { type: "text", text: `₹${params.amount}` },
+                  { type: "text", text: params.items },
+                ],
+              },
+            ],
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        result = { ok: false, error: `WhatsApp API ${res.status}: ${body.slice(0, 300)}` };
+      } else {
+        result = { ok: true };
+      }
+    } catch (err: any) {
+      result = { ok: false, error: err?.message ?? "Failed to send WhatsApp message" };
+    }
+  }
+
+  const message = `New order alert: ${params.cafeName}, order ${params.orderNumber}, ₹${params.amount}`;
   await prisma.notificationLog
     .create({
       data: { tenantId, channel: "whatsapp", to, message, status: result.ok ? "sent" : "logged" },
