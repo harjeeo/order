@@ -264,11 +264,23 @@ tenantsRouter.post("/:id/toggle-status", async (req, res) => {
   const tenant = await prisma.tenant.findUnique({ where: { id: req.params.id } });
   if (!tenant) return res.status(404).json({ error: "Not found" });
   const newStatus = tenant.status === "active" ? "suspended" : "active";
+
+  const data: { status: "active" | "suspended"; planExpiry?: Date } = { status: newStatus };
+  // Reactivating a tenant whose plan had actually expired (not just
+  // manually suspended) needs a fresh planExpiry too — otherwise the very
+  // next login re-runs the same expiry check in auth.ts, finds the old
+  // (still past) date, and auto-suspends it right back. Without this a
+  // Super Admin clicking Activate on an expired account does nothing.
+  const isExpired = newStatus === "active" && tenant.planExpiry != null && tenant.planExpiry.getTime() < Date.now();
+  if (isExpired) {
+    data.planExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  }
+
   const updated = await prisma.tenant.update({
     where: { id: req.params.id },
-    data: { status: newStatus },
+    data,
   });
-  await logAudit(req.user!, `tenant.${newStatus === "suspended" ? "suspend" : "activate"}`, "tenant", req.params.id);
+  await logAudit(req.user!, `tenant.${newStatus === "suspended" ? "suspend" : "activate"}`, "tenant", req.params.id, isExpired ? { renewedPlanExpiry: data.planExpiry } : undefined);
   res.json(updated);
 });
 
