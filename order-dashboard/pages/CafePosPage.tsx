@@ -189,6 +189,7 @@ export default function CafePosPage() {
         qty,
         addons,
         notes,
+        tax: item.tax ?? 0,
       },
     ]);
     setConfiguring(null);
@@ -209,8 +210,17 @@ export default function CafePosPage() {
   const subtotal = useMemo(() => cart.reduce((s, l) => s + lineTotal(l), 0), [cart]);
   const discountAmount = Math.round((subtotal * discountPercent) / 100);
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = Math.round(taxableAmount * 0.05);
+  const taxAmount = useMemo(
+    () =>
+      cart.reduce((sum, l) => {
+        const lineAmount = lineTotal(l);
+        const lineTaxable = lineAmount - Math.round((lineAmount * discountPercent) / 100);
+        return sum + Math.round((lineTaxable * (l.tax ?? 0)) / 100);
+      }, 0),
+    [cart, discountPercent],
+  );
   const total = taxableAmount + taxAmount;
+  const effectiveTaxPercent = taxableAmount > 0 ? Math.round((taxAmount / taxableAmount) * 1000) / 10 : 0;
 
   const loyaltyApplied = useLoyalty && selectedCustomer ? Math.min(selectedCustomer.loyaltyPoints, total) : 0;
   const walletApplied =
@@ -837,7 +847,7 @@ export default function CafePosPage() {
                 <span className="tabular-nums">-{formatCurrency(discountAmount)}</span>
               </div>
               <div className="flex justify-between text-(--color-text-muted)">
-                <span>Tax (5%)</span>
+                <span>{effectiveTaxPercent > 0 ? `Tax (${effectiveTaxPercent}%)` : "Tax"}</span>
                 <span className="tabular-nums">{formatCurrency(taxAmount)}</span>
               </div>
               <div className="flex justify-between text-base font-semibold">
