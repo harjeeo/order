@@ -55,6 +55,9 @@ export default function CafeBillingPage() {
   const [upiId, setUpiId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [fssai, setFssai] = useState("");
+  const [gstin, setGstin] = useState("");
+  const [applyGst, setApplyGst] = useState(true);
+  const [taxPercent, setTaxPercent] = useState(5);
   const [upiQrDataUrl, setUpiQrDataUrl] = useState("");
 
   useEffect(() => {
@@ -62,6 +65,11 @@ export default function CafeBillingPage() {
       setUpiId(s.tax?.upiId ?? "");
       setRestaurantName(s.restaurant?.name ?? "");
       setFssai(s.invoice?.fssai ?? "");
+      setGstin(s.tax?.gstin ?? "");
+      setApplyGst(s.tax?.applyGst !== false);
+      const { cgstPercent, sgstPercent, igstPercent } = s.tax ?? {};
+      const configured = cgstPercent != null || sgstPercent != null || igstPercent != null;
+      setTaxPercent(configured ? (cgstPercent ?? 0) + (sgstPercent ?? 0) + (igstPercent ?? 0) : 5);
     });
   }, []);
   const [toast, setToast] = useState("");
@@ -111,7 +119,9 @@ export default function CafeBillingPage() {
     );
     const discountAmount = percentDiscount + couponDiscount + pointsDiscount + walletApplied;
     const serviceChargeAmount = Math.round(((subtotal - discountAmount) * serviceChargePercent) / 100);
-    const taxAmount = Math.round((subtotal - discountAmount + serviceChargeAmount) * 0.05);
+    const taxAmount = applyGst
+      ? Math.round((subtotal - discountAmount + serviceChargeAmount) * (taxPercent / 100))
+      : 0;
     const rawTotal = subtotal - discountAmount + serviceChargeAmount + taxAmount;
     const total = Math.round(rawTotal);
     const roundOff = +(total - rawTotal).toFixed(2);
@@ -128,6 +138,8 @@ export default function CafeBillingPage() {
     };
   }, [
     selected,
+    applyGst,
+    taxPercent,
     discountPercent,
     serviceChargePercent,
     redeemPoints,
@@ -221,6 +233,7 @@ export default function CafeBillingPage() {
     return {
       restaurantName,
       fssai,
+      gstin: applyGst ? gstin : "",
       invoiceNumber: invoice.invoiceNumber,
       orderNumber: invoice.orderNumber,
       customer: invoice.customer,
@@ -518,10 +531,12 @@ export default function CafeBillingPage() {
               <span>Service Charge</span>
               <span className="tabular-nums">{formatCurrency(breakdown.serviceChargeAmount)}</span>
             </div>
-            <div className="flex justify-between text-(--color-text-muted)">
-              <span>Tax (5%)</span>
-              <span className="tabular-nums">{formatCurrency(breakdown.taxAmount)}</span>
-            </div>
+            {breakdown.taxAmount > 0 && (
+              <div className="flex justify-between text-(--color-text-muted)">
+                <span>{`Tax (${taxPercent}%)`}</span>
+                <span className="tabular-nums">{formatCurrency(breakdown.taxAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-(--color-text-muted)">
               <span>Round Off</span>
               <span className="tabular-nums">{breakdown.roundOff >= 0 ? "+" : ""}{breakdown.roundOff}</span>

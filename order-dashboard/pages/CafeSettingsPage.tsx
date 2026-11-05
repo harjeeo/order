@@ -460,7 +460,11 @@ export default function CafeSettingsPage() {
           {tab === "tax" && (
             <div className="flex flex-col gap-3">
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={draft.applyGst} onChange={(e) => set("applyGst", e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={draft.applyGst !== false}
+                  onChange={(e) => set("applyGst", e.target.checked)}
+                />
                 Apply GST to orders
               </label>
               <Field label="GSTIN">

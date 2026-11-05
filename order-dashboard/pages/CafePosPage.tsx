@@ -100,6 +100,8 @@ export default function CafePosPage() {
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [restaurantName, setRestaurantName] = useState("");
   const [fssai, setFssai] = useState("");
+  const [gstin, setGstin] = useState("");
+  const [applyGst, setApplyGst] = useState(true);
   const [orderPreferences, setOrderPreferences] = useState([]);
   const [showPresetSuggestions, setShowPresetSuggestions] = useState(false);
 
@@ -131,6 +133,8 @@ export default function CafePosPage() {
     getSettings().then((s: any) => {
       setRestaurantName(s.restaurant?.name ?? "");
       setFssai(s.invoice?.fssai ?? "");
+      setGstin(s.tax?.gstin ?? "");
+      setApplyGst(s.tax?.applyGst !== false);
       setOrderPreferences(s.orderPreferences ?? []);
     });
   }, []);
@@ -210,15 +214,14 @@ export default function CafePosPage() {
   const subtotal = useMemo(() => cart.reduce((s, l) => s + lineTotal(l), 0), [cart]);
   const discountAmount = Math.round((subtotal * discountPercent) / 100);
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = useMemo(
-    () =>
-      cart.reduce((sum, l) => {
-        const lineAmount = lineTotal(l);
-        const lineTaxable = lineAmount - Math.round((lineAmount * discountPercent) / 100);
-        return sum + Math.round((lineTaxable * (l.tax ?? 0)) / 100);
-      }, 0),
-    [cart, discountPercent],
-  );
+  const taxAmount = useMemo(() => {
+    if (!applyGst) return 0;
+    return cart.reduce((sum, l) => {
+      const lineAmount = lineTotal(l);
+      const lineTaxable = lineAmount - Math.round((lineAmount * discountPercent) / 100);
+      return sum + Math.round((lineTaxable * (l.tax ?? 0)) / 100);
+    }, 0);
+  }, [cart, discountPercent, applyGst]);
   const total = taxableAmount + taxAmount;
   const effectiveTaxPercent = taxableAmount > 0 ? Math.round((taxAmount / taxableAmount) * 1000) / 10 : 0;
 
@@ -276,6 +279,7 @@ export default function CafePosPage() {
         buildInvoiceHtml({
           restaurantName,
           fssai,
+          gstin: applyGst ? gstin : "",
           invoiceNumber: `Bill-${Date.now().toString().slice(-6)}`,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,
@@ -343,6 +347,7 @@ export default function CafePosPage() {
         buildInvoiceHtml({
           restaurantName,
           fssai,
+          gstin: applyGst ? gstin : "",
           invoiceNumber: invoice.invoiceNumber,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,
@@ -385,6 +390,7 @@ export default function CafePosPage() {
         buildInvoiceHtml({
           restaurantName,
           fssai,
+          gstin: applyGst ? gstin : "",
           invoiceNumber: invoice.invoiceNumber,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,
@@ -846,10 +852,12 @@ export default function CafePosPage() {
                 <span>{t("pos.discount")}</span>
                 <span className="tabular-nums">-{formatCurrency(discountAmount)}</span>
               </div>
-              <div className="flex justify-between text-(--color-text-muted)">
-                <span>{effectiveTaxPercent > 0 ? `Tax (${effectiveTaxPercent}%)` : "Tax"}</span>
-                <span className="tabular-nums">{formatCurrency(taxAmount)}</span>
-              </div>
+              {taxAmount > 0 && (
+                <div className="flex justify-between text-(--color-text-muted)">
+                  <span>{`Tax (${effectiveTaxPercent}%)`}</span>
+                  <span className="tabular-nums">{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
                 <span className="tabular-nums">{formatCurrency(total)}</span>

@@ -23,6 +23,7 @@ interface KotReceipt {
 interface InvoiceReceipt {
   restaurantName?: string;
   fssai?: string;
+  gstin?: string;
   invoiceNumber: string;
   orderNumber?: string;
   customer?: string;
@@ -99,6 +100,7 @@ export function buildInvoiceHtml(r: InvoiceReceipt) {
   return wrapDocument(r.invoiceNumber, `
     <h1>${escapeHtml(r.restaurantName ?? "Order Dashboard")}</h1>
     ${r.fssai ? `<div class="meta">FSSAI Lic. No. ${escapeHtml(r.fssai)}</div>` : ""}
+    ${r.gstin ? `<div class="meta">GSTIN: ${escapeHtml(r.gstin)}</div>` : ""}
     <div class="meta">Invoice ${escapeHtml(r.invoiceNumber)}${r.orderNumber ? ` &middot; ${escapeHtml(r.orderNumber)}` : ""}</div>
     ${r.customer ? `<div class="meta">${escapeHtml(r.customer)}</div>` : ""}
     <div class="meta">${new Date().toLocaleString()}</div>
@@ -154,6 +156,10 @@ export async function downloadInvoicePdf(r: InvoiceReceipt, filename: string) {
   doc.setFontSize(9);
   if (r.fssai) {
     doc.text(`FSSAI Lic. No. ${r.fssai}`, 113.5, y, { align: "center" });
+    y += 12;
+  }
+  if (r.gstin) {
+    doc.text(`GSTIN: ${r.gstin}`, 113.5, y, { align: "center" });
     y += 12;
   }
   const meta = `Invoice ${r.invoiceNumber}${r.orderNumber ? ` · ${r.orderNumber}` : ""}`;

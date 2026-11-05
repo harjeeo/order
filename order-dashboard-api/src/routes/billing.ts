@@ -157,6 +157,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
       ]);
       const restaurant = (settings?.restaurant as any) ?? {};
       const invoiceSettings = (settings?.invoice as any) ?? {};
+      const taxSettings = (settings?.tax as any) ?? {};
       const cafeName = restaurant.name || tenant?.name || "";
 
       sendWhatsAppBill(tenantId, customer.phone, {
@@ -167,6 +168,7 @@ billingRouter.post("/orders/:orderId/pay", async (req, res) => {
         bill: {
           restaurantName: cafeName,
           fssai: invoiceSettings.fssai || undefined,
+          gstin: taxSettings.applyGst !== false ? taxSettings.gstin || undefined : undefined,
           invoiceNumber: invoice.invoiceNumber,
           orderNumber: order.orderNumber,
           customer: customer.name || undefined,

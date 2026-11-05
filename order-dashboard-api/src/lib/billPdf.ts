@@ -8,6 +8,7 @@ import PDFDocument from "pdfkit";
 export interface BillPdfInput {
   restaurantName: string;
   fssai?: string;
+  gstin?: string;
   invoiceNumber: string;
   orderNumber?: string;
   customer?: string;
@@ -35,7 +36,7 @@ export async function buildBillPdf(r: BillPdfInput): Promise<Buffer> {
   const totalsRowCount =
     (r.subtotal != null ? 1 : 0) + (r.discountAmount ? 1 : 0) + (r.serviceChargeAmount ? 1 : 0) + (r.taxAmount != null ? 1 : 0) + 1 + (r.method ? 1 : 0);
   const estimatedHeight =
-    120 + // header block (name/fssai/invoice/customer/date)
+    (r.gstin ? 132 : 120) + // header block (name/fssai/gstin/invoice/customer/date)
     (r.items.length ? r.items.reduce((sum, i) => sum + (i.name.length > 24 ? 26 : 13), 20) : 0) +
     totalsRowCount * 13 +
     40; // footer
@@ -68,6 +69,10 @@ export async function buildBillPdf(r: BillPdfInput): Promise<Buffer> {
   doc.moveDown(0.3);
   if (r.fssai) {
     center(`FSSAI Lic. No. ${r.fssai}`, 9);
+    doc.moveDown(0.2);
+  }
+  if (r.gstin) {
+    center(`GSTIN: ${r.gstin}`, 9);
     doc.moveDown(0.2);
   }
   center(`Invoice ${r.invoiceNumber}${r.orderNumber ? ` · ${r.orderNumber}` : ""}`, 9);

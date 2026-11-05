@@ -11,7 +11,16 @@ import {
   Delete02Icon,
   Invoice01Icon,
 } from "hugeicons-react";
-import { getOrders, updateOrderStatus, cancelOrder, refundOrder, updateOrder, printInvoice, reprintKot } from "../lib/api";
+import {
+  getOrders,
+  updateOrderStatus,
+  cancelOrder,
+  refundOrder,
+  updateOrder,
+  printInvoice,
+  reprintKot,
+  getMenuItems,
+} from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import Pagination from "../components/Pagination";
 import { useTranslation } from "../lib/i18n";
@@ -49,6 +58,8 @@ export default function CafeOrdersPage() {
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [menuItems, setMenuItems] = useState([]);
+  const [addItemId, setAddItemId] = useState("");
   const [toast, setToast] = useState("");
 
   async function refresh() {
@@ -131,6 +142,26 @@ export default function CafeOrdersPage() {
       amount: String(order.amount),
       items: order.items.map((i) => ({ ...i })),
     });
+    setAddItemId("");
+    if (menuItems.length === 0) {
+      getMenuItems().then(setMenuItems);
+    }
+  }
+
+  function addEditItem() {
+    const item = menuItems.find((m) => m._id === addItemId);
+    if (!item) return;
+    setEditForm((f) => {
+      const idx = f.items.findIndex((line) => line.name === item.name);
+      if (idx !== -1) {
+        return {
+          ...f,
+          items: f.items.map((line, i) => (i === idx ? { ...line, qty: line.qty + 1 } : line)),
+        };
+      }
+      return { ...f, items: [...f.items, { name: item.name, qty: 1, unitPrice: item.price, notes: "" }] };
+    });
+    setAddItemId("");
   }
 
   function updateEditQty(idx, delta) {
@@ -447,6 +478,28 @@ export default function CafeOrdersPage() {
                 {editForm.items.length === 0 && (
                   <div className="text-xs text-(--color-text-muted)">No items left in this order.</div>
                 )}
+              </div>
+              <div className="mt-2 flex items-center gap-1.5">
+                <select
+                  value={addItemId}
+                  onChange={(e) => setAddItemId(e.target.value)}
+                  className="flex-1 rounded-md border border-(--color-border) bg-transparent p-1.5 text-xs outline-none focus:border-(--color-accent)"
+                >
+                  <option value="">Add an item…</option>
+                  {menuItems.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.name} — {formatCurrency(item.price)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={addEditItem}
+                  disabled={!addItemId}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-(--color-border) text-(--color-text-muted) transition-colors hover:bg-black/5 hover:text-(--color-text) disabled:pointer-events-none disabled:opacity-30 dark:hover:bg-white/10"
+                >
+                  <Add01Icon size={14} strokeWidth={1.8} />
+                </button>
               </div>
             </div>
 
