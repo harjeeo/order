@@ -60,6 +60,9 @@ export default function CafeOrdersPage() {
   const [editForm, setEditForm] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [addItemId, setAddItemId] = useState("");
+  const [configuringItem, setConfiguringItem] = useState(null);
+  const [configVariantIdx, setConfigVariantIdx] = useState(0);
+  const [configAddons, setConfigAddons] = useState([]);
   const [toast, setToast] = useState("");
 
   async function refresh() {
@@ -143,36 +146,69 @@ export default function CafeOrdersPage() {
       items: order.items.map((i) => ({ ...i })),
     });
     setAddItemId("");
+    setConfiguringItem(null);
     if (menuItems.length === 0) {
       getMenuItems().then(setMenuItems);
     }
   }
 
+  function recomputeAmount(items) {
+    return items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+  }
+
+  function addLineToOrder(name, unitPrice) {
+    setEditForm((f) => {
+      const idx = f.items.findIndex((line) => line.name === name);
+      const items =
+        idx !== -1
+          ? f.items.map((line, i) => (i === idx ? { ...line, qty: line.qty + 1 } : line))
+          : [...f.items, { name, qty: 1, unitPrice, notes: "" }];
+      return { ...f, items, amount: String(recomputeAmount(items)) };
+    });
+  }
+
   function addEditItem() {
     const item = menuItems.find((m) => m._id === addItemId);
     if (!item) return;
-    setEditForm((f) => {
-      const idx = f.items.findIndex((line) => line.name === item.name);
-      if (idx !== -1) {
-        return {
-          ...f,
-          items: f.items.map((line, i) => (i === idx ? { ...line, qty: line.qty + 1 } : line)),
-        };
-      }
-      return { ...f, items: [...f.items, { name: item.name, qty: 1, unitPrice: item.price, notes: "" }] };
-    });
     setAddItemId("");
+    if (item.variants.length > 0 || item.addons.length > 0) {
+      setConfiguringItem(item);
+      setConfigVariantIdx(0);
+      setConfigAddons([]);
+      return;
+    }
+    addLineToOrder(item.name, item.price);
+  }
+
+  function toggleConfigAddon(addon) {
+    setConfigAddons((prev) =>
+      prev.some((a) => a.name === addon.name) ? prev.filter((a) => a.name !== addon.name) : [...prev, addon]
+    );
+  }
+
+  function confirmConfiguredItem() {
+    if (!configuringItem) return;
+    const variant = configuringItem.variants[configVariantIdx] ?? null;
+    const unitPrice = (variant ? variant.price : configuringItem.price) + configAddons.reduce((s, a) => s + a.price, 0);
+    const name = `${configuringItem.name}${variant ? ` (${variant.name})` : ""}${
+      configAddons.length ? ` (+${configAddons.map((a) => a.name).join(", ")})` : ""
+    }`;
+    addLineToOrder(name, unitPrice);
+    setConfiguringItem(null);
   }
 
   function updateEditQty(idx, delta) {
-    setEditForm((f) => ({
-      ...f,
-      items: f.items.map((item, i) => (i === idx ? { ...item, qty: Math.max(1, item.qty + delta) } : item)),
-    }));
+    setEditForm((f) => {
+      const items = f.items.map((item, i) => (i === idx ? { ...item, qty: Math.max(1, item.qty + delta) } : item));
+      return { ...f, items, amount: String(recomputeAmount(items)) };
+    });
   }
 
   function removeEditItem(idx) {
-    setEditForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
+    setEditForm((f) => {
+      const items = f.items.filter((_, i) => i !== idx);
+      return { ...f, items, amount: String(recomputeAmount(items)) };
+    });
   }
 
   async function handleSaveEdit() {
@@ -501,10 +537,63 @@ export default function CafeOrdersPage() {
                   <Add01Icon size={14} strokeWidth={1.8} />
                 </button>
               </div>
+
+              {configuringItem && (
+                <div className="mt-2 flex flex-col gap-2 rounded-md border border-(--color-border) p-2.5">
+                  <div className="text-xs font-medium">{configuringItem.name}</div>
+                  {configuringItem.variants.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] text-(--color-text-muted)">Variant</span>
+                      <select
+                        value={configVariantIdx}
+                        onChange={(e) => setConfigVariantIdx(Number(e.target.value))}
+                        className="rounded-md border border-(--color-border) bg-transparent p-1.5 text-xs outline-none focus:border-(--color-accent)"
+                      >
+                        {configuringItem.variants.map((v, i) => (
+                          <option key={v.name} value={i}>
+                            {v.name} — {formatCurrency(v.price)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {configuringItem.addons.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] text-(--color-text-muted)">Add-ons</span>
+                      {configuringItem.addons.map((addon) => (
+                        <label key={addon.name} className="flex items-center gap-1.5 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={configAddons.some((a) => a.name === addon.name)}
+                            onChange={() => toggleConfigAddon(addon)}
+                          />
+                          {addon.name} (+{formatCurrency(addon.price)})
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={confirmConfiguredItem}
+                      className="flex-1 rounded-md bg-(--color-accent) py-1.5 text-xs font-medium text-white"
+                    >
+                      Add to order
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfiguringItem(null)}
+                      className="rounded-md border border-(--color-border) px-2.5 py-1.5 text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <label className="mt-4 flex flex-col gap-1">
-              <span className="text-xs text-(--color-text-muted)">Amount (₹)</span>
+              <span className="text-xs text-(--color-text-muted)">Amount (₹) — auto-calculated from items, editable</span>
               <input
                 type="number"
                 value={editForm.amount}
