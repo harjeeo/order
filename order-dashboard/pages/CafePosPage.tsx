@@ -108,6 +108,7 @@ export default function CafePosPage() {
   const [fssai, setFssai] = useState("");
   const [gstin, setGstin] = useState("");
   const [applyGst, setApplyGst] = useState(true);
+  const [defaultTaxPercent, setDefaultTaxPercent] = useState(5);
   const [orderPreferences, setOrderPreferences] = useState([]);
   const [showPresetSuggestions, setShowPresetSuggestions] = useState(false);
 
@@ -141,6 +142,14 @@ export default function CafePosPage() {
       setFssai(s.invoice?.fssai ?? "");
       setGstin(s.tax?.gstin ?? "");
       setApplyGst(s.tax?.applyGst !== false);
+      const { cgstPercent, sgstPercent, igstPercent } = s.tax ?? {};
+      const configured = cgstPercent != null || sgstPercent != null || igstPercent != null;
+      // CGST+SGST (intra-state) and IGST (inter-state) are alternatives, not
+      // additive — a business fills in one or the other, never both at
+      // once, so summing all three would double the rate whenever both
+      // happen to be set (e.g. leftover demo data).
+      const intraState = (cgstPercent ?? 0) + (sgstPercent ?? 0);
+      setDefaultTaxPercent(configured ? (intraState > 0 ? intraState : igstPercent ?? 0) : 5);
       setOrderPreferences(s.orderPreferences ?? []);
     });
     getOffers().then(setOffers);
@@ -250,9 +259,13 @@ export default function CafePosPage() {
     return cart.reduce((sum, l) => {
       const lineAmount = lineTotal(l);
       const lineTaxable = lineAmount - Math.round((lineAmount * discountPercent) / 100);
-      return sum + Math.round((lineTaxable * (l.tax ?? 0)) / 100);
+      // An item with no tax % of its own (left blank/0 in Menu Management)
+      // falls back to Settings -> GST/Tax's CGST+SGST(+IGST) rate instead
+      // of being treated as genuinely tax-exempt.
+      const rate = l.tax || defaultTaxPercent;
+      return sum + Math.round((lineTaxable * rate) / 100);
     }, 0);
-  }, [cart, discountPercent, applyGst]);
+  }, [cart, discountPercent, applyGst, defaultTaxPercent]);
   const eligibleOfferDiscounts = useMemo(() => detectEligibleDiscounts(cart, offers), [cart, offers]);
   const appliedOfferDiscounts = useMemo(
     () => eligibleOfferDiscounts.filter((d) => !excludedOfferIds.has(d.offer._id)),

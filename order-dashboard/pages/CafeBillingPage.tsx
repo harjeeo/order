@@ -69,7 +69,12 @@ export default function CafeBillingPage() {
       setApplyGst(s.tax?.applyGst !== false);
       const { cgstPercent, sgstPercent, igstPercent } = s.tax ?? {};
       const configured = cgstPercent != null || sgstPercent != null || igstPercent != null;
-      setTaxPercent(configured ? (cgstPercent ?? 0) + (sgstPercent ?? 0) + (igstPercent ?? 0) : 5);
+      // CGST+SGST (intra-state) and IGST (inter-state) are alternatives, not
+      // additive — a business fills in one or the other, never both at
+      // once, so summing all three would double the rate whenever both
+      // happen to be set (e.g. leftover demo data).
+      const intraState = (cgstPercent ?? 0) + (sgstPercent ?? 0);
+      setTaxPercent(configured ? (intraState > 0 ? intraState : igstPercent ?? 0) : 5);
     });
   }, []);
   const [toast, setToast] = useState("");
