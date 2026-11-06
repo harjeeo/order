@@ -227,7 +227,8 @@ export default function CafeOrdersPage() {
   }
 
   return (
-    <div className="px-8 py-6">
+    <div className="flex h-full">
+      <div className="flex-1 overflow-y-auto px-8 py-6">
       <h1 className="flex items-center gap-2 text-2xl font-semibold">
         <Invoice01Icon size={20} strokeWidth={1.8} />
         {t("orders.title")}
@@ -430,18 +431,12 @@ export default function CafeOrdersPage() {
           </div>
         </div>
       )}
+      </div>
 
       {editing && editForm && (
-        <div
-          className="fixed inset-0 z-10 flex items-center justify-center bg-black/30 p-4"
-          onClick={() => setEditing(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-xl border border-(--color-border) bg-(--color-canvas) p-5"
-          >
+        <div className="w-96 shrink-0 overflow-y-auto border-l border-(--color-border) p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Edit {editing.orderNumber}</h2>
+              <h2 className="text-sm font-semibold">Edit {editing.orderNumber}</h2>
               <button
                 type="button"
                 onClick={() => setEditing(null)}
@@ -609,7 +604,6 @@ export default function CafeOrdersPage() {
             >
               Save Changes
             </button>
-          </div>
         </div>
       )}
     </div>
