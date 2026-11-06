@@ -10,6 +10,9 @@ export interface Session {
 
 const STORAGE_KEY = "order-dashboard-session";
 const IMPERSONATION_KEY = "order-dashboard-impersonation";
+// Mirrors api.ts's OUTLET_STORAGE_KEY (duplicated, not imported, to avoid a
+// circular import — api.ts imports getToken/logout from this module).
+const OUTLET_STORAGE_KEY = "order-dashboard-outlet";
 
 interface ImpersonationState {
   originalSession: Session;
@@ -32,11 +35,17 @@ export function getToken(): string | null {
 
 export function setSession(session: Session) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  // A previous session's chosen outlet belongs to a different tenant (or no
+  // tenant, for a Super Admin) — carrying it over made menu/orders/tables
+  // pages come up blank until the user manually re-picked an outlet, since
+  // the stale outlet id doesn't belong to the new tenant.
+  localStorage.removeItem(OUTLET_STORAGE_KEY);
 }
 
 export function logout() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(IMPERSONATION_KEY);
+  localStorage.removeItem(OUTLET_STORAGE_KEY);
 }
 
 export function homePathForRole(role: Role) {
