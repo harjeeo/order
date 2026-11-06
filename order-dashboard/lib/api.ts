@@ -1161,6 +1161,49 @@ export async function validateCoupon(code: string, subtotal: number) {
   return post("/coupons/validate", { code, subtotal });
 }
 
+// --- Offers & Combos --------------------------------------------------------
+
+function mapOffer(o: any) {
+  return {
+    _id: o.id,
+    name: o.name,
+    type: o.type,
+    active: o.active,
+    triggerCategory: o.triggerCategory,
+    triggerItemId: o.triggerItemId,
+    minTriggerPrice: o.minTriggerPrice,
+    buyQty: o.buyQty,
+    freeQty: o.freeQty,
+    freeItemId: o.freeItemId,
+    comboItemIds: o.comboItemIds ?? [],
+    comboPrice: o.comboPrice,
+  };
+}
+
+export async function getOffers() {
+  const offers = await get("/offers");
+  return offers.map(mapOffer);
+}
+
+export async function createOffer(data: any) {
+  const offer = await post("/offers", data);
+  return mapOffer(offer);
+}
+
+export async function updateOffer(id: string, data: any) {
+  const offer = await patch(`/offers/${id}`, data);
+  return mapOffer(offer);
+}
+
+export async function setOfferActive(id: string, active: boolean) {
+  const offer = await patch(`/offers/${id}`, { active });
+  return mapOffer(offer);
+}
+
+export async function deleteOffer(id: string) {
+  return del(`/offers/${id}`);
+}
+
 // --- Public QR ordering (no auth) --------------------------------------
 // Uses fetch() directly rather than request()/get() since those attach
 // whatever staff auth token happens to be in this browser, which has

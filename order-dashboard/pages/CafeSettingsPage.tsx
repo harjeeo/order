@@ -11,6 +11,8 @@ import {
   CheckmarkCircle02Icon,
   Building02Icon,
   CouponPercentIcon,
+  GiftIcon,
+  Delete02Icon,
   LanguageCircleIcon,
   Sun03Icon,
   Moon02Icon,
@@ -33,6 +35,12 @@ import {
   getCoupons,
   createCoupon,
   setCouponActive,
+  getOffers,
+  createOffer,
+  setOfferActive,
+  deleteOffer,
+  getMenuCategories,
+  getMenuItems,
   getTwoFactorStatus,
   startTwoFactorSetup,
   enableTwoFactor,
@@ -51,6 +59,7 @@ const TABS = [
   { key: "printer", label: "Printer", icon: PrinterIcon },
   { key: "paymentMethods", label: "Payment Methods", icon: CreditCardIcon },
   { key: "coupons", label: "Coupons", icon: CouponPercentIcon },
+  { key: "offers", label: "Offers & Combos", icon: GiftIcon },
   { key: "outlets", label: "Outlets (Pro)", icon: Building02Icon },
   { key: "language", label: "Language", icon: LanguageCircleIcon },
   { key: "account", label: "Change Password", icon: SquareLock02Icon },
@@ -239,6 +248,137 @@ export default function CafeSettingsPage() {
     refreshCoupons();
   }
 
+  const [offers, setOffers] = useState([]);
+  const [offerCategories, setOfferCategories] = useState([]);
+  const [offerItems, setOfferItems] = useState([]);
+  const [newOfferName, setNewOfferName] = useState("");
+  const [newOfferType, setNewOfferType] = useState("bogo");
+  const [newOfferTriggerMode, setNewOfferTriggerMode] = useState("category"); // "category" | "item"
+  const [newOfferTriggerCategory, setNewOfferTriggerCategory] = useState("");
+  const [newOfferTriggerItemId, setNewOfferTriggerItemId] = useState("");
+  const [newOfferMinTriggerPrice, setNewOfferMinTriggerPrice] = useState("");
+  const [newOfferBuyQty, setNewOfferBuyQty] = useState("1");
+  const [newOfferFreeQty, setNewOfferFreeQty] = useState("1");
+  const [newOfferFreeItemId, setNewOfferFreeItemId] = useState("");
+  const [newOfferComboItemA, setNewOfferComboItemA] = useState("");
+  const [newOfferComboItemB, setNewOfferComboItemB] = useState("");
+  const [newOfferComboPrice, setNewOfferComboPrice] = useState("");
+  const [offerError, setOfferError] = useState("");
+
+  async function refreshOffers() {
+    setOffers(await getOffers());
+  }
+
+  useEffect(() => {
+    if (tab !== "offers") return;
+    refreshOffers();
+    getMenuCategories().then((cats) => setOfferCategories(cats.filter((c) => c !== "All")));
+    getMenuItems().then(setOfferItems);
+  }, [tab]);
+
+  function resetNewOfferForm() {
+    setNewOfferName("");
+    setNewOfferTriggerCategory("");
+    setNewOfferTriggerItemId("");
+    setNewOfferMinTriggerPrice("");
+    setNewOfferBuyQty("1");
+    setNewOfferFreeQty("1");
+    setNewOfferFreeItemId("");
+    setNewOfferComboItemA("");
+    setNewOfferComboItemB("");
+    setNewOfferComboPrice("");
+  }
+
+  async function handleAddOffer() {
+    setOfferError("");
+    if (!newOfferName.trim()) {
+      setOfferError("Give this offer a name.");
+      return;
+    }
+    const payload = { name: newOfferName.trim(), type: newOfferType };
+    if (newOfferType === "bogo" || newOfferType === "threshold_freebie") {
+      if (newOfferTriggerMode === "category") {
+        if (!newOfferTriggerCategory) {
+          setOfferError("Pick a category.");
+          return;
+        }
+        Object.assign(payload, {
+          triggerCategory: newOfferTriggerCategory,
+          minTriggerPrice: newOfferMinTriggerPrice ? Number(newOfferMinTriggerPrice) : null,
+        });
+      } else {
+        if (!newOfferTriggerItemId) {
+          setOfferError("Pick an item.");
+          return;
+        }
+        Object.assign(payload, { triggerItemId: newOfferTriggerItemId });
+      }
+    }
+    if (newOfferType === "bogo") {
+      if (!newOfferBuyQty || !newOfferFreeQty) {
+        setOfferError("Enter the buy and free quantities.");
+        return;
+      }
+      Object.assign(payload, { buyQty: Number(newOfferBuyQty), freeQty: Number(newOfferFreeQty) });
+    }
+    if (newOfferType === "threshold_freebie") {
+      if (!newOfferFreeItemId) {
+        setOfferError("Pick the item given away free.");
+        return;
+      }
+      Object.assign(payload, { freeItemId: newOfferFreeItemId });
+    }
+    if (newOfferType === "combo") {
+      if (!newOfferComboItemA || !newOfferComboItemB || newOfferComboItemA === newOfferComboItemB) {
+        setOfferError("Pick two different items for the combo.");
+        return;
+      }
+      if (!newOfferComboPrice) {
+        setOfferError("Enter the combo's fixed price.");
+        return;
+      }
+      Object.assign(payload, {
+        comboItemIds: [newOfferComboItemA, newOfferComboItemB],
+        comboPrice: Number(newOfferComboPrice),
+      });
+    }
+    try {
+      await createOffer(payload);
+      resetNewOfferForm();
+      refreshOffers();
+    } catch (err) {
+      setOfferError(err instanceof Error ? err.message : "Could not create offer");
+    }
+  }
+
+  async function handleToggleOffer(offer) {
+    await setOfferActive(offer._id, !offer.active);
+    refreshOffers();
+  }
+
+  async function handleDeleteOffer(offer) {
+    await deleteOffer(offer._id);
+    refreshOffers();
+  }
+
+  function offerItemName(id) {
+    return offerItems.find((i) => i._id === id)?.name ?? "Unknown item";
+  }
+
+  function describeOffer(offer) {
+    if (offer.type === "bogo") {
+      const trigger = offer.triggerCategory ? `any ${offer.triggerCategory}` : offerItemName(offer.triggerItemId);
+      return `Buy ${offer.buyQty} ${trigger} → ${offer.freeQty} free`;
+    }
+    if (offer.type === "threshold_freebie") {
+      const trigger = offer.triggerCategory
+        ? `${offer.triggerCategory}${offer.minTriggerPrice ? ` ≥ ₹${offer.minTriggerPrice}` : ""}`
+        : offerItemName(offer.triggerItemId);
+      return `Buy ${trigger} → free ${offerItemName(offer.freeItemId)}`;
+    }
+    return `${offer.comboItemIds.map(offerItemName).join(" + ")} for ₹${offer.comboPrice}`;
+  }
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -319,6 +459,7 @@ export default function CafeSettingsPage() {
     tab !== "account" &&
     tab !== "outlets" &&
     tab !== "coupons" &&
+    tab !== "offers" &&
     tab !== "orderPreferences" &&
     tab !== "language" &&
     !draft
@@ -736,6 +877,232 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
+          {tab === "offers" && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-(--color-text-muted)">
+                Automatic offers the POS detects on its own while building an order — "Buy 1 Get 1 Free", "buy this,
+                get that free", or a fixed-price combo. Staff don't need a code; eligible offers just show up in the
+                cart.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {offers.map((o) => (
+                  <div
+                    key={o._id}
+                    className="flex items-center justify-between rounded-md border border-(--color-border) px-3 py-2"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">
+                        {o.name}
+                        {!o.active && (
+                          <span className="ml-1.5 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] text-(--color-text-muted) dark:bg-white/10">
+                            Inactive
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-(--color-text-muted)">{describeOffer(o)}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleOffer(o)}
+                        className="rounded-md border border-(--color-border) px-3 py-1 text-xs"
+                      >
+                        {o.active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOffer(o)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-(--color-text-muted) hover:bg-red-500/10 hover:text-red-500"
+                      >
+                        <Delete02Icon size={14} strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {offers.length === 0 && <p className="text-sm text-(--color-text-muted)">No offers yet.</p>}
+              </div>
+
+              <div className="rounded-md border border-(--color-border) p-3">
+                <div className="text-xs font-medium text-(--color-text-muted)">Create an offer</div>
+                {offerError && <p className="mt-1 text-xs text-red-500">{offerError}</p>}
+
+                <div className="mt-2 flex flex-wrap items-end gap-2">
+                  <Field label="Name">
+                    <input
+                      placeholder="Buy 1 Pizza Get 1 Free"
+                      value={newOfferName}
+                      onChange={(e) => setNewOfferName(e.target.value)}
+                      className={`${inputClass} w-56`}
+                    />
+                  </Field>
+                  <Field label="Type">
+                    <select
+                      value={newOfferType}
+                      onChange={(e) => setNewOfferType(e.target.value)}
+                      className={`${inputClass} w-44`}
+                    >
+                      <option value="bogo">Buy X Get Y Free</option>
+                      <option value="threshold_freebie">Buy this, get that free</option>
+                      <option value="combo">Fixed-price combo</option>
+                    </select>
+                  </Field>
+                </div>
+
+                {(newOfferType === "bogo" || newOfferType === "threshold_freebie") && (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <Field label="Trigger">
+                      <select
+                        value={newOfferTriggerMode}
+                        onChange={(e) => setNewOfferTriggerMode(e.target.value)}
+                        className={`${inputClass} w-36`}
+                      >
+                        <option value="category">Any item in a category</option>
+                        <option value="item">A specific item</option>
+                      </select>
+                    </Field>
+                    {newOfferTriggerMode === "category" ? (
+                      <>
+                        <Field label="Category">
+                          <select
+                            value={newOfferTriggerCategory}
+                            onChange={(e) => setNewOfferTriggerCategory(e.target.value)}
+                            className={`${inputClass} w-40`}
+                          >
+                            <option value="">Select…</option>
+                            {offerCategories.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        {newOfferType === "threshold_freebie" && (
+                          <Field label="Min. price (optional)">
+                            <input
+                              type="number"
+                              placeholder="e.g. 65"
+                              value={newOfferMinTriggerPrice}
+                              onChange={(e) => setNewOfferMinTriggerPrice(e.target.value)}
+                              className={`${inputClass} w-32`}
+                            />
+                          </Field>
+                        )}
+                      </>
+                    ) : (
+                      <Field label="Item">
+                        <select
+                          value={newOfferTriggerItemId}
+                          onChange={(e) => setNewOfferTriggerItemId(e.target.value)}
+                          className={`${inputClass} w-48`}
+                        >
+                          <option value="">Select…</option>
+                          {offerItems.map((i) => (
+                            <option key={i._id} value={i._id}>
+                              {i.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                  </div>
+                )}
+
+                {newOfferType === "bogo" && (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <Field label="Buy qty">
+                      <input
+                        type="number"
+                        min={1}
+                        value={newOfferBuyQty}
+                        onChange={(e) => setNewOfferBuyQty(e.target.value)}
+                        className={`${inputClass} w-20`}
+                      />
+                    </Field>
+                    <Field label="Free qty">
+                      <input
+                        type="number"
+                        min={1}
+                        value={newOfferFreeQty}
+                        onChange={(e) => setNewOfferFreeQty(e.target.value)}
+                        className={`${inputClass} w-20`}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                {newOfferType === "threshold_freebie" && (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <Field label="Free item">
+                      <select
+                        value={newOfferFreeItemId}
+                        onChange={(e) => setNewOfferFreeItemId(e.target.value)}
+                        className={`${inputClass} w-48`}
+                      >
+                        <option value="">Select…</option>
+                        {offerItems.map((i) => (
+                          <option key={i._id} value={i._id}>
+                            {i.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                )}
+
+                {newOfferType === "combo" && (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <Field label="Item A">
+                      <select
+                        value={newOfferComboItemA}
+                        onChange={(e) => setNewOfferComboItemA(e.target.value)}
+                        className={`${inputClass} w-44`}
+                      >
+                        <option value="">Select…</option>
+                        {offerItems.map((i) => (
+                          <option key={i._id} value={i._id}>
+                            {i.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Item B">
+                      <select
+                        value={newOfferComboItemB}
+                        onChange={(e) => setNewOfferComboItemB(e.target.value)}
+                        className={`${inputClass} w-44`}
+                      >
+                        <option value="">Select…</option>
+                        {offerItems.map((i) => (
+                          <option key={i._id} value={i._id}>
+                            {i.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Combo price (₹)">
+                      <input
+                        type="number"
+                        min={0}
+                        value={newOfferComboPrice}
+                        onChange={(e) => setNewOfferComboPrice(e.target.value)}
+                        className={`${inputClass} w-28`}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleAddOffer}
+                  className="mt-3 rounded-md bg-(--color-accent) px-3 py-2 text-xs font-medium text-white"
+                >
+                  Add Offer
+                </button>
+              </div>
+            </div>
+          )}
+
           {tab === "outlets" && (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-(--color-text-muted)">
@@ -953,7 +1320,7 @@ export default function CafeSettingsPage() {
             </div>
           )}
 
-          {tab !== "account" && tab !== "outlets" && tab !== "coupons" && tab !== "language" && (
+          {tab !== "account" && tab !== "outlets" && tab !== "coupons" && tab !== "offers" && tab !== "language" && (
             <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"

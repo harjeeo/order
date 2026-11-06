@@ -27,9 +27,11 @@ import {
   getSettings,
   completePayment,
   getCustomer,
+  getOffers,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import { useTranslation } from "../lib/i18n";
+import { detectEligibleDiscounts, detectFreebieSuggestions } from "../lib/offers";
 
 const ORDER_TYPES = [
   { key: "dine-in", labelKey: "pos.dineIn", icon: Store01Icon },
@@ -66,6 +68,9 @@ export default function CafePosPage() {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [allItemsById, setAllItemsById] = useState({});
+  const [offers, setOffers] = useState([]);
+  const [excludedOfferIds, setExcludedOfferIds] = useState(() => new Set());
 
   const [tables, setTables] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -138,6 +143,8 @@ export default function CafePosPage() {
       setApplyGst(s.tax?.applyGst !== false);
       setOrderPreferences(s.orderPreferences ?? []);
     });
+    getOffers().then(setOffers);
+    getMenuItems().then((all) => setAllItemsById(Object.fromEntries(all.map((i) => [i._id, i]))));
   }, []);
 
   useEffect(() => {
@@ -212,6 +219,7 @@ export default function CafePosPage() {
         id: `${item._id}-${Date.now()}`,
         itemId: item._id,
         name: variant ? `${item.name} (${variant.name})` : item.name,
+        category: item.category,
         unitPrice,
         qty,
         addons,
@@ -245,8 +253,54 @@ export default function CafePosPage() {
       return sum + Math.round((lineTaxable * (l.tax ?? 0)) / 100);
     }, 0);
   }, [cart, discountPercent, applyGst]);
-  const total = taxableAmount + taxAmount;
+  const eligibleOfferDiscounts = useMemo(() => detectEligibleDiscounts(cart, offers), [cart, offers]);
+  const appliedOfferDiscounts = useMemo(
+    () => eligibleOfferDiscounts.filter((d) => !excludedOfferIds.has(d.offer._id)),
+    [eligibleOfferDiscounts, excludedOfferIds],
+  );
+  const offerDiscountAmount = appliedOfferDiscounts.reduce((s, d) => s + d.discountAmount, 0);
+  const freebieSuggestions = useMemo(() => {
+    const eligible = detectFreebieSuggestions(cart, offers);
+    return eligible.filter((o) => !cart.some((l) => l.isFreeOffer && l.offerId === o._id));
+  }, [cart, offers]);
+  // Combined with the manual discount for anything persisted/printed (order
+  // record, invoice) so subtotal - discount + tax still reconciles to total;
+  // kept separate from `discountAmount` on screen so staff can see exactly
+  // how much came from a manual % vs. an automatic offer.
+  const combinedDiscountAmount = discountAmount + offerDiscountAmount;
+  const total = Math.max(0, taxableAmount + taxAmount - offerDiscountAmount);
   const effectiveTaxPercent = taxableAmount > 0 ? Math.round((taxAmount / taxableAmount) * 1000) / 10 : 0;
+
+  function toggleOfferExcluded(offerId) {
+    setExcludedOfferIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(offerId)) next.delete(offerId);
+      else next.add(offerId);
+      return next;
+    });
+  }
+
+  function addFreebieToCart(offer) {
+    const item = allItemsById[offer.freeItemId];
+    if (!item) return;
+    if (cart.some((l) => l.isFreeOffer && l.offerId === offer._id)) return;
+    setCart((prev) => [
+      ...prev,
+      {
+        id: `free-${offer._id}-${Date.now()}`,
+        itemId: item._id,
+        name: `${item.name} (Free — Offer)`,
+        category: item.category,
+        unitPrice: 0,
+        qty: 1,
+        addons: [],
+        notes: "",
+        tax: 0,
+        isFreeOffer: true,
+        offerId: offer._id,
+      },
+    ]);
+  }
 
   const loyaltyApplied = useLoyalty && selectedCustomer ? Math.min(selectedCustomer.loyaltyPoints, total) : 0;
   const walletApplied =
@@ -262,7 +316,7 @@ export default function CafePosPage() {
       items: cart,
       subtotal,
       discountPercent,
-      discountAmount,
+      discountAmount: combinedDiscountAmount,
       taxAmount,
       total,
       ...extra,
@@ -306,7 +360,7 @@ export default function CafePosPage() {
           invoiceNumber: `Bill-${Date.now().toString().slice(-6)}`,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,
-          discountAmount,
+          discountAmount: combinedDiscountAmount,
           taxAmount,
           total,
         })
@@ -357,7 +411,7 @@ export default function CafePosPage() {
       const created = await submitOrder(buildOrderPayload({ action: "save" }));
       const invoice = await completePayment(created._id, {
         subtotal,
-        discountAmount,
+        discountAmount: combinedDiscountAmount,
         serviceChargeAmount: 0,
         taxAmount,
         total,
@@ -374,7 +428,7 @@ export default function CafePosPage() {
           invoiceNumber: invoice.invoiceNumber,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,
-          discountAmount,
+          discountAmount: combinedDiscountAmount,
           taxAmount,
           total,
           method: settleMethod,
@@ -402,7 +456,7 @@ export default function CafePosPage() {
       const created = await submitOrder(buildOrderPayload({ action: "save", total: signedTotal }));
       const invoice = await completePayment(created._id, {
         subtotal,
-        discountAmount,
+        discountAmount: combinedDiscountAmount,
         serviceChargeAmount: 0,
         taxAmount,
         total: signedTotal,
@@ -417,7 +471,7 @@ export default function CafePosPage() {
           invoiceNumber: invoice.invoiceNumber,
           items: cart.map((line) => ({ name: line.name, qty: line.qty })),
           subtotal,
-          discountAmount,
+          discountAmount: combinedDiscountAmount,
           taxAmount,
           total: signedTotal,
           method,
@@ -827,6 +881,38 @@ export default function CafePosPage() {
               </div>
             </div>
 
+            {(eligibleOfferDiscounts.length > 0 || freebieSuggestions.length > 0) && (
+              <div className="mt-3 flex flex-col gap-1.5 rounded-md border border-(--color-accent)/30 bg-(--color-accent)/5 p-2.5 text-xs">
+                {eligibleOfferDiscounts.map((d) => (
+                  <label key={d.offer._id} className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={!excludedOfferIds.has(d.offer._id)}
+                        onChange={() => toggleOfferExcluded(d.offer._id)}
+                      />
+                      {d.description}
+                    </span>
+                    <span className="tabular-nums text-(--color-accent)">-{formatCurrency(d.discountAmount)}</span>
+                  </label>
+                ))}
+                {freebieSuggestions.map((o) => (
+                  <div key={o._id} className="flex items-center justify-between gap-2">
+                    <span>
+                      🎁 {o.name} — free {allItemsById[o.freeItemId]?.name ?? "item"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => addFreebieToCart(o)}
+                      className="shrink-0 rounded-md bg-(--color-accent) px-2 py-1 text-[11px] font-medium text-white"
+                    >
+                      Add free
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="mt-4">
               <textarea
                 value={orderNotes}
@@ -886,6 +972,12 @@ export default function CafePosPage() {
                 <span>{t("pos.discount")}</span>
                 <span className="tabular-nums">-{formatCurrency(discountAmount)}</span>
               </div>
+              {offerDiscountAmount > 0 && (
+                <div className="flex justify-between text-(--color-text-muted)">
+                  <span>Offers</span>
+                  <span className="tabular-nums">-{formatCurrency(offerDiscountAmount)}</span>
+                </div>
+              )}
               {taxAmount > 0 && (
                 <div className="flex justify-between text-(--color-text-muted)">
                   <span>{`Tax (${effectiveTaxPercent}%)`}</span>

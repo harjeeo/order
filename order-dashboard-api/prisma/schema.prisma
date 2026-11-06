@@ -45,6 +45,7 @@ model Tenant {
   customers   Customer[]
   orders      Order[]
   invoices    Invoice[]
+  offers      Offer[]
   ingredients Ingredient[]
   stockMoves  StockMovement[]
   recipes     RecipeIngredient[]
@@ -83,6 +84,7 @@ model Outlet {
   expenses     Expense[]
   dayEndClosings DayEndClosing[]
   cashMovements  CashMovement[]
+  offers         Offer[]
 
   @@index([tenantId])
 }
@@ -430,6 +432,51 @@ model Coupon {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+// --- Offers & Combos --------------------------------------------------------
+// Three shapes, picked by `type`:
+//  - bogo:              buy >= buyQty from triggerCategory (or exactly
+//                        triggerItemId) -> the freeQty cheapest qualifying
+//                        units are discounted off the bill. Nothing is added
+//                        to the cart — the kitchen still makes every unit
+//                        ordered, only the price changes.
+//  - threshold_freebie: having >= 1 of triggerItemId (or any item in
+//                        triggerCategory priced >= minTriggerPrice) in the
+//                        cart unlocks freeItemId. Unlike bogo, this needs an
+//                        actual KOT line (the kitchen has to make it), so the
+//                        POS adds it as a real ₹0 cart line rather than just
+//                        adjusting the bill total.
+//  - combo:              all of comboItemIds present (qty >= 1 each) bills
+//                        at comboPrice instead of their combined price.
+enum OfferType {
+  bogo
+  threshold_freebie
+  combo
+}
+
+model Offer {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outletId  String
+  outlet    Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  name      String
+  type      OfferType
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  triggerCategory   String?
+  triggerItemId     String?
+  minTriggerPrice   Int?
+  buyQty            Int?
+  freeQty           Int?
+  freeItemId        String?
+  comboItemIds      Json?
+  comboPrice        Int?
+
+  @@index([tenantId])
+  @@index([outletId])
 }
 
 // --- Inventory ------------------------------------------------------------
