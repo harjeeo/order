@@ -260,18 +260,27 @@ export default function CafePosPage() {
   const subtotal = useMemo(() => cart.reduce((s, l) => s + lineTotal(l), 0), [cart]);
   const discountAmount = Math.round((subtotal * discountPercent) / 100);
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = useMemo(() => {
-    if (!applyGst) return 0;
-    return cart.reduce((sum, l) => {
+  // Also tracks the nominal weighted rate (pre-rupee-rounding) alongside the
+  // tax rupee amount itself, so the "Tax (X%)" label can show the actual
+  // configured rate (e.g. "5%") instead of back-deriving a percentage from
+  // the rounded rupee figure — on a small cart that rounding alone can turn
+  // an exact 5% into something that reads back as "5.7%".
+  const { taxAmount, effectiveTaxPercent } = useMemo(() => {
+    if (!applyGst || taxableAmount <= 0) return { taxAmount: 0, effectiveTaxPercent: 0 };
+    let amount = 0;
+    let weightedRateSum = 0;
+    for (const l of cart) {
       const lineAmount = lineTotal(l);
       const lineTaxable = lineAmount - Math.round((lineAmount * discountPercent) / 100);
       // An item with no tax % of its own (left blank/0 in Menu Management)
       // falls back to Settings -> GST/Tax's CGST+SGST(+IGST) rate instead
       // of being treated as genuinely tax-exempt.
       const rate = l.tax || defaultTaxPercent;
-      return sum + Math.round((lineTaxable * rate) / 100);
-    }, 0);
-  }, [cart, discountPercent, applyGst, defaultTaxPercent]);
+      amount += Math.round((lineTaxable * rate) / 100);
+      weightedRateSum += lineTaxable * rate;
+    }
+    return { taxAmount: amount, effectiveTaxPercent: Math.round((weightedRateSum / taxableAmount) * 10) / 10 };
+  }, [cart, discountPercent, applyGst, defaultTaxPercent, taxableAmount]);
   const eligibleOfferDiscounts = useMemo(() => detectEligibleDiscounts(cart, offers), [cart, offers]);
   const appliedOfferDiscounts = useMemo(
     () => eligibleOfferDiscounts.filter((d) => !excludedOfferIds.has(d.offer._id)),
@@ -288,7 +297,6 @@ export default function CafePosPage() {
   // how much came from a manual % vs. an automatic offer.
   const combinedDiscountAmount = discountAmount + offerDiscountAmount;
   const total = Math.max(0, taxableAmount + taxAmount - offerDiscountAmount);
-  const effectiveTaxPercent = taxableAmount > 0 ? Math.round((taxAmount / taxableAmount) * 1000) / 10 : 0;
 
   function toggleOfferExcluded(offerId) {
     setExcludedOfferIds((prev) => {
