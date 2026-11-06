@@ -65,6 +65,7 @@ export default function CafePosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
 
   const [tables, setTables] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -140,7 +141,29 @@ export default function CafePosPage() {
   }, []);
 
   useEffect(() => {
-    getMenuItems({ category: activeCategory, search }).then(setItems);
+    // A category click fires a fresh request without cancelling any request
+    // already in flight (e.g. from the previous category, or the very
+    // first load after a refresh racing the outlet-switcher's own fetch).
+    // Without this guard, whichever response happens to land last wins —
+    // so an older, slower response could overwrite a newer one, making
+    // items seem to vanish or need a few repeat clicks to "stick".
+    let cancelled = false;
+    setItemsLoading(true);
+    getMenuItems({ category: activeCategory, search })
+      .then((data) => {
+        if (cancelled) return;
+        setItems(data);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setItemsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeCategory, search]);
 
   useEffect(() => {
@@ -469,39 +492,50 @@ export default function CafePosPage() {
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => (
-              <button
-                key={item._id}
-                type="button"
-                disabled={!item.available}
-                onClick={() => openConfigure(item)}
-                className={`flex gap-3 rounded-xl border p-3 text-left transition-colors ${
-                  item.available
-                    ? "border-(--color-border) hover:border-(--color-accent)"
-                    : "cursor-not-allowed border-(--color-border) opacity-50"
-                }`}
-              >
-                {isPhotoUrl(item.image) ? (
-                  <img src={item.image} alt={item.name} className="h-28 w-28 shrink-0 rounded-md object-cover" />
-                ) : (
-                  <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md bg-black/5 text-5xl dark:bg-white/10">
-                    {item.image}
-                  </span>
-                )}
-                <div className="flex min-w-0 flex-1 flex-col justify-center">
-                  <div className="truncate text-base font-medium">{item.name}</div>
-                  <div className="mt-1 text-xs text-(--color-text-muted)">
-                    {item.variants.length > 0
-                      ? `From ${formatCurrency(Math.min(...item.variants.map((v) => v.price)))}`
-                      : formatCurrency(item.price)}
+            {itemsLoading &&
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex animate-pulse gap-3 rounded-xl border border-(--color-border) p-3">
+                  <div className="h-28 w-28 shrink-0 rounded-md bg-black/5 dark:bg-white/10" />
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+                    <div className="h-4 w-3/4 rounded bg-black/5 dark:bg-white/10" />
+                    <div className="h-3 w-1/3 rounded bg-black/5 dark:bg-white/10" />
                   </div>
-                  {!item.available && (
-                    <div className="mt-1 text-[10px] font-medium text-red-500">Out of Stock</div>
-                  )}
                 </div>
-              </button>
-            ))}
-            {items.length === 0 && (
+              ))}
+            {!itemsLoading &&
+              items.map((item) => (
+                <button
+                  key={item._id}
+                  type="button"
+                  disabled={!item.available}
+                  onClick={() => openConfigure(item)}
+                  className={`flex gap-3 rounded-xl border p-3 text-left transition-colors ${
+                    item.available
+                      ? "border-(--color-border) hover:border-(--color-accent)"
+                      : "cursor-not-allowed border-(--color-border) opacity-50"
+                  }`}
+                >
+                  {isPhotoUrl(item.image) ? (
+                    <img src={item.image} alt={item.name} className="h-28 w-28 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md bg-black/5 text-5xl dark:bg-white/10">
+                      {item.image}
+                    </span>
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col justify-center">
+                    <div className="truncate text-base font-medium">{item.name}</div>
+                    <div className="mt-1 text-xs text-(--color-text-muted)">
+                      {item.variants.length > 0
+                        ? `From ${formatCurrency(Math.min(...item.variants.map((v) => v.price)))}`
+                        : formatCurrency(item.price)}
+                    </div>
+                    {!item.available && (
+                      <div className="mt-1 text-[10px] font-medium text-red-500">Out of Stock</div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            {!itemsLoading && items.length === 0 && (
               <div className="col-span-full py-8 text-center text-sm text-(--color-text-muted)">
                 No items found.
               </div>
