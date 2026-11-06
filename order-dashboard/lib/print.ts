@@ -31,9 +31,36 @@ interface InvoiceReceipt {
   subtotal?: number;
   discountAmount?: number;
   taxAmount?: number;
+  cgstPercent?: number;
+  sgstPercent?: number;
+  igstPercent?: number;
   serviceChargeAmount?: number;
   total: number;
   method?: string;
+}
+
+// Splits the already-computed taxAmount into CGST+SGST (intra-state) or
+// IGST (inter-state) lines for display, using whatever rates are
+// configured in Settings -> GST/Tax — those two are alternatives, so CGST
+// takes priority when both happen to be set. Falls back to one plain "Tax"
+// line when nothing is configured there (e.g. a tenant who never touched
+// that tab), so older callers that don't pass the percents still work.
+function taxBreakdownLines(r: InvoiceReceipt): { label: string; amount: number }[] {
+  if (!r.taxAmount) return [];
+  const cgst = r.cgstPercent ?? 0;
+  const sgst = r.sgstPercent ?? 0;
+  const igst = r.igstPercent ?? 0;
+
+  if (cgst > 0 || sgst > 0) {
+    const cgstAmount = cgst + sgst > 0 ? Math.round((r.taxAmount * cgst) / (cgst + sgst)) : 0;
+    const sgstAmount = r.taxAmount - cgstAmount;
+    const lines: { label: string; amount: number }[] = [];
+    if (cgst > 0) lines.push({ label: `CGST @ ${cgst}%`, amount: cgstAmount });
+    if (sgst > 0) lines.push({ label: `SGST @ ${sgst}%`, amount: sgstAmount });
+    return lines;
+  }
+  if (igst > 0) return [{ label: `IGST @ ${igst}%`, amount: r.taxAmount }];
+  return [{ label: "Tax", amount: r.taxAmount }];
 }
 
 function escapeHtml(value: string) {
@@ -110,7 +137,9 @@ export function buildInvoiceHtml(r: InvoiceReceipt) {
       ${r.subtotal != null ? `<tr><td>Subtotal</td><td class="right">${formatCurrency(r.subtotal)}</td></tr>` : ""}
       ${r.discountAmount ? `<tr><td>Discount</td><td class="right">-${formatCurrency(r.discountAmount)}</td></tr>` : ""}
       ${r.serviceChargeAmount ? `<tr><td>Service Charge</td><td class="right">${formatCurrency(r.serviceChargeAmount)}</td></tr>` : ""}
-      ${r.taxAmount != null ? `<tr><td>Tax</td><td class="right">${formatCurrency(r.taxAmount)}</td></tr>` : ""}
+      ${taxBreakdownLines(r)
+        .map((l) => `<tr><td>${escapeHtml(l.label)}</td><td class="right">${formatCurrency(l.amount)}</td></tr>`)
+        .join("")}
       <tr class="grand"><td>Total</td><td class="right">${formatCurrency(r.total)}</td></tr>
       ${r.method ? `<tr><td>Paid via</td><td class="right">${escapeHtml(r.method.toUpperCase())}</td></tr>` : ""}
     </table>
@@ -199,7 +228,7 @@ export async function downloadInvoicePdf(r: InvoiceReceipt, filename: string) {
   if (r.subtotal != null) line("Subtotal", formatCurrency(r.subtotal));
   if (r.discountAmount) line("Discount", `-${formatCurrency(r.discountAmount)}`);
   if (r.serviceChargeAmount) line("Service Charge", formatCurrency(r.serviceChargeAmount));
-  if (r.taxAmount != null) line("Tax", formatCurrency(r.taxAmount));
+  for (const l of taxBreakdownLines(r)) line(l.label, formatCurrency(l.amount));
   y += 3;
   line("Total", formatCurrency(r.total), true);
   if (r.method) line("Paid via", r.method.toUpperCase());

@@ -17,12 +17,37 @@ export interface BillPdfInput {
   discountAmount?: number;
   serviceChargeAmount?: number;
   taxAmount?: number;
+  cgstPercent?: number;
+  sgstPercent?: number;
+  igstPercent?: number;
   total: number;
   method?: string;
 }
 
 function formatCurrency(n: number) {
   return `Rs. ${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+// Mirrors order-dashboard/lib/print.ts's taxBreakdownLines — splits the
+// already-computed taxAmount into CGST+SGST (intra-state) or IGST
+// (inter-state) lines using the rates configured in Settings -> GST/Tax,
+// falling back to one plain "Tax" line when none are set.
+function taxBreakdownLines(r: BillPdfInput): { label: string; amount: number }[] {
+  if (!r.taxAmount) return [];
+  const cgst = r.cgstPercent ?? 0;
+  const sgst = r.sgstPercent ?? 0;
+  const igst = r.igstPercent ?? 0;
+
+  if (cgst > 0 || sgst > 0) {
+    const cgstAmount = cgst + sgst > 0 ? Math.round((r.taxAmount * cgst) / (cgst + sgst)) : 0;
+    const sgstAmount = r.taxAmount - cgstAmount;
+    const lines: { label: string; amount: number }[] = [];
+    if (cgst > 0) lines.push({ label: `CGST @ ${cgst}%`, amount: cgstAmount });
+    if (sgst > 0) lines.push({ label: `SGST @ ${sgst}%`, amount: sgstAmount });
+    return lines;
+  }
+  if (igst > 0) return [{ label: `IGST @ ${igst}%`, amount: r.taxAmount }];
+  return [{ label: "Tax", amount: r.taxAmount }];
 }
 
 export async function buildBillPdf(r: BillPdfInput): Promise<Buffer> {
@@ -33,8 +58,9 @@ export async function buildBillPdf(r: BillPdfInput): Promise<Buffer> {
   // content, so this estimates it from what's actually on the receipt
   // (long item names wrap to 2 lines at this width) instead of a fixed
   // size that leaves a half-empty page on a short bill.
+  const taxLines = taxBreakdownLines(r);
   const totalsRowCount =
-    (r.subtotal != null ? 1 : 0) + (r.discountAmount ? 1 : 0) + (r.serviceChargeAmount ? 1 : 0) + (r.taxAmount != null ? 1 : 0) + 1 + (r.method ? 1 : 0);
+    (r.subtotal != null ? 1 : 0) + (r.discountAmount ? 1 : 0) + (r.serviceChargeAmount ? 1 : 0) + taxLines.length + 1 + (r.method ? 1 : 0);
   const estimatedHeight =
     (r.gstin ? 132 : 120) + // header block (name/fssai/gstin/invoice/customer/date)
     (r.items.length ? r.items.reduce((sum, i) => sum + (i.name.length > 24 ? 26 : 13), 20) : 0) +
@@ -99,7 +125,7 @@ export async function buildBillPdf(r: BillPdfInput): Promise<Buffer> {
   if (r.subtotal != null) row("Subtotal", formatCurrency(r.subtotal));
   if (r.discountAmount) row("Discount", `-${formatCurrency(r.discountAmount)}`);
   if (r.serviceChargeAmount) row("Service Charge", formatCurrency(r.serviceChargeAmount));
-  if (r.taxAmount != null) row("Tax", formatCurrency(r.taxAmount));
+  for (const l of taxLines) row(l.label, formatCurrency(l.amount));
   doc.moveDown(0.2);
   row("Total", formatCurrency(r.total), true);
   if (r.method) row("Paid via", r.method.toUpperCase());

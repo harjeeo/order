@@ -58,6 +58,9 @@ export default function CafeBillingPage() {
   const [gstin, setGstin] = useState("");
   const [applyGst, setApplyGst] = useState(true);
   const [taxPercent, setTaxPercent] = useState(5);
+  const [cgstPercent, setCgstPercent] = useState(0);
+  const [sgstPercent, setSgstPercent] = useState(0);
+  const [igstPercent, setIgstPercent] = useState(0);
   const [upiQrDataUrl, setUpiQrDataUrl] = useState("");
 
   useEffect(() => {
@@ -67,14 +70,17 @@ export default function CafeBillingPage() {
       setFssai(s.invoice?.fssai ?? "");
       setGstin(s.tax?.gstin ?? "");
       setApplyGst(s.tax?.applyGst !== false);
-      const { cgstPercent, sgstPercent, igstPercent } = s.tax ?? {};
-      const configured = cgstPercent != null || sgstPercent != null || igstPercent != null;
+      const { cgstPercent: cgst, sgstPercent: sgst, igstPercent: igst } = s.tax ?? {};
+      setCgstPercent(cgst ?? 0);
+      setSgstPercent(sgst ?? 0);
+      setIgstPercent(igst ?? 0);
+      const configured = cgst != null || sgst != null || igst != null;
       // CGST+SGST (intra-state) and IGST (inter-state) are alternatives, not
       // additive — a business fills in one or the other, never both at
       // once, so summing all three would double the rate whenever both
       // happen to be set (e.g. leftover demo data).
-      const intraState = (cgstPercent ?? 0) + (sgstPercent ?? 0);
-      setTaxPercent(configured ? (intraState > 0 ? intraState : igstPercent ?? 0) : 5);
+      const intraState = (cgst ?? 0) + (sgst ?? 0);
+      setTaxPercent(configured ? (intraState > 0 ? intraState : igst ?? 0) : 5);
     });
   }, []);
   const [toast, setToast] = useState("");
@@ -239,6 +245,9 @@ export default function CafeBillingPage() {
       restaurantName,
       fssai,
       gstin: applyGst ? gstin : "",
+      cgstPercent: applyGst ? cgstPercent : undefined,
+      sgstPercent: applyGst ? sgstPercent : undefined,
+      igstPercent: applyGst ? igstPercent : undefined,
       invoiceNumber: invoice.invoiceNumber,
       orderNumber: invoice.orderNumber,
       customer: invoice.customer,
