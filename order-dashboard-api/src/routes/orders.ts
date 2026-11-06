@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
-import { requireAuth, requireTenant, requireOutlet } from "../middleware/auth";
+import { requireAuth, requireTenant, requireOutlet, requireRole } from "../middleware/auth";
 import { notifyOutlet } from "../socket";
 import { occupyTable } from "./tables";
 
@@ -176,4 +176,21 @@ ordersRouter.post("/:id/refund", async (req, res) => {
   const order = await prisma.order.update({ where: { id: existing.id }, data: { paymentStatus: "refunded" } });
   notifyOutlet(req.outletId!, "orders:changed");
   res.json(order);
+});
+
+// Permanent delete, any status — unlike /cancel (which just flips status and
+// keeps the record), this removes the order outright. Invoice has no
+// cascade from Order (unlike OrderItem/KitchenTicket), since deleting a
+// paid order is meant to also erase its invoice from reports/revenue
+// history, not just orphan it — so it's deleted explicitly first.
+// Restricted to managers+ since it permanently destroys revenue history.
+ordersRouter.delete("/:id", requireRole("ADMIN", "MANAGER", "SUPER_ADMIN"), async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const existing = await prisma.order.findFirst({ where: { id: req.params.id, tenantId } });
+  if (!existing) return res.status(404).json({ error: "Order not found" });
+
+  await prisma.invoice.deleteMany({ where: { orderId: existing.id } });
+  await prisma.order.delete({ where: { id: existing.id } });
+  notifyOutlet(req.outletId!, "orders:changed");
+  res.json({ ok: true });
 });

@@ -396,6 +396,10 @@ export async function refundOrder(orderId: string) {
   return mapOrder(order);
 }
 
+export async function deleteOrder(orderId: string) {
+  return del(`/orders/${orderId}`);
+}
+
 export async function printInvoice(orderId: string) {
   return logPrint("invoice", "print", orderId);
 }

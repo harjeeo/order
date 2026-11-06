@@ -20,6 +20,7 @@ import {
   printInvoice,
   reprintKot,
   getMenuItems,
+  deleteOrder,
 } from "../lib/api";
 import { buildKotHtml, buildInvoiceHtml, printHtml } from "../lib/print";
 import Pagination from "../components/Pagination";
@@ -64,6 +65,7 @@ export default function CafeOrdersPage() {
   const [configVariantIdx, setConfigVariantIdx] = useState(0);
   const [configAddons, setConfigAddons] = useState([]);
   const [toast, setToast] = useState("");
+  const [orderToDelete, setOrderToDelete] = useState(null);
 
   async function refresh() {
     const result = await getOrders({ search, status, orderType, page, pageSize: PAGE_SIZE });
@@ -108,6 +110,13 @@ export default function CafeOrdersPage() {
     await refundOrder(order._id);
     refresh();
     setToast(`${order.orderNumber} refunded.`);
+  }
+
+  async function handleDelete(order) {
+    await deleteOrder(order._id);
+    setOrderToDelete(null);
+    refresh();
+    setToast(`${order.orderNumber} deleted.`);
   }
 
   async function handlePrintInvoice(order) {
@@ -368,6 +377,14 @@ export default function CafeOrdersPage() {
                     >
                       <Cancel01Icon size={15} strokeWidth={1.8} />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setOrderToDelete(o)}
+                      title="Delete"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-red-500 transition-colors hover:bg-red-500/10"
+                    >
+                      <Delete02Icon size={15} strokeWidth={1.8} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -604,6 +621,40 @@ export default function CafeOrdersPage() {
             >
               Save Changes
             </button>
+        </div>
+      )}
+
+      {orderToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setOrderToDelete(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-(--color-canvas) p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold">Delete {orderToDelete.orderNumber}?</h3>
+            <p className="mt-1.5 text-sm text-(--color-text-muted)">
+              This permanently deletes the order and its invoice — it won't show up in Reports, Cash Flow or any
+              revenue history afterward. This can't be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOrderToDelete(null)}
+                className="rounded-md border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text) transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(orderToDelete)}
+                className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
