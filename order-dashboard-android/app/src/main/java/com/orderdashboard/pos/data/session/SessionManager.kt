@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.orderdashboard.pos.data.network.LoginUser
+import com.orderdashboard.pos.data.network.TokenHolder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -28,7 +29,7 @@ class SessionManager(private val context: Context) {
 
     val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { it[Keys.HAS_SESSION] == true }
 
-    suspend fun token(): String? = context.dataStore.data.first()[Keys.TOKEN]
+    suspend fun token(): String? = context.dataStore.data.first()[Keys.TOKEN].also { TokenHolder.token = it }
 
     suspend fun save(token: String, user: LoginUser) {
         context.dataStore.edit { prefs ->
@@ -38,9 +39,11 @@ class SessionManager(private val context: Context) {
             prefs[Keys.USER_ROLE] = user.role
             prefs[Keys.HAS_SESSION] = true
         }
+        TokenHolder.token = token
     }
 
     suspend fun clear() {
         context.dataStore.edit { it.clear() }
+        TokenHolder.token = null
     }
 }

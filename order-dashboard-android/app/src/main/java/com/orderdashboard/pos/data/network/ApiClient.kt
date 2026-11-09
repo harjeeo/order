@@ -10,13 +10,13 @@ import retrofit2.Retrofit
 
 /**
  * Talks to the same order-dashboard-api backend the web app (lib/api.ts)
- * uses. BuildConfig.API_BASE_URL is set per build type in app/build.gradle.kts
- * — defaults to the Android emulator's host-loopback address for local dev.
+ * uses. BuildConfig.API_BASE_URL is set in app/build.gradle.kts.
  */
 object ApiClient {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(AuthInterceptor())
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
@@ -31,4 +31,9 @@ object ApiClient {
         .build()
 
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
+    val menuApi: MenuApi = retrofit.create(MenuApi::class.java)
+    val tablesApi: TablesApi = retrofit.create(TablesApi::class.java)
+    val ordersApi: OrdersApi = retrofit.create(OrdersApi::class.java)
+    val billingApi: BillingApi = retrofit.create(BillingApi::class.java)
+    val settingsApi: SettingsApi = retrofit.create(SettingsApi::class.java)
 }
