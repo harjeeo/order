@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder monogram "C" — swap for the real cafe/brand logo whenever
+     you have one; this just keeps the launcher icon from being blank. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#4ADE80"
+        android:pathData="M54,27 A27,27 0 1 0 54,81 A27,27 0 0 0 72,73 L63,65 A15,15 0 1 1 63,43 L72,35 A27,27 0 0 0 54,27 Z" />
+</vector>

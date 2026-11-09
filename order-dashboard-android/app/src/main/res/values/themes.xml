@@ -1,0 +1,9 @@
+<resources>
+    <!-- Base platform theme — Compose drives all actual UI styling via
+         ui/theme/Theme.kt; this just sets the launch/status-bar backdrop
+         before Compose takes over, so cold start doesn't flash white. -->
+    <style name="Theme.CafePos" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>
