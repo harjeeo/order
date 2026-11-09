@@ -65,12 +65,12 @@ fun NewOrderScreen(viewModel: PosViewModel, onBack: () -> Unit, onPurchase: () -
             Text("New Order", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         }
 
-        OrderTypeTabs(selected = viewModel.orderType, onSelect = viewModel::setOrderType)
+        OrderTypeTabs(selected = viewModel.orderType, onSelect = viewModel::selectOrderType)
 
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(
                 value = viewModel.customerName,
-                onValueChange = viewModel::setCustomerName,
+                onValueChange = viewModel::updateCustomerName,
                 label = { Text("Customer name") },
                 placeholder = { Text("Walk-in Customer") },
                 singleLine = true,

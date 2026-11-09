@@ -156,7 +156,7 @@ class PosViewModel : ViewModel() {
         }
     }
 
-    fun setOrderType(type: OrderType) {
+    fun selectOrderType(type: OrderType) {
         orderType = type
         if (type != OrderType.DINE_IN) selectedTableId = null
     }
@@ -165,7 +165,7 @@ class PosViewModel : ViewModel() {
         selectedTableId = tableId
     }
 
-    fun setCustomerName(name: String) {
+    fun updateCustomerName(name: String) {
         customerName = name
     }
 
