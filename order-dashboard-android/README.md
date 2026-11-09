@@ -33,19 +33,20 @@ reference designs and the web app's `CafePosPage.tsx` behavior.
 
 ## Pointing it at your backend
 
-`app/build.gradle.kts` sets `API_BASE_URL` per build type. The default,
-`http://10.0.2.2:4000/`, is the Android emulator's address for your Mac's
-`localhost:4000` — i.e. it expects `order-dashboard-api`'s dev server
-running locally while you build out screens.
+`app/build.gradle.kts` sets `API_BASE_URL` in `defaultConfig`, applied to
+both `debug` and `release` builds unless a build type overrides it. It's
+currently `https://poscafe.getojar.com/` — the live VPS, same domain the
+web app's `VITE_API_URL` points at — so logging in with a real staff
+account works straight away on an emulator or a real device.
 
-- **Testing against a real device** on the same Wi-Fi as your Mac: swap
-  `10.0.2.2` for your Mac's LAN IP (`ipconfig getifaddr en0`), e.g.
-  `http://192.168.1.23:4000/`.
-- **Pointing at your live VPS** (for the release build): change the
-  `release` build type's `API_BASE_URL` to `https://<your-api-domain>/`
-  and drop `android:usesCleartextTraffic="true"` from
-  `AndroidManifest.xml` (that flag only exists for the emulator's
-  plain-`http` dev backend).
+- **Testing against a local dev backend instead** (e.g. while building a
+  new screen, so you're not hitting live data): uncomment the
+  `buildConfigField` line in the `debug` build type and set it to
+  `http://10.0.2.2:4000/` for the emulator, or your Mac's LAN IP
+  (`ipconfig getifaddr en0`) for a real device over Wi-Fi, e.g.
+  `http://192.168.1.23:4000/`. That needs
+  `android:usesCleartextTraffic="true"` in `AndroidManifest.xml` (already
+  there) since it's plain `http`, not `https`.
 
 ## Package layout
 

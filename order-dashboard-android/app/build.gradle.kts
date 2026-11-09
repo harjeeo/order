@@ -18,22 +18,23 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        // Overridden per build type below — the Android emulator reaches the
-        // host machine's localhost via 10.0.2.2, not 127.0.0.1/localhost.
-        // Point this at the real API host before building a release APK.
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4000/\"")
+        // Live backend — same domain the web app's VITE_API_URL points at
+        // (checked via the VPS's order-dashboard/.env). Override per build
+        // type below if you ever need to point a build at something else
+        // (e.g. a local dev server while working on a new screen).
+        buildConfigField("String", "API_BASE_URL", "\"https://poscafe.getojar.com/\"")
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // TODO: before shipping, set this to the real production API,
-            // e.g. "https://api.yourcafe.example/"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4000/\"")
         }
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4000/\"")
+            // To test against a local dev backend instead, uncomment this
+            // (10.0.2.2 is the emulator's address for your Mac's localhost;
+            // use your Mac's LAN IP instead for a real device over Wi-Fi):
+            // buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4000/\"")
         }
     }
 
