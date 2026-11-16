@@ -127,6 +127,7 @@ function mapMenuItem(item: any) {
     price: item.price,
     tax: item.tax,
     available: item.available,
+    isVeg: item.isVeg ?? true,
     variants: (item.variants ?? []).map((v: any) => ({ name: v.name, price: v.price })),
     addons: (item.addons ?? []).map((a: any) => ({ name: a.name, price: a.price })),
   };
@@ -151,6 +152,7 @@ export async function createMenuItem(data: any) {
     price: data.price,
     tax: data.tax,
     available: data.available,
+    isVeg: data.isVeg ?? true,
     variants: data.variants ?? [],
     addons: data.addons ?? [],
   });

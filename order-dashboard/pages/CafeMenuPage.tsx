@@ -1,5 +1,14 @@
-import { useEffect, useState } from "react";
-import { PlusSignIcon, Edit02Icon, Delete02Icon, Cancel01Icon, Image01Icon, MenuRestaurantIcon } from "hugeicons-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  PlusSignIcon,
+  Edit02Icon,
+  Delete02Icon,
+  Cancel01Icon,
+  Image01Icon,
+  MenuRestaurantIcon,
+  Upload01Icon,
+  Download01Icon,
+} from "hugeicons-react";
 import {
   getMenuCategories,
   addMenuCategory,
@@ -11,6 +20,8 @@ import {
   toggleMenuItemAvailability,
   getMenuIcons,
 } from "../lib/api";
+import { parseCsv, parsePricedList } from "../lib/csv";
+import VegBadge from "../components/VegBadge";
 
 // A search-enabled grid of the Super-Admin-curated icon library — lets a
 // cafe owner pick a consistent icon instead of uploading their own photo
@@ -78,6 +89,7 @@ function emptyForm() {
     price: "",
     tax: 5,
     available: true,
+    isVeg: true,
     variants: [],
     addons: [],
   };
@@ -107,6 +119,9 @@ export default function CafeMenuPage() {
   const [categoryError, setCategoryError] = useState("");
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const importInputRef = useRef(null);
 
   async function refreshCategories() {
     setCategories(await getMenuCategories());
@@ -227,6 +242,7 @@ export default function CafeMenuPage() {
       price: Number(form.price) || 0,
       tax: Number(form.tax) || 0,
       available: form.available,
+      isVeg: form.isVeg,
       variants: form.variants
         .filter((v) => v.name.trim())
         .map((v) => ({ name: v.name.trim(), price: Number(v.price) || 0 })),
@@ -258,6 +274,83 @@ export default function CafeMenuPage() {
     refreshItems();
   }
 
+  function handleDownloadSample() {
+    window.location.href = "/menu-import-sample.csv";
+  }
+
+  function parseVegColumn(value) {
+    const v = (value ?? "").trim().toLowerCase();
+    return !(v === "non-veg" || v === "nonveg" || v === "non veg" || v === "n" || v === "no");
+  }
+
+  function parseYesNo(value, fallback = true) {
+    const v = (value ?? "").trim().toLowerCase();
+    if (!v) return fallback;
+    return v === "yes" || v === "true" || v === "1" || v === "y";
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      const [header, ...dataRows] = rows;
+      const col = (name) => header.findIndex((h) => h.trim().toLowerCase() === name);
+      const idx = {
+        name: col("name"),
+        category: col("category"),
+        price: col("price"),
+        veg: col("veg_or_nonveg"),
+        tax: col("tax_percent"),
+        available: col("available"),
+        variants: col("variants"),
+        addons: col("addons"),
+        image: col("image"),
+      };
+      if (idx.name === -1 || idx.category === -1 || idx.price === -1) {
+        setImportResult({ ok: 0, failed: dataRows.length, errors: ["CSV must have name, category and price columns."] });
+        return;
+      }
+
+      let ok = 0;
+      const errors = [];
+      for (const row of dataRows) {
+        const name = row[idx.name]?.trim();
+        const category = row[idx.category]?.trim();
+        const price = Number(row[idx.price]);
+        if (!name || !category || !Number.isFinite(price)) {
+          errors.push(`Skipped row "${row[idx.name] || "(blank)"}" — missing name/category/price.`);
+          continue;
+        }
+        try {
+          await createMenuItem({
+            name,
+            category,
+            price,
+            tax: idx.tax !== -1 ? Number(row[idx.tax]) || 5 : 5,
+            available: idx.available !== -1 ? parseYesNo(row[idx.available]) : true,
+            isVeg: idx.veg !== -1 ? parseVegColumn(row[idx.veg]) : true,
+            image: idx.image !== -1 && row[idx.image]?.trim() ? row[idx.image].trim() : "🍽️",
+            variants: idx.variants !== -1 ? parsePricedList(row[idx.variants] ?? "") : [],
+            addons: idx.addons !== -1 ? parsePricedList(row[idx.addons] ?? "") : [],
+          });
+          ok += 1;
+        } catch (err) {
+          errors.push(`"${name}" — ${err instanceof Error ? err.message : "failed to import"}`);
+        }
+      }
+      setImportResult({ ok, failed: errors.length, errors });
+      refreshCategories();
+      refreshItems();
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
   return (
     <div className="flex h-full">
       <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -269,15 +362,64 @@ export default function CafeMenuPage() {
             </h1>
             <p className="mt-1 text-sm text-(--color-text-muted)">Categories, items, variants and add-ons.</p>
           </div>
-          <button
-            type="button"
-            onClick={startCreate}
-            className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
-          >
-            <PlusSignIcon size={14} strokeWidth={1.8} />
-            Add Item
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadSample}
+              className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm font-medium text-(--color-text-muted) transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <Download01Icon size={14} strokeWidth={1.8} />
+              Sample CSV
+            </button>
+            <button
+              type="button"
+              disabled={importing}
+              onClick={() => importInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm font-medium transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+            >
+              <Upload01Icon size={14} strokeWidth={1.8} />
+              {importing ? "Importing…" : "Import CSV"}
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleImportFile}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={startCreate}
+              className="flex items-center gap-1.5 rounded-md bg-(--color-accent) px-3 py-1.5 text-sm font-medium text-white"
+            >
+              <PlusSignIcon size={14} strokeWidth={1.8} />
+              Add Item
+            </button>
+          </div>
         </div>
+
+        {importResult && (
+          <div
+            className={`mt-3 rounded-md border p-3 text-xs ${
+              importResult.failed > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-emerald-500/40 bg-emerald-500/5"
+            }`}
+          >
+            <div className="font-medium">
+              Imported {importResult.ok} item{importResult.ok === 1 ? "" : "s"}
+              {importResult.failed > 0 ? `, ${importResult.failed} skipped` : ""}.
+            </div>
+            {importResult.errors.length > 0 && (
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-(--color-text-muted)">
+                {importResult.errors.slice(0, 10).map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+              </ul>
+            )}
+            <button type="button" onClick={() => setImportResult(null)} className="mt-2 font-medium text-(--color-accent)">
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {categories.map((c) => (
@@ -339,7 +481,10 @@ export default function CafeMenuPage() {
               <div className="flex min-w-0 flex-1 flex-col justify-between">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-base font-medium">{item.name}</div>
+                    <div className="flex items-center gap-1.5">
+                      <VegBadge isVeg={item.isVeg} />
+                      <span className="truncate text-base font-medium">{item.name}</span>
+                    </div>
                     <div className="text-xs text-(--color-text-muted)">{item.category}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -483,6 +628,32 @@ export default function CafeMenuPage() {
                 onChange={(e) => setForm((f) => ({ ...f, tax: e.target.value }))}
                 className="mt-1 w-full rounded-md border border-(--color-border) bg-transparent p-2 text-sm outline-none focus:border-(--color-accent)"
               />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="text-xs text-(--color-text-muted)">Food Type</label>
+            <div className="mt-1.5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, isVeg: true }))}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  form.isVeg ? "border-emerald-600 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-(--color-border) text-(--color-text-muted)"
+                }`}
+              >
+                <VegBadge isVeg />
+                Veg
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, isVeg: false }))}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  !form.isVeg ? "border-red-700 bg-red-500/10 text-red-700 dark:text-red-400" : "border-(--color-border) text-(--color-text-muted)"
+                }`}
+              >
+                <VegBadge isVeg={false} />
+                Non-Veg
+              </button>
             </div>
           </div>
 

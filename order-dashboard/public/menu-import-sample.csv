@@ -1,0 +1,6 @@
+name,category,price,veg_or_nonveg,tax_percent,available,variants,addons,image
+Paneer Tikka,Starters,220,Veg,5,Yes,,Extra Mint Chutney:20,🧆
+Chicken Tikka,Starters,260,Non-Veg,5,Yes,,Extra Mint Chutney:20,🍢
+Margherita Pizza,Pizza,249,Veg,5,Yes,Small:199;Medium:249;Large:349,Extra Cheese:40;Extra Olives:30,🍕
+Chicken Biryani,Main Course,280,Non-Veg,5,Yes,Half:280;Full:480,Raita:30,🍛
+Masala Chai,Beverages,40,Veg,5,Yes,,,☕

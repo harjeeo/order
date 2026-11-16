@@ -191,6 +191,7 @@ model MenuItem {
   price      Int
   tax        Float        @default(5)
   available  Boolean      @default(true)
+  isVeg      Boolean      @default(true)
 
   variants MenuVariant[]
   addons   MenuAddon[]

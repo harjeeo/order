@@ -17,6 +17,7 @@ import {
   Cancel01Icon,
   PlusSignIcon,
 } from "hugeicons-react";
+import VegBadge from "../components/VegBadge";
 import {
   getMenuCategories,
   getMenuItems,
@@ -613,7 +614,10 @@ export default function CafePosPage() {
                     </span>
                   )}
                   <div className="flex min-w-0 flex-1 flex-col justify-center">
-                    <div className="truncate text-base font-medium">{item.name}</div>
+                    <div className="flex items-center gap-1.5">
+                      <VegBadge isVeg={item.isVeg} size={12} />
+                      <span className="truncate text-base font-medium">{item.name}</span>
+                    </div>
                     <div className="mt-1 text-xs text-(--color-text-muted)">
                       {item.variants.length > 0
                         ? `From ${formatCurrency(Math.min(...item.variants.map((v) => v.price)))}`

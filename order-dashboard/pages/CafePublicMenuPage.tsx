@@ -12,6 +12,7 @@ import {
   YoutubeIcon,
 } from "hugeicons-react";
 import { getPublicMenuBySlug, placePublicMenuOrder } from "../lib/api";
+import VegBadge from "../components/VegBadge";
 
 const SOCIAL_ICONS = {
   facebook: Facebook01Icon,
@@ -260,7 +261,10 @@ export default function CafePublicMenuPage() {
                 </div>
               )}
               <div className="p-2.5">
-                <div className="truncate text-sm font-medium">{item.name}</div>
+                <div className="flex items-center gap-1.5">
+                  <VegBadge isVeg={item.isVeg} size={12} />
+                  <span className="truncate text-sm font-medium">{item.name}</span>
+                </div>
                 <div className="mt-0.5 text-xs text-(--color-text-muted)">
                   {withOptions ? `From ${formatCurrency(item.price)}` : formatCurrency(item.price)}
                 </div>

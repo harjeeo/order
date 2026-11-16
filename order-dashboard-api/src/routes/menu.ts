@@ -58,6 +58,7 @@ const itemSchema = z.object({
   price: z.number().nonnegative(),
   tax: z.number().nonnegative().default(5),
   available: z.boolean().default(true),
+  isVeg: z.boolean().default(true),
   variants: z.array(z.object({ name: z.string(), price: z.number() })).default([]),
   addons: z.array(z.object({ name: z.string(), price: z.number() })).default([]),
 });
