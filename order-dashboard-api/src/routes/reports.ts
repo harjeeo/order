@@ -316,6 +316,77 @@ reportsRouter.get("/dashboard", async (req, res) => {
   });
 });
 
+// Powers the Dashboard's "Sales Statistics" panel — a single day's total
+// sales (by payment method) plus a stacked-by-channel bar chart across
+// six 4-hour buckets, picked via the calendar date control.
+reportsRouter.get("/sales-stats", async (req, res) => {
+  const tenantId = req.user!.tenantId!;
+  const outletId = await resolveOutletId(req);
+
+  const day = req.query.date ? new Date(String(req.query.date)) : new Date();
+  const startOfDay = new Date(day);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+  const [orders, invoices] = await Promise.all([
+    prisma.order.findMany({
+      where: { tenantId, createdAt: { gte: startOfDay, lt: endOfDay }, ...(outletId ? { outletId } : {}) },
+    }),
+    prisma.invoice.findMany({
+      where: { tenantId, createdAt: { gte: startOfDay, lt: endOfDay }, refunded: false, ...(outletId ? { outletId } : {}) },
+    }),
+  ]);
+
+  const successful = orders.filter((o) => o.status !== "cancelled");
+  const cancelled = orders.filter((o) => o.status === "cancelled");
+  const totalSales = invoices.reduce((s, i) => s + i.total, 0);
+
+  const paymentAmounts: Record<string, number> = { cash: 0, card: 0, other: 0 };
+  for (const inv of invoices) {
+    if (inv.method === "cash") paymentAmounts.cash += inv.total;
+    else if (inv.method === "card") paymentAmounts.card += inv.total;
+    else paymentAmounts.other += inv.total;
+  }
+  const paymentBreakdown = ["cash", "card", "other"].map((key) => ({
+    key,
+    label: key === "cash" ? "Cash" : key === "card" ? "Card" : "Other",
+    amount: paymentAmounts[key],
+    percent: totalSales > 0 ? Math.round((paymentAmounts[key] / totalSales) * 1000) / 10 : 0,
+  }));
+
+  // Six 4-hour buckets across the day, stacked by channel — same shape as
+  // the "Daily · stacked by channel" chart other POS dashboards show.
+  const BUCKET_LABELS = [
+    "12:00am - 04:00am",
+    "04:00am - 08:00am",
+    "08:00am - 12:00pm",
+    "12:00pm - 04:00pm",
+    "04:00pm - 08:00pm",
+    "08:00pm - 12:00am",
+  ];
+  const channelBuckets = BUCKET_LABELS.map((label, i) => {
+    const bucketStart = new Date(startOfDay.getTime() + i * 4 * 60 * 60 * 1000);
+    const bucketEnd = new Date(bucketStart.getTime() + 4 * 60 * 60 * 1000);
+    const inBucket = successful.filter((o) => o.createdAt >= bucketStart && o.createdAt < bucketEnd);
+    return {
+      label,
+      dineIn: inBucket.filter((o) => o.orderType === "dine_in").reduce((s, o) => s + o.amount, 0),
+      pickUp: inBucket.filter((o) => o.orderType === "takeaway").reduce((s, o) => s + o.amount, 0),
+      delivery: inBucket.filter((o) => o.orderType === "delivery").reduce((s, o) => s + o.amount, 0),
+    };
+  });
+
+  res.json({
+    date: startOfDay.toISOString().slice(0, 10),
+    totalSales,
+    totalOrders: orders.length,
+    successfulOrders: successful.length,
+    cancelledOrders: cancelled.length,
+    paymentBreakdown,
+    channelBuckets,
+  });
+});
+
 // A GST-ready sales register CSV — one row per paid invoice in the range,
 // plus a totals row. Generic enough for any accountant/CA to work from;
 // not a Tally-specific import format.

@@ -96,6 +96,11 @@ export async function getCafeDashboardStats() {
   return get("/reports/dashboard");
 }
 
+// date is a "YYYY-MM-DD" string (the calendar control's selected day).
+export async function getSalesStats(date: string) {
+  return get(`/reports/sales-stats?date=${date}`);
+}
+
 // --- POS / New Order ---------------------------------------------------
 
 export async function getMenuCategories() {

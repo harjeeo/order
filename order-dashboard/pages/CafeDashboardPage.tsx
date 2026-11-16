@@ -13,6 +13,7 @@ import {
   Home01Icon,
 } from "hugeicons-react";
 import { getCafeDashboardStats, getActiveShift, clockIn, clockOut } from "../lib/api";
+import SalesStatisticsPanel from "../components/SalesStatisticsPanel";
 
 const CARDS = [
   { key: "todaySales", label: "Today's Sales", icon: MoneyBag02Icon, format: "currency" },
@@ -129,28 +130,13 @@ export default function CafeDashboardPage() {
         ))}
       </div>
 
+      <div className="mt-8">
+        <SalesStatisticsPanel />
+      </div>
+
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h2 className="text-sm font-medium text-(--color-text-muted)">Sales (last 6 hours)</h2>
-          {stats && (
-            <div className="mt-3 flex items-end gap-2 rounded-xl border border-(--color-border) p-4">
-              {stats.salesByHour.map((h) => {
-                const max = Math.max(...stats.salesByHour.map((s) => s.amount), 1);
-                return (
-                  <div key={h.time} className="flex flex-1 flex-col items-center gap-1">
-                    <div
-                      title={`${h.time}: ${formatCurrency(h.amount)}`}
-                      className="w-full rounded-t bg-(--color-accent)/60"
-                      style={{ height: `${(h.amount / max) * 100 + 4}px` }}
-                    />
-                    <span className="text-[10px] text-(--color-text-muted)">{h.time}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <h2 className="mt-6 text-sm font-medium text-(--color-text-muted)">Order Type Summary</h2>
+          <h2 className="text-sm font-medium text-(--color-text-muted)">Order Type Summary</h2>
           {stats && (
             <div className="mt-3 grid grid-cols-3 gap-3">
               {ORDER_TYPES.map(({ key, label, icon: Icon }) => (
