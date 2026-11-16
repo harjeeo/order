@@ -23,7 +23,12 @@ kitchenRouter.patch("/:id/status", async (req, res) => {
 
   const ticket = await prisma.kitchenTicket.update({
     where: { id: existing.id },
-    data: { status: req.body.status },
+    data: {
+      status: req.body.status,
+      // First time this ticket reaches "ready" — captured once so the
+      // KOT list's duration column reflects actual kitchen prep time.
+      ...(req.body.status === "ready" && !existing.readyAt ? { readyAt: new Date() } : {}),
+    },
     include: { order: true },
   });
 

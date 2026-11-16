@@ -374,6 +374,7 @@ model KitchenTicket {
   status      KotStatus @default(new)
   priority    Boolean   @default(false)
   createdAt   DateTime  @default(now())
+  readyAt     DateTime?
 
   @@index([tenantId])
 }

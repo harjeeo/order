@@ -9,6 +9,8 @@ import {
   StickyNote01Icon,
   ComputerVideoIcon,
   KitchenUtensilsIcon,
+  GridViewIcon,
+  ListViewIcon,
 } from "hugeicons-react";
 import { getKitchenOrders, updateKitchenOrderStatus, toggleKitchenOrderPriority, reprintKot } from "../lib/api";
 import { buildKotHtml, printHtml } from "../lib/print";
@@ -25,8 +27,19 @@ function minutesAgo(iso) {
   return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 }
 
+function formatDuration(fromIso, toIso) {
+  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  if (ms < 0) return "--";
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins} min`;
+  return `${Math.floor(mins / 60)} hr : ${mins % 60} min`;
+}
+
+const STATUS_LABELS = { new: "New", preparing: "Preparing", ready: "Ready", completed: "Completed" };
+
 export default function CafeKitchenPage() {
   const [orders, setOrders] = useState([]);
+  const [view, setView] = useState("board");
   // Unread on purpose — ticking this every 30s just forces a re-render so
   // each ticket's elapsed-time badge re-evaluates Date.now() on its own.
   const [_now, setNow] = useState(Date.now());
@@ -85,16 +98,43 @@ export default function CafeKitchenPage() {
           </h1>
           <p className="mt-1 text-sm text-(--color-text-muted)">Live order queue — New → Preparing → Ready → Completed.</p>
         </div>
-        <Link
-          to="/cafe/kitchen/display"
-          target="_blank"
-          className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm"
-        >
-          <ComputerVideoIcon size={15} strokeWidth={1.8} />
-          Open Kitchen Display
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border border-(--color-border) p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("board")}
+              className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                view === "board" ? "bg-(--color-accent) text-white" : "text-(--color-text-muted) hover:text-(--color-text)"
+              }`}
+            >
+              <GridViewIcon size={13} strokeWidth={1.8} />
+              Board
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                view === "list" ? "bg-(--color-accent) text-white" : "text-(--color-text-muted) hover:text-(--color-text)"
+              }`}
+            >
+              <ListViewIcon size={13} strokeWidth={1.8} />
+              List
+            </button>
+          </div>
+          <Link
+            to="/cafe/kitchen/display"
+            target="_blank"
+            className="flex items-center gap-1.5 rounded-md border border-(--color-border) px-3 py-1.5 text-sm"
+          >
+            <ComputerVideoIcon size={15} strokeWidth={1.8} />
+            Open Kitchen Display
+          </Link>
+        </div>
       </div>
 
+      {view === "list" ? (
+        <KitchenListView orders={orders} />
+      ) : (
       <div className="mt-6 grid flex-1 grid-cols-1 gap-4 overflow-hidden sm:grid-cols-2 lg:grid-cols-4">
         {COLUMNS.map((col) => {
           const colOrders = orders
@@ -198,6 +238,72 @@ export default function CafeKitchenPage() {
           );
         })}
       </div>
+      )}
+    </div>
+  );
+}
+
+function KitchenListView({ orders }) {
+  const sorted = [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="mt-6 flex-1 overflow-auto rounded-xl border border-(--color-border)">
+      <table className="w-full text-left text-sm">
+        <thead className="sticky top-0 bg-(--color-surface) text-xs text-(--color-text-muted)">
+          <tr className="border-b border-(--color-border)">
+            <th className="px-3 py-2 font-medium">Order #</th>
+            <th className="px-3 py-2 font-medium">Order Type</th>
+            <th className="px-3 py-2 font-medium">Customer</th>
+            <th className="px-3 py-2 font-medium">No. Of Items</th>
+            <th className="px-3 py-2 font-medium">Items</th>
+            <th className="px-3 py-2 font-medium">Status</th>
+            <th className="px-3 py-2 font-medium">Created</th>
+            <th className="px-3 py-2 font-medium">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((order) => (
+            <tr key={order._id} className="border-b border-(--color-border) last:border-0">
+              <td className="px-3 py-2 font-medium">
+                {order.orderNumber}
+                {order.priority && <FireIcon size={12} strokeWidth={1.8} className="ml-1 inline text-amber-500" />}
+              </td>
+              <td className="px-3 py-2 capitalize">
+                {order.tableNumber ? `Dine In (${order.tableNumber})` : order.orderType}
+              </td>
+              <td className="px-3 py-2 text-(--color-text-muted)">{order.customerName || "--"}</td>
+              <td className="px-3 py-2">{order.items.length}</td>
+              <td className="px-3 py-2 text-(--color-text-muted)">
+                {order.items.map((i) => `${i.name} (${i.qty})`).join(", ")}
+              </td>
+              <td className="px-3 py-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    order.status === "completed"
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : order.status === "ready"
+                        ? "bg-blue-500/10 text-blue-600"
+                        : "bg-black/5 text-(--color-text-muted) dark:bg-white/10"
+                  }`}
+                >
+                  {STATUS_LABELS[order.status] ?? order.status}
+                </span>
+              </td>
+              <td className="px-3 py-2 text-(--color-text-muted)">{new Date(order.createdAt).toLocaleString()}</td>
+              <td className="px-3 py-2 text-(--color-text-muted)">
+                {order.readyAt ? formatDuration(order.createdAt, order.readyAt) : "--"}
+              </td>
+            </tr>
+          ))}
+          {sorted.length === 0 && (
+            <tr>
+              <td colSpan={8} className="px-3 py-6 text-center text-xs text-(--color-text-muted)">
+                No orders.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

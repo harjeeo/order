@@ -312,11 +312,13 @@ function mapKot(k: any) {
     orderNumber: k.orderNumber,
     tableNumber: k.order?.table?.number ?? null,
     orderType: fromBackendOrderType(k.order?.orderType),
+    customerName: k.order?.customerName ?? "",
     items: (k.order?.items ?? []).map((i: any) => ({ name: i.name, qty: i.qty, notes: i.notes })),
     notes: k.order?.notes ?? "",
     status: k.status,
     priority: k.priority,
     createdAt: k.createdAt,
+    readyAt: k.readyAt ?? null,
   };
 }
 
