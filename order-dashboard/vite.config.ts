@@ -16,6 +16,11 @@ export default defineConfig({
       // offline order queue (lib/offlineQueue.ts) exists to catch instead.
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,ico}"],
+        // Without this, the service worker treats a real static file's
+        // request (like a .csv download) as SPA navigation and serves the
+        // cached index.html instead — React Router then renders its own
+        // "no route matched" 404 page for a file that exists on disk.
+        navigateFallbackDenylist: [/\.[^/]+$/],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api"),

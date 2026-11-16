@@ -275,7 +275,12 @@ export default function CafeMenuPage() {
   }
 
   function handleDownloadSample() {
-    window.location.href = "/menu-import-sample.csv";
+    const link = document.createElement("a");
+    link.href = "/menu-import-sample.csv";
+    link.download = "menu-import-sample.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function parseVegColumn(value) {
